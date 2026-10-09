@@ -1,4 +1,6 @@
 # Moatless Tools
+English | [中文](README.zh.md)
+
 Moatless Tools is a hobby project where I experiment with some ideas I have about how LLMs can be used to edit code in large existing codebases. I believe that rather than relying on an agent to reason its way to a solution, it is crucial to build good tools to insert the right context into the prompt and handle the response.
 
 _For the implementation used in the paper [SWE-Search: Enhancing Software Agents with Monte Carlo Tree Search and Iterative Refinement](https://arxiv.org/abs/2410.20285), please see [moatless-tree-search](https://github.com/aorwall/moatless-tree-search)._
@@ -49,7 +51,7 @@ pip install "moatless[kubernetes]"
 
 ## Install from source
 
-Clone the repository and install using Poetry
+Clone the repository and install using uv
 
 ```bash
 # Clone the repository
@@ -90,7 +92,7 @@ print(observation.message)
 
 ## Code inspector agent
 
-[notebooks/code_inspector_agent.ipynb](See notebook)
+[See notebook](notebooks/code_inspector_agent.ipynb)
 
 # Run SWE-Bench evaluations 
 
@@ -195,3 +197,4 @@ python3 scripts/run_evaluation.py \
   --flow swebench_react \
   --dataset-split verified_mini \
   --num-parallel-jobs 5
+```

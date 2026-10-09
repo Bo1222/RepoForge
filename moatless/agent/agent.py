@@ -95,12 +95,8 @@ class ActionAgent(MoatlessComponent):
 
         try:
             if not node.action_steps:
-                await self._generate_actions(node)
-
-                duplicate_node = node.find_node_with_same_action_steps()
-                if duplicate_node:
-                    node.is_duplicate = True
-                    logger.info(f"Node{node.node_id} is a duplicate to Node{duplicate_node.node_id}. Skipping")
+                await self.generate_actions(node)
+                if node.is_duplicate:
                     return
 
             else:
@@ -112,10 +108,8 @@ class ActionAgent(MoatlessComponent):
 
             action_names = [action_step.action.name for action_step in node.action_steps]
             logger.info(f"Node{node.node_id}: Execute actions: {action_names}")
-            for i, action_step in enumerate(node.action_steps):
-                current_action_step.set(i)  # Used in logging to identify the action step
-                await self._execute(node, action_step)
-                current_action_step.set(None)
+            for i in range(len(node.action_steps)):
+                await self.execute_action_step(node, i)
                 if node.terminal:
                     break
 
@@ -123,6 +117,43 @@ class ActionAgent(MoatlessComponent):
             logger.exception(f"Node{node.node_id}: Failed to run.")
             node.error = f"{e.__class__.__name__}: {str(e)}\n\n{traceback.format_exc()}"
             raise e
+
+    async def generate_actions(self, node: Node) -> None:
+        """Generate a response once, preserving the existing sibling duplicate check.
+
+        A prebuilt response is reused. Callers inspect action_steps, is_duplicate
+        and error to decide the next control step; this method executes no tools.
+        """
+        if not self.completion_model:
+            raise RuntimeError("Completion model not set")
+        if node.is_executed():
+            raise RuntimeError("Node already executed")
+        if node.action_steps:
+            return
+        await self._generate_actions(node)
+        duplicate_node = node.find_node_with_same_action_steps()
+        if duplicate_node:
+            node.is_duplicate = True
+            logger.info(f"Node{node.node_id} is a duplicate to Node{duplicate_node.node_id}. Skipping")
+
+    async def execute_action_step(self, node: Node, step_index: int) -> None:
+        """Execute one pending step, including observations, events and accounting.
+
+        Completed or terminal steps require an explicit reset, never silent replay.
+        The old private helpers remain available for existing callers.
+        """
+        if step_index < 0 or step_index >= len(node.action_steps):
+            raise IndexError(f"Action step index {step_index} is out of range")
+        if node.is_terminal():
+            raise RuntimeError("Node is terminal")
+        step = node.action_steps[step_index]
+        if step.is_executed():
+            raise RuntimeError(f"Action step {step_index} already executed")
+        token = current_action_step.set(step_index)
+        try:
+            await self._execute(node, step)
+        finally:
+            current_action_step.reset(token)
 
     async def _generate_actions(self, node: Node):
         node.possible_actions = [action.name for action in self.actions]

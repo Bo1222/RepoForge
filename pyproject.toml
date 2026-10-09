@@ -13,6 +13,8 @@ authors = [
 ]
 requires-python = "<3.14,>=3.10"
 dependencies = [
+    "langgraph==1.2.14",
+    "langgraph-checkpoint-sqlite==3.1.1",
     "pydantic<3.0.0,>=2.11.7",
     "tiktoken<2.0.0,>=0.11.0",
     "networkx<4.0,>=3.4",

@@ -162,6 +162,19 @@ Pipfile
 evals
 test_results
 experiments
+!experiments/
+experiments/*
+!experiments/baselines/
+!experiments/reports/
+!experiments/results/
+experiments/baselines/*
+!experiments/baselines/M0/
+experiments/reports/*
+!experiments/reports/T0.md
+!experiments/reports/T1.md
+!experiments/reports/T2.md
+experiments/results/*
+!experiments/results/migration/
 
 # UI build output
 moatless_api/
@@ -183,3 +196,8 @@ playground
 CLAUDE.md
 hej2
 .DS_Store
+
+CHANGELOG.md
+Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
+docs/
+experiments/
