@@ -2,8 +2,9 @@ import asyncio
 import logging
 import os
 import subprocess
+import hashlib
+import json
 import aiofiles
-from typing import Dict, Optional
 
 from moatless.environment.base import BaseEnvironment, EnvironmentExecutionError
 
@@ -28,6 +29,10 @@ class LocalBashEnvironment(BaseEnvironment):
         self.cwd = cwd
         self.env = env
         self.shell = shell
+
+    def recovery_state(self) -> dict:
+        return {"cwd": os.path.abspath(self.cwd or os.getcwd()), "shell": self.shell,
+                "env_hash": hashlib.sha256(json.dumps(self.env, sort_keys=True).encode()).hexdigest()}
 
     async def execute(self, command: str, fail_on_error: bool = False, patch: str | None = None) -> str:
         """

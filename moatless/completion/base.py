@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
@@ -18,7 +19,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from moatless.completion.schema import (
     AllMessageValues,
     ChatCompletionCachedContent,
-    ChatCompletionTextObject,
     ChatCompletionToolMessage,
     ChatCompletionUserMessage,
     ResponseSchema,
@@ -102,7 +102,7 @@ class BaseCompletionModel(MoatlessComponent, ABC):
     max_tokens: Optional[int] = Field(2000, description="The maximum number of tokens to generate")
     timeout: float = Field(120.0, description="The timeout in seconds for completion requests")
     model_base_url: Optional[str] = Field(default=None, description="The base URL for the model API")
-    model_api_key: Optional[str] = Field(default=None, description="The API key for the model")
+    model_api_key: Optional[str] = Field(default=None, description="The API key for the model", repr=False)
     metadata: Optional[dict] = Field(default=None, description="Additional metadata for the completion model")
     message_cache: bool = Field(
         default=True,
@@ -476,7 +476,7 @@ class BaseCompletionModel(MoatlessComponent, ABC):
         attempt_count = 0
 
         @retry(
-            retry=tenacity.retry_if_not_exception_type((BadRequestError, CompletionRuntimeError)),
+            retry=tenacity.retry_if_not_exception_type((asyncio.CancelledError, BadRequestError, CompletionRuntimeError)),
             wait=wait_exponential(multiplier=5, min=5, max=60),
             stop=stop_after_attempt(3),
             reraise=True,

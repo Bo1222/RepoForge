@@ -19,7 +19,7 @@ from moatless.context_data import get_trajectory_dir
 from moatless.environment.local import LocalBashEnvironment
 from moatless.eventbus import BaseEventBus
 from moatless.expander.expander import Expander
-from moatless.flow import AgenticFlow, AgenticLoop, SearchTree
+from moatless.flow import AgenticFlow, LangGraphFlow
 from moatless.flow.run_flow import run_flow
 from moatless.flow.schema import (
     CompletionDTO,
@@ -192,8 +192,9 @@ class FlowManager:
         model_id: str,
         message: str,
         repository_path: str | None = None,
+        flow_class: str = "moatless.flow.langgraph_flow.LangGraphFlow",
         **kwargs,
-    ) -> AgenticLoop:
+    ) -> AgenticFlow:
         logger.info(f"Creating loop for project {project_id} with trajectory {trajectory_id}")
         agent = self._agent_manager.get_agent(agent_id=agent_id)
         completion_model = self._model_manager.create_completion_model(model_id)
@@ -229,7 +230,10 @@ class FlowManager:
             workspace = Workspace(repository=repository, environment=environment)
             agent.workspace = workspace
 
-        loop = AgenticLoop.create(
+        implementation = AgenticFlow.get_component_by_classpath(flow_class)
+        if implementation is None:
+            raise ValueError(f"Unknown flow class: {flow_class}")
+        loop = implementation.create(
             message=message,
             trajectory_id=trajectory_id,
             project_id=project_id,
@@ -293,7 +297,7 @@ class FlowManager:
             if isinstance(config, dict):
                 # Ensure the id is set in the config
                 config["id"] = id
-                return AgenticFlow.from_dict(config)
+                return AgenticFlow.from_config(config)
             else:
                 raise ValueError(f"Invalid config format for flow {id}")
         except KeyError:
@@ -306,7 +310,7 @@ class FlowManager:
                 config = await self._storage.read(flow_path)
                 if isinstance(config, dict):
                     config["id"] = id
-                    return AgenticFlow.from_dict(config)
+                    return AgenticFlow.from_config(config)
                 else:
                     raise ValueError(f"Invalid config format for flow {id}")
             except KeyError:
@@ -351,7 +355,7 @@ class FlowManager:
         if not config.get("id"):
             raise ValueError("Config must have an 'id' field")
 
-        flow = SearchTree.from_dict(config)
+        flow = AgenticFlow.from_config(config, legacy_default=LangGraphFlow.get_class_name())
         logger.info(f"Creating flow config {flow.id}")
 
         flow_path = self._get_flow_config_path(flow.id)
@@ -372,15 +376,14 @@ class FlowManager:
 
         logger.debug(f"Updating flow config {flow_id}")
 
-        # To verify the config is valid, we need to convert it to an AgenticFlow object
-        flow = SearchTree.model_validate(config)
-
         flow_path = self._get_flow_config_path(flow_id)
 
         # Check if flow exists
         if not await self._storage.exists(flow_path):
             raise ValueError(f"Flow config {flow_id} not found")
 
+        existing = await self._storage.read(flow_path)
+        flow = AgenticFlow.from_config(config, legacy_default=existing.get("flow_class", "moatless.flow.search_tree.SearchTree"))
         await self._storage.write(flow_path, flow.model_dump())
 
     async def delete_config(self, id: str):
@@ -409,7 +412,7 @@ class FlowManager:
 
             return AgenticFlow.from_dicts(settings_data, trajectory_data)
         else:
-            return AgenticFlow.from_dict(await self._storage.read_from_project("flow.json", project_id))
+            return AgenticFlow.from_config(await self._storage.read_from_project("flow.json", project_id))
 
     def get_trajectory_status(self, flow: AgenticFlow, job_status: JobStatus) -> FlowStatus:
         if job_status == JobStatus.RUNNING:
@@ -507,12 +510,16 @@ class FlowManager:
         flow = await AgenticFlow.from_trajectory_id(trajectory_id, project_id)
 
         # Reset the trajectory by removing all children from the root node
+        if isinstance(flow, LangGraphFlow):
+            flow.begin_new_run()
         if flow.root and flow.root.children:
             logger.info(f"Removing {len(flow.root.children)} children from root node")
             flow.root.children = []
             trajectory_path = self._storage.get_trajectory_path(project_id, trajectory_id)
             await self._storage.write(f"{trajectory_path}/trajectory.json", flow.get_trajectory_data())
             logger.info("Trajectory reset successfully")
+        if isinstance(flow, LangGraphFlow):
+            await self.save_trajectory(project_id, trajectory_id, flow)
 
         await self._runner.start_job(project_id=project_id, trajectory_id=trajectory_id, job_func=run_flow)
         logger.info(f"Trajectory {trajectory_id} restarted successfully")
@@ -538,12 +545,20 @@ class FlowManager:
 
         flow = await AgenticFlow.from_trajectory_id(trajectory_id, project_id)
 
+        if isinstance(flow, LangGraphFlow):
+            state = flow.graph_state
+            if state and state["phase"] != "end":
+                if request.message:
+                    raise ValueError("Resume the pending checkpoint before adding a new message")
+                await self._runner.start_job(project_id=project_id, trajectory_id=trajectory_id, job_func=run_flow)
+                return flow
+            flow.begin_new_run()
         last_node = flow.root.get_last_node()
         if last_node.is_executed():
             last_node.terminal = False
 
             child_node = Node(
-                node_id=last_node.node_id + 1,
+                node_id=max(n.node_id for n in flow.root.get_all_nodes()) + 1,
                 parent=last_node,
                 file_context=last_node.file_context.clone() if last_node.file_context else None,
                 max_expansions=last_node.max_expansions,
@@ -555,6 +570,8 @@ class FlowManager:
 
         trajectory_path = self._storage.get_trajectory_path(project_id, trajectory_id)
         await self._storage.write(f"{trajectory_path}/trajectory.json", flow.get_trajectory_data())
+        if isinstance(flow, LangGraphFlow):
+            await self._storage.write(f"{trajectory_path}/flow.json", flow.get_flow_settings())
         logger.info("Trajectory updated with new parameters")
 
         await self._runner.start_job(project_id=project_id, trajectory_id=trajectory_id, job_func=run_flow)
@@ -573,12 +590,22 @@ class FlowManager:
 
         logger.info(f"Executing node {node.node_id} with is_executed: {node.is_executed()}")
         if node.is_executed():
-            new_node = node.clone()
+            if isinstance(agentic_flow, LangGraphFlow):
+                agentic_flow.begin_new_run()
+                if node.parent is None:
+                    raise ValueError("Cannot clone root node")
+                new_node = node.model_copy(deep=True, update={"children": [], "parent": node.parent,
+                    "node_id": max(n.node_id for n in agentic_flow.root.get_all_nodes()) + 1})
+                node.parent.add_child(new_node)
+            else:
+                new_node = node.clone()
             new_node.reset(rebuild_action_steps=False)
             logger.info(f"Cloned node {new_node.node_id} from parent {node.node_id}")
 
             trajectory_path = self._storage.get_trajectory_path(project_id, trajectory_id)
             await self._storage.write(f"{trajectory_path}/trajectory.json", agentic_flow.get_trajectory_data())
+            if isinstance(agentic_flow, LangGraphFlow):
+                await self._storage.write(f"{trajectory_path}/flow.json", agentic_flow.get_flow_settings())
 
             node_id = new_node.node_id
 
@@ -598,10 +625,14 @@ class FlowManager:
         if not node:
             raise ValueError("Node not found")
 
+        if isinstance(agentic_flow, LangGraphFlow):
+            agentic_flow.begin_new_run()
         node.reset()
 
         trajectory_path = self._storage.get_trajectory_path(project_id, trajectory_id)
         await self._storage.write(f"{trajectory_path}/trajectory.json", agentic_flow.get_trajectory_data())
+        if isinstance(agentic_flow, LangGraphFlow):
+            await self._storage.write(f"{trajectory_path}/flow.json", agentic_flow.get_flow_settings())
         logger.info(f"Reset node {node_id} in trajectory {trajectory_id}, saved to {trajectory_path}/trajectory.json")
 
         return node

@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 from typing import Callable
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 
 def create_job_args(
@@ -45,14 +45,14 @@ def create_job_args(
 
 
 def create_resource_id(project_id: str, trajectory_id: str, prefix: str = "run") -> str:
-    """Create a resource ID that's valid for both Kubernetes jobs and Docker containers.
+    """Create a resource ID that's valid for Kubernetes jobs.
 
     This will generate an ID with the format: {prefix}-{proj_prefix}-{traj_suffix}-{hash}
 
     Args:
         project_id: The project ID (required, must not be empty)
         trajectory_id: The trajectory ID (required, must not be empty)
-        prefix: Prefix for the resource name ("run" for Kubernetes jobs, "moatless" for Docker containers)
+        prefix: Prefix for the resource name ("run" for Kubernetes jobs)
 
     Returns:
         A valid resource ID string
@@ -91,7 +91,7 @@ def create_resource_id(project_id: str, trajectory_id: str, prefix: str = "run")
     # Calculate remaining space
     # Format: prefix-proj_prefix-traj_suffix-hash
     # Count separators: 3 hyphens
-    max_total_length = 63  # Maximum length for both Kubernetes and Docker
+    max_total_length = 63  # Maximum length for Kubernetes
     remaining_space = max_total_length - len(prefix) - len(proj_prefix) - len(hash_value) - 3
 
     # Determine how many chars we can use for trajectory suffix
@@ -213,18 +213,3 @@ def create_annotations(project_id: str, trajectory_id: str, func_name: Optional[
     }
 
     return annotations
-
-
-def create_docker_label_args(labels: Dict[str, str]) -> List[str]:
-    """Convert a dictionary of labels to Docker command-line arguments.
-
-    Args:
-        labels: Dictionary of label key-value pairs
-
-    Returns:
-        List of Docker command-line arguments for labels
-    """
-    args = []
-    for key, value in labels.items():
-        args.extend(["--label", f"{key}={value}"])
-    return args

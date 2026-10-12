@@ -201,3 +201,39 @@ CHANGELOG.md
 Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
 docs/
 experiments/
+
+# Reviewable T3 documents and evidence
+!CHANGELOG.md
+!Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
+!docs/
+!docs/langgraph_learning.md
+!docs/state_and_recovery.md
+!docs/examples/
+!docs/examples/langgraph_flow.json
+!experiments/
+!experiments/reports/
+!experiments/reports/T3.md
+!experiments/results/
+!experiments/results/T3/
+
+# Original Docker UI inspection evidence
+!experiments/reports/docker_ui_inspection.md
+!experiments/results/UI_inspection/
+
+# T3′ planning and removal verification
+!docs/langgraph_migration.md
+!experiments/reports/T3_prime_cleanup.md
+!experiments/results/T3_prime_cleanup/
+
+# T3′ interactive CLI implementation and acceptance evidence
+!docs/interactive_cli.md
+!experiments/reports/T3_prime_cli.md
+!experiments/results/T3_prime_cli/
+experiments/results/T3_prime_cli/**/source/
+experiments/results/T3_prime_cli/**/sessions/
+AGENTS.md
+CHANGELOG.md
+Prompt.md
+docs/
+experiments/
+Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md

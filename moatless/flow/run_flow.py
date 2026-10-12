@@ -12,6 +12,8 @@ from moatless.context_data import current_project_id, current_trajectory_id
 from moatless.environment.local import LocalBashEnvironment
 from moatless.events import BaseEvent
 from moatless.flow.flow import AgenticFlow
+from moatless.flow.langgraph_flow import LangGraphFlow
+from moatless.flow.durable import RecoveryConflict, default_checkpoint_path
 from moatless.index.code_index import CodeIndex
 from moatless.repository.git import GitRepository
 from moatless.runner.utils import (
@@ -27,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 _flow_lock = asyncio.Lock()
-_pending_event_tasks = set()
 
 
 async def setup_flow(project_id: str, trajectory_id: str) -> AgenticFlow:
@@ -49,9 +50,9 @@ async def setup_flow(project_id: str, trajectory_id: str) -> AgenticFlow:
     except Exception:
         settings = await storage.read_from_project(path="flow.json", project_id=project_id)  # type: ignore
 
-        logger.info(f"Settings not found in trajectory, using project settings")
+        logger.info("Settings not found in trajectory, using project settings")
     else:
-        logger.info(f"Settings found in trajectory")
+        logger.info("Settings found in trajectory")
 
     trajectory_dict: dict | None = await storage.read_from_trajectory(
         path="trajectory.json", trajectory_id=trajectory_id, project_id=project_id
@@ -62,6 +63,10 @@ async def setup_flow(project_id: str, trajectory_id: str) -> AgenticFlow:
         await handle_flow_event(flow, event)
 
     flow._on_event = on_event
+    if isinstance(flow, LangGraphFlow):
+        if not flow.checkpoint_path:
+            flow.checkpoint_path = default_checkpoint_path(project_id, trajectory_id, flow.checkpoint_run_id)
+        flow._on_snapshot = persist_trajectory_data
 
     return flow
 
@@ -96,6 +101,8 @@ async def setup_workspace(project_id: str, trajectory_id: str) -> Workspace:
 
     storage = await get_storage()
     instance_path = os.environ.get("INSTANCE_PATH")
+    repo_path = None
+    runtime = None
     if instance_path:
         runtime = await setup_swebench_runtime()
         repo_path = "/testbed"
@@ -145,8 +152,19 @@ async def setup_workspace(project_id: str, trajectory_id: str) -> Workspace:
 async def persist_trajectory_data(flow: AgenticFlow) -> None:
     storage = await get_storage()
 
+    if isinstance(flow, LangGraphFlow):
+        flow.persist_snapshot()
     trajectory_data = flow.get_trajectory_data()
-    await storage.write_to_trajectory("trajectory.json", trajectory_data, flow.project_id, flow.trajectory_id)
+    # Retrying this exact overwrite is idempotent; external model/tool calls are
+    # never retried here. Bound transient storage failures to three attempts.
+    for attempt in range(3):
+        try:
+            await storage.write_to_trajectory("trajectory.json", trajectory_data, flow.project_id, flow.trajectory_id)
+            break
+        except (OSError, TimeoutError):
+            if attempt == 2:
+                raise
+            await asyncio.sleep(0.05 * (attempt + 1))
     logger.info(
         f"Trajectory data with {len(trajectory_data['nodes'])} nodes written to {flow.project_id}/{flow.trajectory_id}/trajectory.json"
     )
@@ -166,23 +184,12 @@ async def handle_flow_event(flow: AgenticFlow, event: BaseEvent) -> None:
     except Exception as e:
         logger.error(f"Error publishing event: {e}")
 
-    async def process_event_task():
-        try:
+    # Graph snapshots are exported by the awaited callback after node commit.
+    # Events inside an external operation may describe effects not yet committed.
+    if not isinstance(flow, LangGraphFlow):
+        if (event.scope == "node" and event.event_type == "expanded") or event.scope == "flow":
             async with _flow_lock:
-                if (event.scope == "node" and event.event_type == "expanded") or event.scope == "flow":
-                    await persist_trajectory_data(flow)
-
-                    logger.info(
-                        f"Event {event.scope}:{event.event_type}. Trajectory data written to {flow.project_id}/{flow.trajectory_id}/trajectory.json. "
-                    )
-                else:
-                    logger.info(f"Event {event.scope}:{event.event_type} ignored")
-
-        finally:
-            _pending_event_tasks.discard(task)
-
-    task = asyncio.create_task(process_event_task())
-    _pending_event_tasks.add(task)
+                await persist_trajectory_data(flow)
 
 
 async def run_flow(project_id: str, trajectory_id: str, node_id: int | None = None) -> None:
@@ -193,11 +200,13 @@ async def run_flow(project_id: str, trajectory_id: str, node_id: int | None = No
     log_path = Path(f"./logs/logs_{date_str}.log")
     original_handlers = setup_job_logging(log_path=log_path)
     storage = await get_storage()
+    flow = None
+    error_kind = "environment"
 
     try:
         flow = await setup_flow(project_id, trajectory_id)
 
-        if not node_id and flow.is_finished():
+        if node_id is None and flow.is_finished():
             logger.warning(f"Flow already finished for instance {trajectory_id}")
             return None
 
@@ -205,32 +214,32 @@ async def run_flow(project_id: str, trajectory_id: str, node_id: int | None = No
 
         logger.info(f"Flow created for instance {trajectory_id}")
 
+        error_kind = "flow"
         await flow.run(workspace=workspace, node_id=node_id)
 
         logger.info(f"Flow completed for instance {trajectory_id}")
 
-        if _pending_event_tasks:
-            logger.info("Cancelling pending event tasks...")
-            for task in _pending_event_tasks:
-                task.cancel()
-
-            _pending_event_tasks.clear()
-
-        if flow.is_finished():
-            await persist_trajectory_data(flow)
-
     except Exception as e:
         logger.exception(f"Error running instance {trajectory_id}")
+        if isinstance(e, RecoveryConflict):
+            error_kind = "recovery_conflict"
+        elif error_kind == "flow" and isinstance(flow, LangGraphFlow) and flow.graph_state:
+            error_kind = flow.graph_state.get("error_kind") or error_kind
         await emit_event(
             evaluation_name=project_id,
             instance_id=trajectory_id,
             scope="flow",
             event_type="error",
-            data={"error": str(e)},
+            data={"error": str(e), "error_kind": error_kind},
         )
         raise e
     finally:
-        cleanup_job_logging(original_handlers)
-
-        trajectory_key = storage.get_trajectory_path(project_id=project_id, trajectory_id=trajectory_id)
-        await storage.write_raw(f"{trajectory_key}/logs/{log_path.name}", log_path.read_text())
+        try:
+            if flow is not None and not (
+                isinstance(flow, LangGraphFlow) and (flow._recovery_conflict or flow._unconfirmed_operation)
+            ):
+                await persist_trajectory_data(flow)
+        finally:
+            cleanup_job_logging(original_handlers)
+            trajectory_key = storage.get_trajectory_path(project_id=project_id, trajectory_id=trajectory_id)
+            await storage.write_raw(f"{trajectory_key}/logs/{log_path.name}", log_path.read_text())

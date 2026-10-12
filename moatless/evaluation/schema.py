@@ -347,8 +347,8 @@ class Evaluation(BaseModel):
         if isinstance(obj, dict):
             obj = obj.copy()
             obj["instances"] = [EvaluationInstance.model_validate(i) for i in obj["instances"]]
-            if "flow" in obj:
-                obj["flow"] = AgenticFlow.from_dict(obj["flow"])
+            if obj.get("flow"):
+                obj["flow"] = AgenticFlow.from_config(obj["flow"])
         return super().model_validate(obj, **kwargs)
 
     def model_dump(self, *args, **kwargs) -> dict:

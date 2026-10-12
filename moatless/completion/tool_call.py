@@ -1,12 +1,13 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional, Type, Union
+import os
+from typing import Any, Optional, Union
 
 from moatless.completion import BaseCompletionModel
 from moatless.completion.base import CompletionRetryError
 from moatless.completion.schema import ChatCompletionToolMessage, ResponseSchema
 from moatless.exceptions import CompletionRuntimeError
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,22 @@ class ToolCallCompletionModel(BaseCompletionModel):
     3. Validating and parsing tool call responses
     4. Managing thought inclusion in tool calls
     """
+
+    allow_plain_text: bool = Field(
+        default=False, description="Accept a text-only answer as Finish when that schema is registered"
+    )
+
+    async def _execute_completion(self, messages, invocation):
+        if (
+            self.allow_plain_text
+            and self.model.startswith("deepseek/")
+            and not self.model_api_key
+            and not os.environ.get("DEEPSEEK_API_KEY")
+        ):
+            raise CompletionRuntimeError(
+                "缺少 DeepSeek API 密钥。请配置 DEEPSEEK_API_KEY，或检查 api_key_env 指定的变量。"
+            )
+        return await super()._execute_completion(messages, invocation)
 
     def _get_completion_params(self, schema: list[type[ResponseSchema]]) -> dict[str, Union[str, dict, list]]:
         """Get tool call-specific completion parameters.
@@ -69,9 +86,13 @@ class ToolCallCompletionModel(BaseCompletionModel):
         message = completion_response.choices[0].message
         content = message.content or ""
 
-        # If no tool calls, return just the content
+        # CLI opt-in: finish a text answer through the canonical action/flow path.
         if not hasattr(message, "tool_calls") or not message.tool_calls:
-            if "SendMessage" in self._response_schema:
+            if self.allow_plain_text and content.strip():
+                for schema in self._response_schema or []:
+                    if schema.name == "Finish":
+                        return [schema.model_validate({"finish_reason": content})], None, None
+            if any(schema.name == "SendMessage" for schema in self._response_schema or []):
                 return [], content, None
             else:
                 raise CompletionRetryError(

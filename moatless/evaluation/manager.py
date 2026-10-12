@@ -22,7 +22,6 @@ from moatless.eventbus.base import BaseEventBus
 from moatless.events import BaseEvent
 from moatless.flow.flow import AgenticFlow
 from moatless.flow.manager import FlowManager
-from moatless.flow.search_tree import SearchTree
 from moatless.node import EvaluationResult, Node
 from moatless.runner.runner import BaseRunner, JobStatus
 from moatless.storage.base import BaseStorage
@@ -390,7 +389,7 @@ class EvaluationManager:
 
     async def update_config(self, evaluation_name: str, config: dict):
         """Update the config for an evaluation."""
-        flow = SearchTree.from_dict(config)
+        flow = AgenticFlow.from_config(config)
         await self.storage.write_to_project("flow.json", flow.model_dump(), project_id=evaluation_name)
 
     @tracer.start_as_current_span("EvaluationManager._handle_event")

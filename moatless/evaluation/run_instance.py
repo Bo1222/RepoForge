@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 from datetime import datetime
@@ -9,9 +8,10 @@ from typing import Any
 from dotenv import load_dotenv
 from moatless.completion.log_handler import LogHandler
 from moatless.context_data import current_project_id, current_trajectory_id
-from moatless.environment.local import LocalBashEnvironment
 from moatless.evaluation.schema import EvaluationEvent
 from moatless.flow.flow import AgenticFlow
+from moatless.flow.langgraph_flow import LangGraphFlow
+from moatless.flow.durable import RecoveryConflict
 from moatless.flow.run_flow import (
     persist_trajectory_data,
     setup_flow,
@@ -46,6 +46,8 @@ async def run_swebench_instance(project_id: str, trajectory_id: str, node_id: in
 
     litellm.callbacks = [LogHandler(storage=storage)]
 
+    flow = None
+    error_kind = "environment"
     try:
         flow = await setup_flow(project_id, trajectory_id)
 
@@ -73,10 +75,12 @@ async def run_swebench_instance(project_id: str, trajectory_id: str, node_id: in
 
         logger.info(f"Flow created for instance {trajectory_id}")
 
+        error_kind = "flow"
         node = await flow.run(workspace=workspace, node_id=node_id)
 
         logger.info(f"Flow completed for instance {trajectory_id}")
 
+        error_kind = "grading"
         await evaluate_instance(
             evaluation_name=project_id,
             instance_id=trajectory_id,
@@ -88,20 +92,29 @@ async def run_swebench_instance(project_id: str, trajectory_id: str, node_id: in
 
     except Exception as e:
         logger.exception(f"Error running instance {trajectory_id}")
+        if isinstance(e, RecoveryConflict):
+            error_kind = "recovery_conflict"
+        elif error_kind == "flow" and isinstance(flow, LangGraphFlow) and flow.graph_state:
+            error_kind = flow.graph_state.get("error_kind") or error_kind
         await _emit_event(
             evaluation_name=project_id,
             instance_id=trajectory_id,
             scope="evaluation",
             event_type="error",
-            data={"error": str(e)},
+            data={"error": str(e), "error_kind": error_kind},
         )
         raise e
 
     finally:
-        cleanup_job_logging(original_handlers)
-
-        trajectory_key = storage.get_trajectory_path(project_id=project_id, trajectory_id=trajectory_id)
-        await storage.write_raw(f"{trajectory_key}/logs/{log_path.name}", log_path.read_text())
+        try:
+            if flow is not None and not (
+                isinstance(flow, LangGraphFlow) and (flow._recovery_conflict or flow._unconfirmed_operation)
+            ):
+                await persist_trajectory_data(flow)
+        finally:
+            cleanup_job_logging(original_handlers)
+            trajectory_key = storage.get_trajectory_path(project_id=project_id, trajectory_id=trajectory_id)
+            await storage.write_raw(f"{trajectory_key}/logs/{log_path.name}", log_path.read_text())
 
 
 async def evaluate_instance(
@@ -155,8 +168,11 @@ async def evaluate_instance(
 
                 await persist_trajectory_data(flow)
 
-            except Exception:
+            except Exception as exc:
                 logger.exception(f"Error evaluating node {leaf_node.node_id} for instance {instance_id}")
+                await _emit_event(evaluation_name, instance_id, "evaluation", "error",
+                                  data={"error": str(exc), "error_kind": "grading", "node_id": leaf_node.node_id})
+                raise
 
     await _emit_event(evaluation_name, instance_id, "evaluation", "completed", data={"resolved": resolved})
 

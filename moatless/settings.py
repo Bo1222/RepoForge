@@ -143,17 +143,19 @@ async def get_runner():
     """Get the runner instance."""
     global _runner
     load_dotenv()
+    runner_type = os.environ.get("MOATLESS_RUNNER")
+    if runner_type == "docker":
+        raise ValueError(
+            "MOATLESS_RUNNER=docker is no longer supported: the custom Docker runner was removed. "
+            "Use MOATLESS_RUNNER=asyncio for local execution, or kubernetes. "
+            "Run the official SWE-bench Harness separately for grading."
+        )
     if _runner is None:
-        runner_type = os.environ.get("MOATLESS_RUNNER")
         runner_impl: Type[BaseRunner]
         if runner_type == "kubernetes":
             from moatless.runner.kubernetes_runner import KubernetesRunner
 
             runner_impl = KubernetesRunner
-        elif runner_type == "docker":
-            from moatless.runner.docker_runner import DockerRunner
-
-            runner_impl = DockerRunner
         else:
             logger.info("Use Local Runner")
             runner_impl = AsyncioRunner

@@ -929,7 +929,7 @@ class KubernetesRunner(BaseRunner):
         )
         if should_update:
             self.logger.info(f"Will run update-moatless.sh with branch {branch_to_use}")
-            cmd += f" && /opt/moatless/docker/update-moatless.sh --branch {branch_to_use}"
+            cmd += f" && /opt/moatless/scripts/update-moatless.sh --branch {branch_to_use}"
 
         # Add custom requirements installation if available
         if custom_requirements_configmap:

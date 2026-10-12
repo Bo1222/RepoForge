@@ -12,42 +12,23 @@ I use the [SWE-bench benchmark](https://www.swebench.com/) as a way to verify my
 
 # Try it out
 
-## Run in Docker
+## Local execution roadmap
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/aorwall/moatless-tools.git
-   cd moatless-tools
-   ```
+The official Moatless web UI, FastAPI backend and custom Docker execution route have been retired. The current checkout supports Python library/demo entrypoints, local AsyncioRunner, KubernetesRunner and existing storage backends.
 
-2. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit the `.env` file to set your API keys and other configuration options, including the required `MOATLESS_DIR` variable:
-   ```
-   MOATLESS_DIR=/path/to/your/moatless/data
-   ```
-   
-   **Note**: `MOATLESS_DIR` specifies the directory where Moatless will store configuration files and trajectory data. This directory will be mounted as a volume in the Docker containers.
-
-3. Start the services:
-   ```bash
-   make run
-   ```
-
-4. Access the UI at http://localhost
-
-## Install from PyPI
+The local Textual/Rich CLI uses a shared SessionService, LangGraphFlow, with ordinary chat or an isolated Git worktree for coding. It supports reading, search, editing, commands, tests, follow-up tasks, cancellation, recovery, and patch export. See the [CLI guide](docs/interactive_cli.md).
 
 ```bash
-# Install base package only
-pip install moatless
-
-# Install with Kubernetes runner support
-pip install "moatless[kubernetes]"
+uv run moatless chat --model deepseek/deepseek-chat
+# Coding tasks:
+uv run moatless chat --repo /path/to/clean-repo --model deepseek/deepseek-chat
+uv run moatless run --repo /path/to/clean-repo --task-file task.md
+uv run moatless resume SESSION_ID
 ```
+
+Enter sends; Shift+Enter inserts a newline; `/help` lists commands. Omit --repo for ordinary chat; /model displays the configured model locally; /repo PATH starts a new coding context. Coding requires a clean source repository. Changes stay in the worktree until `/apply` previews the patch and asks for confirmation.
+
+The CLI does not depend on Docker. Worktrees isolate code changes; tools run with the current user's permissions and do not provide a process or filesystem security sandbox. Initial acceptance targets Python/pytest repositories and requires a clean source repository.
 
 ## Install from source
 
@@ -61,6 +42,9 @@ cd moatless-tools
 # Install using uv
 uv sync
 ```
+
+
+Copy `.env.example` to `.env`, set provider keys as needed, and set `MOATLESS_DIR` for local configuration and trajectories. The default runner is `asyncio`; selecting the retired `docker` runner raises an explicit error.
 
 # Code Examples
 
@@ -94,45 +78,26 @@ print(observation.message)
 
 [See notebook](notebooks/code_inspector_agent.ipynb)
 
-# Run SWE-Bench evaluations 
+# SWE-bench: patch generation and independent grading
 
-Before running the evaluation, you'll need:
-1. At least one LLM provider API key (e.g., OpenAI, Anthropic, etc.)
-2. A Voyage AI API key from [voyageai.com](https://voyageai.com) to use the pre-embedded vector stores for SWE-Bench instances.
+Generate agent patches and trajectories through the retained Python Flow/Manager entrypoints; the CLI exports patches and trajectories with `/export` or `--export`, and standard predictions when a valid `instance_id` is supplied. A local pytest pass is development feedback, not official `resolved` evidence. Valid prediction records contain `instance_id`, `model_name_or_path` and `model_patch`.
 
-## Verify Setup
-
-Before running the full evaluation, you can verify your setup running a simple SWE-Bench instance.
+Run the official Harness separately on an existing predictions file:
 
 ```bash
-uv run python scripts/docker_run.py  --flow swebench_tools --model-id gpt-4o-mini-2024-07-18 --instance-id django__django-11099 --evaluation-name testing_setup
+uv run python -m swebench.harness.run_evaluation \
+  --dataset_name princeton-nlp/SWE-bench_Lite \
+  --predictions_path predictions.jsonl \
+  --max_workers 1 \
+  --run_id local-grading
 ```
 
-The script will run the model against a sample SWE-Bench instance
+The standard local official Harness requires Docker; it is independent of the retired web UI and custom Moatless images. See the [official quickstart](https://www.swebench.com/SWE-bench/guides/quickstart/). Keep official labels and hidden tests out of the agent's context. Record patch generation and grading separately; when grading has not run, mark it **not graded**. Third-party Docker dependencies required by `swebench` remain in the lock file.
 
-Results are saved in `.moatless/projects/testing_setup`.
-
-## Run evaluation
-
-Evaluation script to run evaluation in a docker containers. 
-
-```bash
-python3 scripts/run_evaluation.py  --model gpt-4o-mini-2024-07-18 --dataset-split [dataset_split] --evaluation-name [evaluation_name]
-```
-
-Required arguments:
-- `--dataset-split`: Dataset split to use
-- `--evaluation-name`: Name of the evaluation
-
-Optional arguments:
-- `--model`: Model to use for evaluation (default: gpt-4o-mini-2024-07-18, equivalent to --model-id)
-- `--model-id`: Model configuration ID to use (replaces entire model configuration)
-- `--litellm-model-name`: LiteLLM model name to override (keeps other model settings)
-- `--flow`: Flow to use for evaluation (defaults to "simple_coding")
-- `--num-parallel-jobs`: Number of parallel jobs (default: 1)
+The configuration tables below describe existing Flow/Manager configuration, not an interactive CLI. Historical model results are upstream results, not validation of this checkout.
 
 ## Flows 
-Available flows that can be specified with the `--flow` argument:
+Existing flow IDs available to FlowManager/EvaluationManager:
 
 | Flow ID | Format | Best Suited For | Default Model |
 |---------|--------|-----------------|---------------|
@@ -143,19 +108,19 @@ Available flows that can be specified with the `--flow` argument:
 
 ## Model Configuration
 
-Both evaluation scripts support flexible model configuration through the following options:
+EvaluationManager supports model configuration through these parameters:
 
 ### Model Options
 
-- `--model-id`: Specify a complete model configuration ID. This replaces the entire completion model configuration including temperature, max tokens, and all other settings.
-- `--litellm-model-name`: Override only the [LiteLLM model name](https://docs.litellm.ai/docs/providers) while keeping all other completion model settings (temperature, max tokens, etc.) from the flow or model configuration.
+- `model_id`: Specify a complete model configuration ID. This replaces the entire completion model configuration including temperature, max tokens, and all other settings.
+- `litellm_model_name`: Override only the [LiteLLM model name](https://docs.litellm.ai/docs/providers) while keeping all other completion model settings (temperature, max tokens, etc.) from the flow or model configuration.
 
 ### Verified Models
 
 Default model configurations are provided for verified models. Note that other models may work but have not been extensively tested. 
 Verified models are models that have been tested and found to work with the [Verified Mini subset](https://huggingface.co/datasets/MariusHobbhahn/swe-bench-verified-mini) of the SWE-Bench dataset.
 
-When specifying just the `--model-id` argument, the following configurations are used:
+When specifying just the `model_id` argument, the following configurations are used:
 
 | Model | Response Format | Message History | Thoughts in Action | Verified Mini |
 |-------|----------------|-----------------|-------------------|---------------|
@@ -173,7 +138,7 @@ When specifying just the `--model-id` argument, the following configurations are
 
 ## Dataset splits
 
-Available dataset splits that can be specified with the `--dataset-split` argument:
+Existing dataset names for EvaluationManager:
 
 | Split Name | Description | Instance Count |
 |------------|-------------|----------------|
@@ -181,20 +146,3 @@ Available dataset splits that can be specified with the `--dataset-split` argume
 | verified | All instances from the verified dataset | 500 | 
 | verified_mini | [MariusHobbhahn/swe-bench-verified-mini](https://huggingface.co/datasets/MariusHobbhahn/swe-bench-verified-mini), a subset of SWE-Bench Verified  | 50 |
 | lite_and_verified_solvable | Instances that exist in both lite and verified datasets and have at least one solved submission to SWE-Bench | 84 |
-
-## Example usage
-```bash
-# Run evaluation with Claude 3.5 Sonnet using complete model configuration
-python3 scripts/run_evaluation.py \
-  --model-id claude-3-5-sonnet-20241022 \
-  --flow swebench_tools_and_reasoning \
-  --dataset-split verified_mini \
-  --num-parallel-jobs 5
-
-# Run evaluation overriding just the model name while keeping flow's model settings
-python3 scripts/run_evaluation.py \
-  --litellm-model-name openrouter/qwen/qwen-2.5-coder-32b-instruct \
-  --flow swebench_react \
-  --dataset-split verified_mini \
-  --num-parallel-jobs 5
-```

@@ -2,6 +2,7 @@ import json
 import logging
 import traceback
 import uuid
+from copy import deepcopy
 from abc import abstractmethod
 from collections.abc import Callable, Awaitable
 from pathlib import Path
@@ -22,7 +23,6 @@ from moatless.events import (
 )
 from moatless.flow.schema import FlowStatus
 from moatless.node import Node
-from moatless.repository.repository import Repository
 from moatless.workspace import Workspace
 
 logger = logging.getLogger(__name__)
@@ -270,16 +270,31 @@ class AgenticFlow(MoatlessComponent):
         return obj
 
     @classmethod
+    def from_config(cls, config: dict, *, legacy_default: str = "moatless.flow.search_tree.SearchTree") -> "AgenticFlow":
+        """Dispatch typed configs; untyped historical API requests remain SearchTree.
+
+        New config creators specify LangGraph explicitly. Never reinterpret old
+        untyped configs as a different execution algorithm silently.
+        """
+        if isinstance(config, AgenticFlow):
+            return config
+        return cls.from_dict({"flow_class": legacy_default, **config})
+
+    def restore_trajectory_metadata(self, trajectory: dict):
+        """Subclass hook for serialized execution control metadata."""
+
+    @classmethod
     def from_dicts(cls, settings: dict[str, Any], trajectory: dict[str, Any]) -> "AgenticFlow":
         """Load a system instance from a dictionary."""
-        flow = cls.from_dict(settings)
+        flow = cls.from_config(settings)
         if "trajectory_id" in trajectory:
             flow.trajectory_id = trajectory["trajectory_id"]
         if "project_id" in trajectory:
             flow.project_id = trajectory["project_id"]
         if "metadata" in trajectory:
             flow.metadata = trajectory["metadata"]
-        flow._root = Node.from_dict(trajectory)
+        flow._root = Node.from_dict(deepcopy(trajectory))
+        flow.restore_trajectory_metadata(trajectory)
         return flow
 
     @classmethod
@@ -296,9 +311,9 @@ class AgenticFlow(MoatlessComponent):
         with open(settings_path) as f:
             settings = json.load(f)
 
-        flow = cls.from_dict(settings)
-        flow._root = Node.from_file(trajectory_path)
-        return flow
+        with open(trajectory_path) as f:
+            trajectory = json.load(f)
+        return cls.from_dicts(settings, trajectory)
 
     @classmethod
     async def from_trajectory_id(

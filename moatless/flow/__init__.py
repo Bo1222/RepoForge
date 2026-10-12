@@ -29,6 +29,7 @@ Example:
 from moatless.flow.flow import AgenticFlow
 from moatless.flow.oneoff import OneOffFlow
 from moatless.flow.loop import AgenticLoop
+from moatless.flow.langgraph_flow import LangGraphFlow
 from moatless.flow.search_tree import SearchTree
 from moatless.flow.schema import FlowStatus
 from moatless.flow.manager import FlowManager
@@ -39,6 +40,7 @@ __all__ = [
     "AgenticFlow",
     "OneOffFlow",
     "AgenticLoop",
+    "LangGraphFlow",
     "SearchTree",
     # Flow management
     "FlowManager",

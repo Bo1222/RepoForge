@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from moatless.agent.agent import ActionAgent
 from moatless.node import Node
@@ -30,6 +30,7 @@ class GraphState(TypedDict):
     single_step: bool
     workspace_ref: dict[str, Any]
     business_snapshot: list[dict[str, Any]]
+    context_cache: NotRequired[dict[str, Any]]
 
 
 @dataclass
@@ -68,7 +69,19 @@ def restore_nodes(state: GraphState, workspace: Workspace | None = None) -> Node
         except ValueError:
             pass
         runtime = workspace.runtime
-    return Node.from_dict({"nodes": deepcopy(state["business_snapshot"])}, repo=repo, runtime=runtime)
+    root = Node.from_dict({"nodes": deepcopy(state["business_snapshot"])}, repo=repo, runtime=runtime)
+    for node in root.get_all_nodes():
+        for path, saved in state.get("context_cache", {}).get(str(node.node_id), {}).items():
+            if node.file_context and path in node.file_context._files:
+                file = node.file_context._files[path]
+                file._cached_base_content = saved["base"]
+                file._cached_content = saved["content"]
+                file.was_edited, file.was_viewed, file._is_new = (
+                    saved["was_edited"],
+                    saved["was_viewed"],
+                    saved["is_new"],
+                )
+    return root
 
 
 def initial_state(

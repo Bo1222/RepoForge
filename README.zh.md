@@ -14,46 +14,23 @@ _论文 [SWE-Search: Enhancing Software Agents with Monte Carlo Tree Search and 
 
 # 快速体验
 
-## 使用 Docker 运行
+## 本地执行路线与计划状态
 
-1. 克隆仓库：
+Moatless 官方网页、FastAPI 后端和自定义 Docker 执行路线已退出。当前源码保留 Python 库/demo 入口、本地 AsyncioRunner、KubernetesRunner 与已有存储后端。
 
-   ```bash
-   git clone https://github.com/aorwall/moatless-tools.git
-   cd moatless-tools
-   ```
-
-2. 设置环境变量：
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   编辑 `.env` 文件，填写 API 密钥和其他配置，其中必须设置 `MOATLESS_DIR`：
-
-   ```text
-   MOATLESS_DIR=/path/to/your/moatless/data
-   ```
-
-   **说明**：`MOATLESS_DIR` 指定 Moatless 保存配置文件和执行轨迹数据的目录。该目录会作为数据卷挂载到 Docker 容器中。
-
-3. 启动服务：
-
-   ```bash
-   make run
-   ```
-
-4. 在浏览器中访问 http://localhost 打开界面。
-
-## 从 PyPI 安装
+本地交互式 CLI 已接通 Textual/Rich → SessionService → LangGraphFlow，支持无需 Git 的普通聊天，以及独立 Git worktree 中的代码任务，支持读取、搜索、编辑、命令、测试、续聊、取消、恢复与补丁导出。使用与配置见[CLI 文档](docs/interactive_cli.md)。
 
 ```bash
-# 仅安装基础包
-pip install moatless
-
-# 安装包含 Kubernetes Runner 支持的版本
-pip install "moatless[kubernetes]"
+uv run moatless chat --model deepseek/deepseek-chat
+# 代码任务：
+uv run moatless chat --repo /path/to/clean-repo --model deepseek/deepseek-chat
+uv run moatless run --repo /path/to/clean-repo --task-file task.md
+uv run moatless resume SESSION_ID
 ```
+
+Enter 发送，Shift+Enter 换行；`/help` 查看命令。省略 --repo 直接聊天，/model 本地查看模型，/repo PATH 新建代码上下文；代码任务的来源仓库必须干净；修改默认留在 worktree，`/apply` 预览并确认后才应用到来源仓库。
+
+CLI 本身不依赖 Docker。worktree 隔离代码修改，工具仍以当前账号权限运行，不提供进程或文件权限层面的安全沙盒。首批验收使用 Python/pytest 仓库，要求来源仓库干净。
 
 ## 从源码安装
 
@@ -67,6 +44,9 @@ cd moatless-tools
 # 使用 uv 安装
 uv sync
 ```
+
+
+复制 `.env.example` 为 `.env`，按需填写模型密钥，并设置用于本地配置与轨迹的 `MOATLESS_DIR`。默认 runner 为 `asyncio`，配置已删除的 `docker` runner 会明确报错。
 
 # 代码示例
 
@@ -100,49 +80,27 @@ print(observation.message)
 
 [查看 Notebook 示例](notebooks/code_inspector_agent.ipynb)
 
-# 运行 SWE-bench 评测
+# SWE-bench：补丁生成与独立判题
 
-运行评测前，需要准备：
+使用保留的 Python Flow/Manager 入口生成 Agent 补丁与轨迹；CLI 可通过 `/export` 或 `--export` 导出补丁与轨迹，有合法 `instance_id` 时额外生成标准 predictions。本地 pytest 通过属于开发反馈，不能代替官方 `resolved`。合法预测记录包含 `instance_id`、`model_name_or_path`、`model_patch`。
 
-1. 至少一个 LLM 提供商的 API 密钥，例如 OpenAI 或 Anthropic。
-2. [Voyage AI](https://voyageai.com) 的 API 密钥，用于使用 SWE-bench 实例预先生成的向量存储。
-
-## 验证运行环境
-
-运行完整评测前，可以先执行一个 SWE-bench 实例，检查环境是否配置正确：
+已有 predictions 文件可独立调用官方 Harness：
 
 ```bash
-uv run python scripts/docker_run.py  --flow swebench_tools --model-id gpt-4o-mini-2024-07-18 --instance-id django__django-11099 --evaluation-name testing_setup
+uv run python -m swebench.harness.run_evaluation \
+  --dataset_name princeton-nlp/SWE-bench_Lite \
+  --predictions_path predictions.jsonl \
+  --max_workers 1 \
+  --run_id local-grading
 ```
 
-该脚本会使用指定模型处理一个 SWE-bench 示例实例。
+官方标准本地判题需要 Docker，与已退出的网页及 Moatless 自定义镜像无关，见[官方快速开始](https://www.swebench.com/SWE-bench/guides/quickstart/)。官方判题标签和隐藏测试不得进入 Agent 运行上下文；补丁生成与判题拆开记录，未执行时明确标为**未判题**。`swebench` 所需第三方 Docker 依赖继续保留在锁文件中。
 
-结果保存在 `.moatless/projects/testing_setup` 中。
-
-## 执行评测
-
-评测脚本在 Docker 容器中运行评测：
-
-```bash
-python3 scripts/run_evaluation.py  --model gpt-4o-mini-2024-07-18 --dataset-split [dataset_split] --evaluation-name [evaluation_name]
-```
-
-必需参数：
-
-- `--dataset-split`：使用的数据集划分。
-- `--evaluation-name`：评测名称。
-
-可选参数：
-
-- `--model`：评测使用的模型，默认值为 `gpt-4o-mini-2024-07-18`，等同于 `--model-id`。
-- `--model-id`：使用的模型配置 ID，会替换整个模型配置。
-- `--litellm-model-name`：覆盖 LiteLLM 模型名称，同时保留其他模型设置。
-- `--flow`：评测使用的流程，默认值为 `simple_coding`。
-- `--num-parallel-jobs`：并行任务数，默认值为 `1`。
+下列配置表说明已有 Flow/Manager 配置，不是交互式 CLI 用法。历史模型成绩来自上游，不代表当前源码已通过验收。
 
 ## 流程配置
 
-可以通过 `--flow` 指定以下流程：
+FlowManager/EvaluationManager 可使用以下已有流程 ID：
 
 | Flow ID | 响应格式 | 适用模型 | 默认模型 |
 | --- | --- | --- | --- |
@@ -153,12 +111,12 @@ python3 scripts/run_evaluation.py  --model gpt-4o-mini-2024-07-18 --dataset-spli
 
 ## 模型配置
 
-两个评测脚本均支持通过以下选项灵活配置模型。
+EvaluationManager 支持通过以下参数配置模型。
 
 ### 模型选项
 
-- `--model-id`：指定完整的模型配置 ID。这会替换整个模型调用配置，包括 temperature、最大 token 数以及其他设置。
-- `--litellm-model-name`：仅覆盖 [LiteLLM 模型名称](https://docs.litellm.ai/docs/providers)，保留流程或模型配置中的其他设置，例如 temperature 和最大 token 数。
+- `model_id`：指定完整的模型配置 ID。这会替换整个模型调用配置，包括 temperature、最大 token 数以及其他设置。
+- `litellm_model_name`：仅覆盖 [LiteLLM 模型名称](https://docs.litellm.ai/docs/providers)，保留流程或模型配置中的其他设置，例如 temperature 和最大 token 数。
 
 ### 已验证模型
 
@@ -166,7 +124,7 @@ python3 scripts/run_evaluation.py  --model gpt-4o-mini-2024-07-18 --dataset-spli
 
 这里的“已验证”表示模型已在 SWE-bench 的 [Verified Mini 子集](https://huggingface.co/datasets/MariusHobbhahn/swe-bench-verified-mini) 上测试并确认可用。
 
-仅指定 `--model-id` 时，使用以下配置：
+仅指定 `model_id` 时，使用以下配置：
 
 | 模型 | 响应格式 | 消息历史格式 | 动作中包含思考 | Verified Mini |
 | --- | --- | --- | --- | --- |
@@ -184,7 +142,7 @@ python3 scripts/run_evaluation.py  --model gpt-4o-mini-2024-07-18 --dataset-spli
 
 ## 数据集划分
 
-可以通过 `--dataset-split` 指定以下数据集划分：
+EvaluationManager 可使用以下已有数据集名称：
 
 | 划分名称 | 说明 | 实例数 |
 | --- | --- | --- |
@@ -192,21 +150,3 @@ python3 scripts/run_evaluation.py  --model gpt-4o-mini-2024-07-18 --dataset-spli
 | verified | Verified 数据集的全部实例 | 500 |
 | verified_mini | [MariusHobbhahn/swe-bench-verified-mini](https://huggingface.co/datasets/MariusHobbhahn/swe-bench-verified-mini)，SWE-bench Verified 的子集 | 50 |
 | lite_and_verified_solvable | 同时存在于 Lite 和 Verified 数据集中，且至少有一次成功 SWE-bench 提交的实例 | 84 |
-
-## 使用示例
-
-```bash
-# 使用 Claude 3.5 Sonnet 的完整模型配置运行评测
-python3 scripts/run_evaluation.py \
-  --model-id claude-3-5-sonnet-20241022 \
-  --flow swebench_tools_and_reasoning \
-  --dataset-split verified_mini \
-  --num-parallel-jobs 5
-
-# 仅覆盖模型名称，保留流程中的其他模型设置
-python3 scripts/run_evaluation.py \
-  --litellm-model-name openrouter/qwen/qwen-2.5-coder-32b-instruct \
-  --flow swebench_react \
-  --dataset-split verified_mini \
-  --num-parallel-jobs 5
-```
