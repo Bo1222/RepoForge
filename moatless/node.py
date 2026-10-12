@@ -10,6 +10,8 @@ from moatless.actions.schema import ActionArguments, Observation
 from moatless.artifacts.artifact import ArtifactChange
 from moatless.completion.stats import CompletionInvocation, Usage
 from moatless.file_context import FileContext
+from moatless.task_state import TaskState
+from moatless.repository_context import InstructionContext, RepositoryContext
 from moatless.repository.repository import Repository
 from moatless.runtime.runtime import RuntimeEnvironment
 
@@ -213,6 +215,11 @@ class Node(BaseModel):
     )
 
     file_context: Optional[FileContext] = Field(None, description="The file context state associated with the node")
+    context_build: Optional[dict[str, Any]] = Field(None, description="Opt-in context projection and request audit")
+    task_state: Optional[TaskState] = Field(None, description="Versioned model-maintained task notes")
+    repository_context: Optional[RepositoryContext] = None
+    instruction_updates: list[InstructionContext] = Field(default_factory=list)
+    completion_status: Optional[dict[str, Any]] = None
     # feedback: Optional[str] = Field(None, description="Feedback provided to the node")
     completions: dict[str, CompletionInvocation] = Field(
         default_factory=dict, description="The completions used in this node"
@@ -335,6 +342,8 @@ class Node(BaseModel):
 
     def add_child(self, child_node: "Node"):
         """Add a child node to this node."""
+        if child_node.task_state is None and self.task_state is not None:
+            child_node.task_state = self.task_state.model_copy(deep=True)
         child_node.parent = self
         self.children.append(child_node)
 
@@ -555,6 +564,9 @@ class Node(BaseModel):
 
         new_kwargs = {k: v for k, v in kwargs.items() if k != "exclude"}
         node_dict = super().model_dump(exclude=exclude_set, **new_kwargs)
+        for name in ("repository_context", "instruction_updates", "completion_status"):
+            if not node_dict.get(name):
+                node_dict.pop(name, None)
 
         if self.completions and "completions" not in exclude_set:
             node_dict["completions"] = {

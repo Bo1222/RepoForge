@@ -333,7 +333,8 @@ class LangGraphFlow(AgenticFlow):
             reason = "no_actions" if str(exc) == "No action found" else "generation_error"
             return self._fail(state, node, exc, "model_rejection", reason)
         except Exception as exc:
-            return self._fail(state, node, exc, "model", "generation_error")
+            kind = getattr(exc, "error_kind", "model")
+            return self._fail(state, node, exc, kind, "generation_error")
         if node.error:
             return self._fail(state, node, RejectError(node.error), "model_rejection", "generation_error")
         if not node.action_steps:

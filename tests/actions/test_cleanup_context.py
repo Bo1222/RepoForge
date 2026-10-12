@@ -47,9 +47,9 @@ async def test_cleanup_context_success(workspace, file_context):
     result = await action.execute(args, file_context)
     
     # Verify files were removed
-    assert "file1.py" not in file_context._files
+    assert file_context._files["file1.py"].hidden
     assert "file2.py" in file_context._files  # Should remain
-    assert "file3.py" not in file_context._files
+    assert file_context._files["file3.py"].hidden
     
     # Verify result
     assert result.message is not None
@@ -74,7 +74,7 @@ async def test_cleanup_context_file_not_found(workspace, file_context):
     result = await action.execute(args, file_context)
     
     # Verify only existing file was removed
-    assert "file1.py" not in file_context._files
+    assert file_context._files["file1.py"].hidden
     
     # Verify result
     assert "Successfully removed file1.py from file context" in result.message
@@ -118,7 +118,7 @@ async def test_cleanup_context_single_file(workspace, file_context):
     result = await action.execute(args, file_context)
     
     # Verify file was removed
-    assert "target.py" not in file_context._files
+    assert file_context._files["target.py"].hidden
     
     # Verify result for single file
     assert "Successfully removed target.py from file context" in result.message

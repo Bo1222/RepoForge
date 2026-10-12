@@ -28,6 +28,7 @@ from moatless.flow.flow import AgenticFlow
 from moatless.flow.langgraph_flow import LangGraphFlow
 from moatless.flow.durable import OutcomeJournal, RecoveryConflict, thread_id, workspace_fingerprint
 from moatless.message_history.message_history import MessageHistoryGenerator
+from moatless.message_history.managed import ManagedMessageHistoryGenerator
 from moatless.repository.file import FileRepository
 from moatless.repository.repository import InMemRepository
 from moatless.workspace import Workspace
@@ -201,7 +202,7 @@ class SessionService:
                 completion_model=model,
                 system_prompt=base_prompt + context,
                 actions=([TOOLS[name]() for name in config["tools"]] if mode == "coding" else []) + [Finish()],
-                memory=MessageHistoryGenerator(
+                memory=ManagedMessageHistoryGenerator(policy=config["context_policy"]) if config.get("context_policy") else MessageHistoryGenerator(
                     include_file_context=False, include_git_patch=False, max_tokens_per_observation=4000
                 ),
                 shadow_mode=False,
@@ -372,8 +373,11 @@ class SessionService:
                     len(session.flow.root.get_all_nodes()) + session.info["config"]["max_iterations"]
                 )
             session.info["status"] = "running"
+            session.info.pop("completion_status", None)
             self.save(session)
             node = await session.flow.run(message=message, workspace=session.workspace)
+            if node.completion_status:
+                session.info["completion_status"] = node.completion_status
             reason = session.flow.get_trajectory_data().get("finish_reason")
             session.info["status"] = reason or "completed"
             return node
@@ -436,6 +440,16 @@ class SessionService:
         return session.flow.root.total_usage().model_dump()
 
     def tests(self, session):
+        if session.info["config"].get("context_policy"):
+            from moatless.execution_memory import test_records
+            node = session.flow.root.get_last_node()
+            records = test_records(node, session.workspace)
+            outputs = {f"{n.node_id}:{index}": step.observation.message
+                       for n in node.get_trajectory() for index, step in enumerate(n.action_steps) if step.observation}
+            return [dict(record, test_status=record["effective_status"],
+                         recorded_status=record["status"], output=outputs[record["source_id"]],
+                         node_id=int(record["source_id"].split(":")[0]))
+                    for record in records]
         return [
             dict(node_id=n.node_id, **s.observation.properties, output=s.observation.message)
             for n in session.flow.root.get_all_nodes()

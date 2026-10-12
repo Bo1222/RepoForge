@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from moatless.completion.schema import (
     AllMessageValues,
@@ -7,10 +6,10 @@ from moatless.completion.schema import (
     ChatCompletionUserMessage,
 )
 from moatless.message_history.message_history import MessageHistoryGenerator
+from moatless.message_history.assembly import limit_messages
 from moatless.node import Node
 from moatless.utils.tokenizer import count_tokens
 from moatless.workspace import Workspace
-from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +40,8 @@ class ReactMessageHistoryGenerator(MessageHistoryGenerator):
             user_content = "Observations:\n "
 
             for action_step in previous_node.action_steps:
+                if action_step.observation is None:
+                    continue
                 from moatless.actions.think import ThinkArgs
 
                 if isinstance(action_step.action, ThinkArgs):
@@ -57,9 +58,10 @@ class ReactMessageHistoryGenerator(MessageHistoryGenerator):
                 if action_step.observation:
                     user_content += f"{action_step.observation.message}\n"
 
-            messages.append(ChatCompletionAssistantMessage(role="assistant", content=assistant_content))
-            messages.append(ChatCompletionUserMessage(role="user", content=user_content))
+            if assistant_content:
+                messages.append(ChatCompletionAssistantMessage(role="assistant", content=assistant_content))
+                messages.append(ChatCompletionUserMessage(role="user", content=user_content))
 
         tokens = count_tokens("".join([m["content"] for m in messages if m.get("content")]))
         logger.info(f"Generated {len(messages)} messages with {tokens} tokens")
-        return messages
+        return limit_messages(messages, self.max_tokens)

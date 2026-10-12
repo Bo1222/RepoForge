@@ -63,6 +63,23 @@ class ActionAgent(MoatlessComponent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        from moatless.actions.read_observation import ReadObservation
+        from moatless.actions.task_state import UpdateTaskState
+        from moatless.message_history.managed import ManagedMessageHistoryGenerator
+        from moatless.task_state import TASK_MEMORY_PROMPT
+
+        if isinstance(self.memory, ManagedMessageHistoryGenerator):
+            tools = (ReadObservation, UpdateTaskState) if self.memory.policy.enable_task_state else (ReadObservation,)
+            for tool in tools:
+                if not any(isinstance(action, tool) for action in self.actions):
+                    self.actions.append(tool())
+            if self.memory.policy.enable_task_state and TASK_MEMORY_PROMPT not in self.system_prompt:
+                self.system_prompt += TASK_MEMORY_PROMPT
+            elif not self.memory.policy.enable_task_state:
+                prompt = "\n# Recorded context\nUse ReadObservation to retrieve retained original tool outputs. Historical observations and tests may be stale; use current-version evidence when reporting completion.\n"
+                if prompt not in self.system_prompt:
+                    self.system_prompt += prompt
+
         action_args: list[type[ActionArguments]] = []
         for action in self.actions:
             self._action_map[action.args_schema] = action
@@ -164,12 +181,25 @@ class ActionAgent(MoatlessComponent):
 
         try:
             await self._emit_event(RunAgentEvent(agent_id=self.agent_id, node_id=node.node_id))
+            from moatless.message_history.managed import ManagedMessageHistoryGenerator
+
+            self.completion_model._request_context_hook = None
+            if isinstance(self.memory, ManagedMessageHistoryGenerator):
+                self.memory.bind_model(self.completion_model)
+                from moatless.task_state import TaskState
+                if self.memory.policy.enable_task_state and node.task_state is None:
+                    inherited = next((n.task_state for n in reversed(node.get_trajectory()[:-1]) if n.task_state), None)
+                    node.task_state = inherited.model_copy(deep=True) if inherited is not None else TaskState()
             messages = await self.memory.generate_messages(node, self._workspace)
+            if isinstance(self.memory, ManagedMessageHistoryGenerator):
+                self.completion_model._request_context_hook = lambda prepared: self.memory.record_request(node, prepared)
             logger.info(f"Node{node.node_id}: Build action with {len(messages)} messages")
 
             completion_response = await self.completion_model.create_completion(messages=messages)
             if completion_response.completion_invocation:
                 node.completions["build_action"] = completion_response.completion_invocation
+                if node.context_build is not None:
+                    node.context_build["actual_usage"] = completion_response.completion_invocation.usage.model_dump()
 
             if completion_response.thought:
                 node.thoughts = Thoughts(text=completion_response.thought)
@@ -249,7 +279,18 @@ class ActionAgent(MoatlessComponent):
                 f"Action {type(action_step.action)} not found in action map with actions: {list(self.action_map.keys())}"
             )
 
-        observation = await action.execute(action_step.action, file_context=node.file_context)
+        from moatless.message_history.managed import ManagedMessageHistoryGenerator
+        managed = isinstance(self.memory, ManagedMessageHistoryGenerator)
+        if managed:
+            from moatless.execution_memory import before_action
+            before = before_action(node, action_step, self._workspace, self.memory.policy)
+        if hasattr(action, "execute_for_node"):
+            observation = await action.execute_for_node(action_step.action, node)
+        else:
+            observation = await action.execute(action_step.action, file_context=node.file_context)
+        if managed:
+            from moatless.execution_memory import after_action
+            after_action(node, action_step, observation, self._workspace, self.memory.policy, before)
         if action.is_terminal:
             node.terminal = True
         return observation
@@ -260,6 +301,11 @@ class ActionAgent(MoatlessComponent):
             action_step.start_time = datetime.now()
             previous_context = node.file_context.clone() if node.file_context else None
             action_step.observation = await self._execute_action_step(node, action_step)
+            from moatless.message_history.managed import ManagedMessageHistoryGenerator
+            if isinstance(self.memory, ManagedMessageHistoryGenerator) and action_step.observation.terminal:
+                from moatless.execution_memory import classify_completion
+                node.completion_status = classify_completion(node, self._workspace)
+                action_step.observation.properties["completion_status"] = node.completion_status
 
             if previous_context and node.file_context:
                 action_step.observation.artifact_changes = node.file_context.get_artifact_changes(previous_context)

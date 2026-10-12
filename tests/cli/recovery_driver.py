@@ -11,6 +11,7 @@ from moatless.actions.finish import FinishArgs
 from moatless.actions.read_file import ReadFileArgs
 from moatless.actions.string_replace import StringReplaceArgs
 from moatless.actions.local_coding import LocalTestArgs
+from moatless.actions.task_state import UpdateTaskStateArgs
 from moatless.cli.service import SessionService
 from moatless.completion.base import CompletionResponse
 from moatless.completion.tool_call import ToolCallCompletionModel
@@ -18,6 +19,8 @@ from moatless.completion.tool_call import ToolCallCompletionModel
 
 async def main():
     mode, root, repo = sys.argv[1:]
+    managed = mode.startswith("managed-")
+    mode = mode.removeprefix("managed-")
     root = Path(root)
     service = SessionService(root / "sessions")
 
@@ -34,6 +37,8 @@ async def main():
                 LocalTestArgs(command="python -m pytest -q"),
                 FinishArgs(finish_reason="recovered"),
             ]
+            if managed:
+                outputs.insert(0, UpdateTaskStateArgs(next_step="Run verification"))
         return CompletionResponse(structured_outputs=outputs)
 
     ToolCallCompletionModel.create_completion = completion
@@ -46,14 +51,16 @@ async def main():
             return
         service.export(s, str(root / "export"))
         return
-    s = await service.create(repo, "recovery task")
+    config = {"context_policy": {"context_window": 16384}} if managed else None
+    s = await service.create(repo, "recovery task", config)
     (root / "id").write_text(s.id)
     saved = s.flow._on_snapshot
 
     async def snapshot(flow):
         await saved(flow)
         steps = flow.root.get_last_node().action_steps
-        if mode == "confirmed" and len(steps) > 1 and steps[1].observation:
+        index = 2 if managed else 1
+        if mode == "confirmed" and len(steps) > index and steps[index].observation:
             os._exit(23)
 
     s.flow._on_snapshot = snapshot

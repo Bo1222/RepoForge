@@ -95,6 +95,8 @@ async def batch(service, session, message, export, console):
     if coding:
         tests = service.tests(session)
         console.print("Last recorded test command: " + (tests[-1]["test_status"] if tests else "unknown (not run)"))
+        if session.info.get("completion_status"):
+            console.print("Task-local verification: " + session.info["completion_status"]["status"])
     for node in session.flow.root.get_all_nodes():
         for step in node.action_steps:
             if step.action.name == "Finish":

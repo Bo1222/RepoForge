@@ -133,6 +133,7 @@ class BaseCompletionModel(MoatlessComponent, ABC):
     _system_prompt: Optional[str] = PrivateAttr(default=None)
     _few_shot_prompt: Optional[str] = PrivateAttr(default=None)
     _post_validation_fn: Optional[ValidationFunction] = PrivateAttr(default=None)
+    _request_context_hook: Optional[Callable[[list[dict]], None]] = PrivateAttr(default=None)
 
     _completion_params: Optional[dict[str, Union[str, dict, list]]] = None
     _initialized: bool = False
@@ -235,6 +236,8 @@ class BaseCompletionModel(MoatlessComponent, ABC):
             system_prompt = self._system_prompt
 
         prepared_messages = self._prepare_messages(messages, system_prompt or self._system_prompt)
+        if self._request_context_hook:
+            self._request_context_hook(prepared_messages)
         return await self._create_completion_with_retries(messages=prepared_messages)
 
     def _prepare_system_prompt(
@@ -327,6 +330,9 @@ class BaseCompletionModel(MoatlessComponent, ABC):
         async def _do_completion_with_validation():
             nonlocal retry_count, completion_response
             retry_count += 1
+
+            if self._request_context_hook:
+                self._request_context_hook(messages)
 
             with invocation:
                 try:
@@ -517,6 +523,9 @@ class BaseCompletionModel(MoatlessComponent, ABC):
                         "timeout": self.timeout,
                         **self._completion_params,
                     }
+
+                    if self._request_context_hook:
+                        self._request_context_hook(completion_kwargs["messages"])
 
                     if self.reasoning_effort:
                         completion_kwargs["allowed_openai_params"] = ["reasoning_effort"]

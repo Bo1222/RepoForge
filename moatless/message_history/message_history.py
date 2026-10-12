@@ -7,10 +7,11 @@ from moatless.completion.schema import (
     ChatCompletionUserMessage,
 )
 from moatless.message_history.base import BaseMemory
+from moatless.message_history.assembly import limit_messages
 from moatless.node import Node
 from moatless.utils.tokenizer import count_tokens
 from moatless.workspace import Workspace
-from pydantic import BaseModel, Field, PrivateAttr, model_serializer
+from pydantic import Field, PrivateAttr
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class MessageHistoryGenerator(BaseMemory):
 
         # If we have a token limit, we need to process nodes from most recent to oldest
         # and include only those that fit within the limit
-        if self.max_tokens:
+        if self.max_tokens is not None:
             return await self._generate_token_limited_messages(previous_nodes, workspace)
         else:
             return await self._generate_unlimited_messages(previous_nodes, workspace)
@@ -93,38 +94,11 @@ class MessageHistoryGenerator(BaseMemory):
 
         # If we don't have a token limit or all messages fit, return them all
         total_tokens = sum(count_tokens(str(msg)) for msg in all_messages)
-        if not self.max_tokens or total_tokens <= self.max_tokens:
+        if self.max_tokens is None or total_tokens <= self.max_tokens:
             logger.info(f"Generated {len(all_messages)} messages with {total_tokens} tokens")
             return all_messages
 
-        # We need to select messages based on the token limit
-        # Always try to include the first message
-        first_message = all_messages[0] if all_messages else None
-        first_message_tokens = count_tokens(str(first_message)) if first_message else 0
-
-        # If we can't fit even the first message, we need to truncate it somehow
-        if first_message_tokens > self.max_tokens:
-            logger.warning(f"First message exceeds token limit ({first_message_tokens} > {self.max_tokens})")
-            # Return just the first message and we'll need to handle truncation elsewhere
-            raise RuntimeError("First message exceeds token limit")
-
-        # Start with the first message
-        selected_messages = [first_message] if first_message else []
-        remaining_tokens = self.max_tokens - first_message_tokens
-
-        # Try to include recent messages, starting from the most recent
-        for msg in reversed(all_messages[1:]):
-            msg_tokens = count_tokens(str(msg))
-            if msg_tokens <= remaining_tokens:
-                # We can include this message
-                selected_messages.insert(1, msg)  # Insert after first message
-                remaining_tokens -= msg_tokens
-            else:
-                # This message doesn't fit
-                continue
-
-        # Sort messages to maintain conversation order
-        selected_messages.sort(key=lambda msg: all_messages.index(msg))
+        selected_messages = limit_messages(all_messages, self.max_tokens)
 
         actual_tokens = sum(count_tokens(str(msg)) for msg in selected_messages)
         logger.info(
@@ -230,6 +204,9 @@ class MessageHistoryGenerator(BaseMemory):
 
         # Process action steps (tool calls)
         for action_step in node.action_steps:
+            # A generated but unexecuted action is not a completed interaction.
+            if action_step.observation is None:
+                continue
             tool_idx += 1
             tool_call_id = f"tool_{tool_idx}"
 

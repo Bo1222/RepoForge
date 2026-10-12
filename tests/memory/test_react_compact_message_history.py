@@ -56,7 +56,7 @@ def test_tree(repo) -> tuple[Node, Node, Node, Node, Node]:
 
     # Node1: View code action
     node1 = Node(node_id=1)
-    action1 = TestActionArguments()
+    action1 = TestActionArguments(thoughts="Inspect method1")
     node1.action_steps.append(ActionStep(action=action1, observation=Observation(message="Added method1 to context")))
     node1.file_context = FileContext(repo=repo)
     node1.file_context.add_span_to_context("file1.py", "method1")
@@ -175,4 +175,4 @@ async def test_react_history_file_context_with_view_code_actions(repo, workspace
     viewcode_index = viewcode_messages[0]
     stringreplace_index = stringreplace_messages[0]
 
-    assert viewcode_index > stringreplace_index, "Messages should be in order: ViewCode -> StringReplace"
+    assert viewcode_index < stringreplace_index, "Recorded actions must stay in execution order"

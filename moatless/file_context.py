@@ -73,6 +73,8 @@ class ContextFile(BaseModel):
     )
     show_all_spans: bool = Field(False, description="Flag to indicate whether to display all context spans.")
 
+    hidden: bool = Field(default=False, description="Hide from model context without discarding changes.")
+
     was_edited: bool = Field(default=False, exclude=True)
     was_viewed: bool = Field(default=False, exclude=True)
 
@@ -1175,6 +1177,10 @@ class ContextFile(BaseModel):
     def model_dump(self, **kwargs):
         """Override model_dump to ensure patch is always included."""
         dump = super().model_dump(**kwargs)
+        # Keep unchanged historical snapshots byte-for-byte compatible. The new
+        # display flag is serialized only when hiding was explicitly requested.
+        if not self.hidden:
+            dump.pop("hidden", None)
         # Always include patch field even if None
         if "patch" not in dump:
             dump["patch"] = self.patch
@@ -1283,6 +1289,7 @@ class FileContext(BaseModel):
                 spans=spans,
                 show_all_spans=show_all_spans,
                 patch=file_data.get("patch"),
+                hidden=file_data.get("hidden", False),
                 repo=self._repo,
             )
 
@@ -1349,6 +1356,7 @@ class FileContext(BaseModel):
             if add_extra:
                 self._files[file_path]._add_import_span()
 
+        self._files[file_path].hidden = False
         return self._files[file_path]
 
     def add_file_with_lines(self, file_path: str, start_line: int, end_line: Optional[int] = None):
@@ -1360,7 +1368,7 @@ class FileContext(BaseModel):
 
     def remove_file(self, file_path: str):
         if file_path in self._files:
-            del self._files[file_path]
+            self._files[file_path].hidden = True
 
     def remove_files(self, file_paths: list[str]) -> dict[str, bool]:
         """
@@ -1374,8 +1382,8 @@ class FileContext(BaseModel):
         """
         removal_results = {}
         for file_path in file_paths:
-            if file_path in self._files:
-                del self._files[file_path]
+            if file_path in self._files and not self._files[file_path].hidden:
+                self.remove_file(file_path)
                 removal_results[file_path] = True
             else:
                 removal_results[file_path] = False
@@ -1394,7 +1402,7 @@ class FileContext(BaseModel):
 
     @property
     def file_paths(self):
-        return list(self._files.keys())
+        return [path for path, file in self._files.items() if not file.hidden]
 
     @property
     def test_files(self):
@@ -1456,7 +1464,7 @@ class FileContext(BaseModel):
             return []
 
     def has_file(self, file_path: str):
-        return file_path in self._files and (
+        return file_path in self._files and not self._files[file_path].hidden and (
             self._files[file_path].spans or self._files[file_path].show_all_spans or not self._files[file_path].content
         )
 
@@ -1501,7 +1509,7 @@ class FileContext(BaseModel):
         result = []
         for file_path in file_paths:
             context_file = self.get_context_file(file_path)
-            if context_file is not None:
+            if context_file is not None and not context_file.hidden:
                 result.append(context_file)
         return result
 
@@ -1576,8 +1584,13 @@ class FileContext(BaseModel):
 
     def clone(self):
         dump = self.model_dump(exclude={"files": {"__all__": {"was_edited", "was_viewed"}}})
-        cloned_context = FileContext(repo=self._repo, runtime=self._runtime)
+        cloned_context = FileContext(repo=self._repo, runtime=self._runtime, max_tokens=dump["max_tokens"])
         cloned_context.load_files_from_dict(files=dump.get("files", []), test_files=dump.get("test_files", []))
+        for path, original in self._files.items():
+            cloned = cloned_context._files[path]
+            cloned._cached_base_content = original._cached_base_content
+            cloned._cached_content = original._cached_content
+            cloned._is_new = original._is_new
         return cloned_context
 
     def has_patch(self, ignore_tests: bool = False):
