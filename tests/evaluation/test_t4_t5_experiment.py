@@ -297,13 +297,3 @@ def test_repeat_failure_tie_prefers_action_over_context(tmp_path):
     report = aggregate(output)
     assert report["primary_failure_instances"] == {"unverified_finish": 1}
     assert report["selected_direction"] is None  # Remaining 88 jobs have not been graded.
-
-
-def test_a7_repair_manifest_freezes_only_the_native_a7_profile(tmp_path):
-    from moatless.evaluation.experiment import A7_PROFILES
-    manifest, jobs = prepare(ROOT, tmp_path / "a7", execution_backend="native", repair_profile="a7")
-    assert manifest["profiles"] == A7_PROFILES
-    assert manifest["repair"] == {"protocol": "acceptance-repair-v3", "variant": "a7"}
-    assert set(manifest["agent_configs"]) == {"a7"}
-    assert {job["variant"] for job in jobs} == {"a7"} and len(jobs) == 30
-    assert manifest["holdout_state"] == "locked" and manifest["official_harness"] == "not_run"

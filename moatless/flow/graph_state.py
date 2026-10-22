@@ -11,7 +11,7 @@ from moatless.node import Node
 from moatless.workspace import Workspace
 
 SCHEMA_VERSION = 1
-Phase = Literal["prepare", "generate", "policy", "execute", "record", "assess", "finalize", "commit", "end"]
+Phase = Literal["prepare", "generate", "policy", "execute", "record", "commit", "end"]
 
 
 class GraphState(TypedDict):
@@ -32,7 +32,6 @@ class GraphState(TypedDict):
     business_snapshot: list[dict[str, Any]]
     context_cache: NotRequired[dict[str, Any]]
     policy_state: NotRequired[dict[str, Any]]
-    repair_state: NotRequired[dict[str, Any]]
 
 
 @dataclass

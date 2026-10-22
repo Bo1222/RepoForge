@@ -39,13 +39,7 @@ T7_PROFILES = {
            "submit_product_only": True,
            "action_policy": {"version": 1, "variant": "a5"}},
 }
-A6_PROFILES = {"a6": {"flow": "graph", "managed": True, "correct_test_prompt": True,
-                       "submit_product_only": True, "action_policy": {"version": 1, "variant": "a6"}}}
-# A7: one O2 controller with A6 evidence/obligation/completion gates.  It is a
-# new batch protocol; historical a6 results and checkpoints never mix with it.
-A7_PROFILES = {"a7": {"flow": "graph", "managed": True, "correct_test_prompt": True,
-                       "submit_product_only": True, "action_policy": {"version": 1, "variant": "a7"}}}
-ALL_PROFILES = {**PROFILES, **T7_PROFILES, **A6_PROFILES, **A7_PROFILES}
+ALL_PROFILES = {**PROFILES, **T7_PROFILES}
 LABELS = {"invalid_repeat", "test_timing", "unverified_finish", "context_omission",
           "edit_error", "budget", "environment", "model_protocol", "unknown"}
 PRICES = {"date": "2026-10-12", "currency": "USD", "unit": "per_1M_tokens",
@@ -120,21 +114,6 @@ def agent_config(root, variant, model):
     for action in config["actions"]:
         if "max_identify_tokens" in action:
             action["completion_model"] = {**auxiliary, "max_tokens": action["max_identify_tokens"]}
-    if variant in {"a6", "a7"}:
-        config["actions"].extend([
-            {"action_class": "moatless.actions.register_acceptance_plan.RegisterAcceptancePlan"},
-            {"action_class": "moatless.actions.check_syntax.CheckSyntax"},
-            {"action_class": "moatless.actions.replan_repair.ReplanRepair"},
-            {"action_class": "moatless.actions.explain_test_conflict.ExplainTestConflict"}])
-        config["system_prompt"] += ("\nRegisterAcceptancePlan before editing: extract observable criteria from public issue quotes. "
-            "Use one explicit test module per invocation and separate mandatory checks for additional modules. "
-            "Issue behavior requires base failure/current pass with identical tests. "
-            "Never mark criteria passed yourself. A passed check only finishes the task when every obligation is satisfied. "
-            "Tests are an observation barrier: wait for results before proposing further edits. "
-            "After repeated failed repairs, read new evidence and call ReplanRepair before editing again. "
-            "An original assertion conflicting with proven public issue behavior may be recorded with ExplainTestConflict; "
-            "this only permits partial delivery and never waives mandatory checks. "
-            "When all requirements pass the controller finalizes automatically; hidden resolution is unknown.")
     config["completion_model"] = model
     config["model_timeout"] = model["timeout"]
     config["tool_timeout"] = 120
@@ -163,14 +142,10 @@ def freeze_source(root, output):
 
 
 def prepare(root, output, *, execution_backend="docker", environment_root=None, exploration=None,
-            embedding_service=None, embedding_settings=None, build_wheels=None, public_tools=None,
-            repair_profile=None):
+            embedding_service=None, embedding_settings=None, build_wheels=None, public_tools=None):
     root, output = Path(root).resolve(), Path(output).resolve()
     if execution_backend not in {"docker", "native"}:
         raise ValueError("Unknown execution backend")
-    if repair_profile is not None and (
-            repair_profile not in {"a6", "a7"} or execution_backend != "native" or exploration):
-        raise ValueError("Repair profiles use a new native batch manifest; no CLI or shared-snapshot exploration")
     if output.exists():
         raise ValueError("Use a new experiment directory; historical identities cannot be overwritten")
     output.mkdir(parents=True)
@@ -261,14 +236,6 @@ def prepare(root, output, *, execution_backend="docker", environment_root=None, 
             "root": str(root / "experiments/vector_store"), "format": "repository-index-v1",
             "builder_sha256": builder_fingerprint((root / "moatless/evaluation/generation.py").read_text()),
         }
-    if repair_profile == "a6":
-        manifest["profiles"] = A6_PROFILES
-        manifest["agent_configs"] = {"a6": agent_config(root, "a6", model)}
-        manifest["repair"] = {"protocol": "acceptance-repair-v2", "variant": "a6"}
-    elif repair_profile == "a7":
-        manifest["profiles"] = A7_PROFILES
-        manifest["agent_configs"] = {"a7": agent_config(root, "a7", model)}
-        manifest["repair"] = {"protocol": "acceptance-repair-v3", "variant": "a7"}
     manifest["manifest_hash"] = content_hash(manifest)
     write_json(output / "manifest.json", manifest)
     jobs = make_jobs(manifest)
@@ -332,23 +299,6 @@ def _make_t7_jobs(manifest):
 
 def make_jobs(manifest):
     jobs = []
-    if manifest.get("repair"):
-        if manifest.get("t6") or manifest.get("t7") or manifest.get("exploration"):
-            raise ValueError("Repair protocol cannot reuse another experiment protocol")
-        allowed = ({"protocol": "acceptance-repair-v1", "variant": "a6"},
-                   {"protocol": "acceptance-repair-v2", "variant": "a6"},
-                   {"protocol": "acceptance-repair-v3", "variant": "a7"})
-        if manifest["repair"] not in allowed:
-            raise ValueError("Unknown repair protocol")
-        variant = manifest["repair"]["variant"]
-        expected = A7_PROFILES["a7"] if variant == "a7" else A6_PROFILES["a6"]
-        if manifest.get("profiles", {}).get(variant) != expected:
-            raise ValueError(f"Repair manifest requires the explicit {variant} profile")
-        for instance_id in manifest["split"]["dev"]:
-            job = {"phase": "dev", "variant": variant, "repeat": 0, "instance_id": instance_id,
-                   "manifest_hash": manifest["manifest_hash"], "entrypoint": "batch"}
-            jobs.append({**job, "job_id": content_hash(job)[:24]})
-        return jobs
     if manifest.get("t6") and manifest.get("t7"):
         raise ValueError("A manifest cannot be both T6 and T7")
     if manifest.get("t6"):

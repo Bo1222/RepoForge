@@ -123,28 +123,9 @@ def test_index_timing_preserves_original_algorithm_identity_and_failure(tmp_path
 def test_submit_product_only_is_opt_in_for_a5():
     from moatless.evaluation.generation import submit_product_only
     assert submit_product_only({"action_policy": {"variant": "a5"}}) is True
-    assert submit_product_only({"action_policy": {"variant": "a6"}}) is True
-    assert submit_product_only({"action_policy": {"variant": "a7"}}) is True
     assert submit_product_only({"submit_product_only": True}) is True
     assert submit_product_only({"action_policy": {"variant": "a3"}}) is False
     assert submit_product_only({}) is False
-
-
-def test_a7_checkpoint_export_rejects_stale_patch():
-    from moatless.evaluation.generation import validate_completion_export
-    from moatless.policy.repair import CompletionAssessment
-    from moatless.message_history.policy import content_hash
-    patch = "current-product-diff"
-    assessment = CompletionAssessment(state="ready", patch_hash=content_hash(patch))
-    checkpoint = {"patch_hash": content_hash(patch)}
-    assert validate_completion_export({"status": "verified"}, assessment, checkpoint, patch)["status"] == "verified"
-    stale = {"patch_hash": content_hash("older-product-diff")}
-    rejected = validate_completion_export({"status": "verified"}, assessment, stale, patch)
-    assert rejected["status"] == "unverified" and rejected["reason"] == "export_inputs_changed"
-    assert validate_completion_export({"status": "partially_verified"}, assessment, checkpoint, patch)["status"] == "unverified"
-    partial = CompletionAssessment(state="partial_ready", patch_hash=content_hash(patch))
-    assert validate_completion_export(
-        {"status": "partially_verified"}, partial, checkpoint, patch)["status"] == "partially_verified"
 
 
 def test_select_submitted_patch_keeps_current_version_even_after_historical_public_pass():

@@ -6,7 +6,6 @@ from moatless.actions.finish import Finish, FinishArgs
 from moatless.actions.run_tests import RunTests
 from moatless.actions.string_replace import StringReplace, StringReplaceArgs
 from moatless.actions.read_file import ReadFile, ReadFileArgs
-from moatless.actions.replan_repair import ReplanRepairArgs
 from moatless.actions.verified_finish import VerifiedFinishArgs
 from moatless.flow.langgraph_flow import LangGraphFlow
 from moatless.flow.loop import AgenticLoop
@@ -236,73 +235,6 @@ def test_a5_uses_the_same_verification_first_contract():
     read = ReadFileArgs(file_path='code.py')
     assert decide('a5', state(no_progress=4, target='test_code.py'), read).kind == 'verify'
     assert decide('a5', state(no_progress=4, target='test_code.py', replan_attempts=1), read).kind == 'stop'
-
-
-def test_a7_uses_the_same_verification_first_contract():
-    read = ReadFileArgs(file_path='code.py')
-    # Same no-gain/verification decisions as O2/a5.
-    assert decide('a7', state(no_progress=4, target='test_code.py'), read).kind == 'verify'
-    assert decide('a7', state(no_progress=4, target='test_code.py', replan_attempts=1), read).kind == 'stop'
-    assert decide('a7', state(repeat_count=2, target='test_code.py'), read).kind == 'verify'
-    # A pending evidence gate allows bounded reads (handled by the flow
-    # pre-gate) even while the last check failed; only a repeated identical
-    # failure signature forces another replan.
-    decision = decide('a7', state(no_progress=4, target='test_code.py', replan_attempts=1,
-                                  replan_required=['family']), read)
-    assert decision.kind == 'allow' and decision.reason == 'replan_evidence_pending'
-    decision = decide('a7', state(replan_required=['family'], current_test_failed=True,
-                                  target='test_code.py', verification_state='TESTED_FAIL'), read)
-    assert decision.kind == 'allow' and decision.reason == 'replan_evidence_pending'
-    decision = decide('a7', state(replan_required=['family'], last_action_signature='action',
-                                  failure_signature='sig', failure_kind='assertion_failure'), read)
-    assert decision.kind == 'replan' and decision.required_action == 'ReplanRepair'
-    # A ReplanRepair proposal is executable even while the gate is pending.
-    decision = decide('a7', state(replan_required=['family']), action=ReplanRepairArgs(
-        family_id='family', hypothesis='The branch is missing an input guard',
-        evidence_sources=['1:0'], next_steps='Guard the empty input and rerun the failing module'))
-    assert decision.kind == 'allow' and decision.reason == 'replan_evidence'
-    # TESTED_FAIL alone does not block the first corrective edit; O2's
-    # needs_check threshold triggers repair after that edit.
-    decision = decide('a7', state(current_test_failed=True, target='test_code.py',
-                                  verification_state='TESTED_FAIL', failure_family='family',
-                                  failure_obligations=[{'family': 'family'}]),
-                      StringReplaceArgs(path='code.py', old_str='a', new_str='b'))
-    assert decision.kind == 'allow'
-    decision = decide('a7', state(current_test_failed=True, target='test_code.py',
-                                  verification_state='TESTED_FAIL', failure_family='family',
-                                  failure_obligations=[{'family': 'family'}], edits_since_test=1),
-                      ReadFileArgs(file_path='code.py'))
-    assert decision.kind == 'replan' and decision.required_action is None
-    assert decision.family_id == 'family'
-
-
-def test_a7_structured_verification_uses_registered_check_identity():
-    read = ReadFileArgs(file_path='code.py')
-    decision = decide('a7', state(target='test_code.py', next_check={
-        'test_files': ['test_code.py'], 'test_source': 'base_public',
-        'product_source': 'base', 'check_id': 'repro'}), read)
-    # No threshold/finish trigger yet, so the model keeps working.
-    assert decision.kind == 'allow'
-    decision = decide('a7', state(target='test_code.py', next_check={
-        'test_files': ['test_code.py'], 'test_source': 'base_public',
-        'product_source': 'base', 'check_id': 'repro'}, edits_since_test=3), read)
-    assert decision.kind == 'verify'
-    assert decision.test_files == ['test_code.py'] and decision.test_source == 'base_public'
-    assert decision.product_source == 'base' and decision.check_id == 'repro'
-
-
-def test_a7_accepted_repair_trial_allows_the_next_edit():
-    edit = StringReplaceArgs(path='code.py', old_str='value = 1', new_str='value = 2')
-    decision = decide('a7', state(repair_available=True, current_test_failed=True,
-                                  no_progress=4, repeat_count=2), edit)
-    assert decision.kind == 'allow'
-
-
-def test_a7_treats_verified_finish_as_terminal():
-    finish = VerifiedFinishArgs(finish_reason="done", test_verification="public tests pass")
-    assert decide('a7', state(has_product_patch=False), action=finish).reason == 'no_product_patch'
-    decision = decide('a7', state(target='test_code.py'), action=finish)
-    assert decision.kind == 'verify' and decision.test_files == ['test_code.py']
 
 
 def test_exact_repeated_action_after_failure_is_replanned():

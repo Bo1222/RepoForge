@@ -136,15 +136,6 @@ class ManagedMessageHistoryGenerator(MessageHistoryGenerator):
             units.append(ContextUnit([assistant, *results]))
             sources.append(f"node:{previous.node_id}")
 
-        from moatless.policy.repair import registered_plan
-        plan = registered_plan(node)
-        if plan:
-            from moatless.message_history.policy import canonical_json
-            units.append(ContextUnit([{"role": "user", "content": "<acceptance_plan>\n" + canonical_json({
-                "revision": plan.revision, "criteria": [{"id": item.id, "kind": item.kind,
-                "behavior": item.behavior[:300]} for item in plan.criteria],
-                "mandatory_checks": [check.id for check in plan.checks]}) + "\n</acceptance_plan>"}], required=True))
-            sources.append("acceptance_plan")
         # New state fields are optional so old trajectories remain readable.
         feedback = next((previous.policy_feedback for previous in reversed(node.get_trajectory())
                          if previous.policy_feedback), None)

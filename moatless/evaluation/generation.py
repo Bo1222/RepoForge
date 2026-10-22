@@ -62,30 +62,11 @@ def submit_product_only(profile) -> bool:
     """Whether the frozen answer must exclude test-file edits.
 
     SWE-bench applies the official test patch and ignores candidate test edits.
-    O2 (a5), A6 and A7 therefore submit the product patch only.  Older profiles
-    keep their historical full-patch shape.
+    O2 (a5) therefore submits the product patch only.  Older profiles keep
+    their historical full-patch shape.
     """
     return bool(profile.get("submit_product_only",
-                            profile.get("action_policy", {}).get("variant") in {"a5", "a6", "a7"}))
-
-
-def validate_completion_export(completion, assessment, checkpoint, patch):
-    """Reject a verified/partial claim whose evidence no longer matches the patch.
-
-    A7 exports only the current product patch.  The checkpoint must have been
-    produced by the same acceptance assessment and patch hash; otherwise the
-    answer is recorded as unverified rather than frozen as verified.
-    """
-    from moatless.message_history.policy import content_hash
-    if completion.get("status") not in {"verified", "partially_verified"}:
-        return completion
-    partial = completion.get("status") == "partially_verified"
-    if (assessment.state != ("partial_ready" if partial else "ready")
-            or not checkpoint or checkpoint.get("patch_hash") != content_hash(patch)):
-        return {"status": "unverified", "reason": "export_inputs_changed",
-                "assessment": assessment.model_dump(mode="json"), "resolved": None,
-                "official_harness": "not_run"}
-    return completion
+                            profile.get("action_policy", {}).get("variant") in {"a5"}))
 
 
 def select_submitted_patch(patch, tests):
@@ -281,15 +262,6 @@ async def run(bundle, output, index_path, resume=False):
         if product_only:
             patch, submitted_verified_patch = select_submitted_patch(patch, tests)
         completion = flow.root.get_last_node().completion_status or {"status": "unverified"}
-        if bundle["profile"].get("action_policy", {}).get("variant") in {"a6", "a7"}:
-            from moatless.policy.repair import assess
-            assessment = assess(flow.root.get_last_node(), workspace)
-            partial = completion.get("status") == "partially_verified"
-            checkpoint_key = "partial_checkpoint" if partial else "verified_checkpoint"
-            checkpoint = (getattr(flow, "graph_state", None) or {}).get("repair_state", {}).get(checkpoint_key)
-            completion = validate_completion_export(completion, assessment, checkpoint, patch)
-            if completion.get("status") == "unverified" and completion.get("reason") == "export_inputs_changed":
-                flow.root.get_last_node().completion_status = completion
     selected = selected or flow.root.get_last_node()
     steps = [step for node in selected.get_trajectory() for step in node.action_steps if step.observation is not None]
     actual = [step for step in steps if (step.observation.properties or {}).get("execution_status") != "skipped"]
