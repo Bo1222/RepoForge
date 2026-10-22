@@ -3,6 +3,7 @@ from typing import ClassVar
 
 from pydantic import ConfigDict, Field, model_validator
 
+from moatless.actions.query_terms import query_terms
 from moatless.actions.schema import ActionArguments
 from moatless.actions.search_base import SearchBaseAction, SearchBaseArgs
 from moatless.completion.schema import FewShotExample
@@ -74,6 +75,9 @@ class FindClassArgs(SearchBaseArgs):
 
 class FindClass(SearchBaseAction):
     args_schema: ClassVar[type[ActionArguments]] = FindClassArgs
+
+    def _fallback_queries(self, args: FindClassArgs) -> list[str]:
+        return list(dict.fromkeys([args.class_name, *query_terms(args.class_name)]))
 
     async def _search(self, args: FindClassArgs) -> SearchCodeResponse:
         logger.info(f"{self.name}: {args.class_name} (file_pattern: {args.file_pattern})")

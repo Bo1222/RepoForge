@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 class ActionStep(BaseModel):
     action: ActionArguments
+    origin: Optional[str] = None
+    proposal_id: Optional[str] = None
+    policy_decision_id: Optional[str] = None
     observation: Optional[Observation] = None
     completion: Optional[CompletionInvocation] = None
     start_time: datetime = Field(default_factory=datetime.now, description="The start time of the action step")
@@ -220,6 +223,8 @@ class Node(BaseModel):
     repository_context: Optional[RepositoryContext] = None
     instruction_updates: list[InstructionContext] = Field(default_factory=list)
     completion_status: Optional[dict[str, Any]] = None
+    policy_decisions: Optional[list[dict[str, Any]]] = None
+    policy_feedback: Optional[str] = None
     # feedback: Optional[str] = Field(None, description="Feedback provided to the node")
     completions: dict[str, CompletionInvocation] = Field(
         default_factory=dict, description="The completions used in this node"
@@ -564,7 +569,7 @@ class Node(BaseModel):
 
         new_kwargs = {k: v for k, v in kwargs.items() if k != "exclude"}
         node_dict = super().model_dump(exclude=exclude_set, **new_kwargs)
-        for name in ("repository_context", "instruction_updates", "completion_status"):
+        for name in ("repository_context", "instruction_updates", "completion_status", "policy_decisions", "policy_feedback"):
             if not node_dict.get(name):
                 node_dict.pop(name, None)
 

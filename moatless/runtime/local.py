@@ -2,9 +2,13 @@ import asyncio
 import logging
 import os
 import signal
+import shlex
+import stat
+import tempfile
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple
+from typing import Callable, Tuple
 
 from swebench.harness.constants import SWEbenchInstance, NON_TEST_EXTS
 from swebench.harness.grading import get_eval_report
@@ -24,12 +28,18 @@ logger = logging.getLogger(__name__)
 
 class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
     """Environment implementation for running swebench tests and evaluations."""
+    supports_managed_deadline = True
 
     def __init__(
         self,
         repo_path: Path,
         swebench_instance: SWEbenchInstance,
         storage: BaseStorage,
+        *,
+        generation_only: bool = False,
+        recovery_identity: dict | None = None,
+        resume_ready: bool = False,
+        recovery_probe: Callable[[], dict] | None = None,
     ):
         if not repo_path.exists():
             raise RuntimeError(f"Repository path does not exist: {repo_path}")
@@ -42,7 +52,20 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
         self.swebench_instance = swebench_instance
         self.instance_id = swebench_instance["instance_id"]
         self.storage = storage
-        self.test_spec = make_test_spec(self.swebench_instance)
+        # A generation runtime never constructs official evaluation scripts.
+        if generation_only:
+            allowed = {"instance_id", "repo", "base_commit", "problem_statement", "version"}
+            if set(swebench_instance) - allowed:
+                raise ValueError("Generation runtime received non-public instance fields")
+        self.generation_only = generation_only
+        self.test_spec = None if generation_only else make_test_spec(self.swebench_instance)
+        self._recovery_identity = recovery_identity
+        self._recovery_probe = recovery_probe
+        if resume_ready and not recovery_identity:
+            raise ValueError("Resuming a ready runtime requires independently checked environment identity")
+        self._installation_ready = resume_ready
+        self.last_test_execution = []
+        self.last_test_results = []
         self._install_task = None  # Will hold the installation process task
         self._skip_conda_activate = os.getenv("SKIP_CONDA_ACTIVATE", "false").lower() == "true"
         logger.info(f"SKIP_CONDA_ACTIVATE: {self._skip_conda_activate}")
@@ -58,40 +81,101 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
         else:
             self._install_after_patch = False
 
-        self._install_task = asyncio.create_task(self._run_async_installation(self._install_command))
+        if not resume_ready:
+            self._install_task = asyncio.create_task(self._run_async_installation(self._install_command))
+
+    def verification_configuration(self, targets):
+        return {"adapter": type(self).__qualname__, "commands": [self._test_script([path]) for path in targets],
+                "skip_conda_activate": self._skip_conda_activate, "install": self._install_command,
+                "base_commit": self.swebench_instance["base_commit"], "identity": self._recovery_identity}
+
+    def compilation_configuration(self):
+        return {"python": "python", "skip_conda_activate": self._skip_conda_activate,
+                "identity": self._recovery_identity, "install": self._install_command}
+
+    async def compile_python(self, source, path):
+        from moatless.runtime.python_check import arguments, parse_output
+        command = " ".join(shlex.quote(part) for part in ["python", *arguments(path)])
+        stdout, code = await self._execute_command(command, timeout=None, input_bytes=source.encode())
+        return parse_output(stdout, code)
+
+    def recovery_state(self) -> dict | None:
+        # No identity means the legacy runtime stays explicitly opaque.
+        if not self._recovery_identity or not self._installation_ready:
+            return None
+        return {
+            "version": 1, "instance_id": self.instance_id,
+            "repo_path": str(self.repo_path.resolve()), "generation_only": self.generation_only,
+            "identity": self._recovery_identity, "installation_ready": True,
+            "skip_conda_activate": self._skip_conda_activate,
+            "install_command": self._install_command,
+        }
+
+    @asynccontextmanager
+    async def _temporary_patch(self, patch):
+        """Restore exact pre-test contents, including new/non-Python files."""
+        self.last_test_cleanup_confirmed = False
+        originals = {}
+        created_dirs = set()
+        if patch:
+            for change in PatchSet(patch):
+                for name in (change.source_file, change.target_file):
+                    if name == "/dev/null":
+                        continue
+                    if name.startswith(("a/", "b/")):
+                        name = name[2:]
+                    path = self.repo_path / name
+                    if not path.resolve().is_relative_to(self.repo_path.resolve()) or path.is_symlink():
+                        raise RuntimeError("Patch path escapes repository or changes a symlink")
+                    if path in originals:
+                        continue
+                    originals[path] = (path.read_bytes(), stat.S_IMODE(path.stat().st_mode)) if path.exists() else None
+                    parent = path.parent
+                    while not parent.exists() and parent != self.repo_path:
+                        created_dirs.add(parent)
+                        parent = parent.parent
+        try:
+            if patch and not await self._apply_patch(patch):
+                raise RuntimeError("Failed to apply patch")
+            yield
+        finally:
+            # A failed apply may have touched a subset, so restore that too.
+            try:
+                for path, original in originals.items():
+                    if original is None:
+                        path.unlink(missing_ok=True)
+                    else:
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_bytes(original[0])
+                        path.chmod(original[1])
+                for directory in sorted(created_dirs, key=lambda p: len(p.parts), reverse=True):
+                    if directory.exists() and not any(directory.iterdir()):
+                        directory.rmdir()
+            except OSError as exc:
+                from moatless.exceptions import WorkspaceConsistencyError
+                raise WorkspaceConsistencyError("Failed to restore test workspace") from exc
+            self.last_test_cleanup_confirmed = True
 
     async def execute(self, command: str, fail_on_error: bool = False, patch: str | None = None, timeout: int = 600) -> str:
-        """Execute a command in the environment."""
-        await self._wait_for_install()
         try:
-            
-            if patch:
-                await self._apply_patch(patch)
-                    
-                if self._install_after_patch and self._install_command:
-                    logger.info(f"Installing after patch with command: {self._install_command}")
-                    stdout, return_code = await self._execute_command(self._install_command, timeout=timeout)
-                    logger.info(f"Installation output: {stdout} {return_code}")
-            
-            stdout, return_code = await self._execute_command(command, timeout=timeout)
-            logger.info(f"Command {command} returned {return_code}")
-            logger.info(f"Output: {stdout}")
+            return await self._execute_with_patch(command, fail_on_error, patch, timeout)
+        finally:
+            if self._recovery_probe:
+                self._recovery_identity = self._recovery_probe()
 
-            # Save execution log
+    async def _execute_with_patch(self, command: str, fail_on_error: bool = False, patch: str | None = None, timeout: int = 600) -> str:
+        await self._wait_for_install()
+        async with self._temporary_patch(patch):
+            if patch and self._install_after_patch and self._install_command:
+                stdout, return_code = await self._execute_command(self._install_command, timeout=timeout)
+                if return_code:
+                    raise RuntimeError(f"Installation after patch failed with return code {return_code}")
+            stdout, return_code = await self._execute_command(command, timeout=timeout)
             if self.storage:
                 await self._save_execution_log(command, patch, stdout, return_code)
-
             if fail_on_error and return_code != 0:
-                raise EnvironmentExecutionError(message=f"Command {command} failed with return code {return_code}: {stdout}", stderr=stdout, return_code=return_code)
-
-        except Exception as e:
-            logger.error(f"Error executing command {command}: {e}")
-            raise e
-        finally:
-            if patch:
-                await self.reset_modified_files(patch)
-
-        return stdout
+                raise EnvironmentExecutionError(message=f"Command exited {return_code}: {stdout}", stderr=stdout, return_code=return_code)
+            return stdout
 
     async def read_file(self, path: str) -> str:
         """Read a file from the environment."""
@@ -106,7 +190,18 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
                 f"Command {f'echo {content} > {path}'} failed with return code {return_code}", return_code, stdout
             )
 
-    async def run_tests(
+    async def run_tests(self, patch: str | None = None, test_files: list[str] | None = None, timeout: int = 600, managed_deadline: bool = False) -> list[TestResult]:
+        self.last_test_cleanup_confirmed = False
+        self.last_test_execution, self.last_test_results = [], []
+        await self._wait_for_install()
+        try:
+            async with self._temporary_patch(patch):
+                return await self._run_tests_applied(patch=patch, test_files=test_files, timeout=None if managed_deadline else timeout)
+        finally:
+            if self._recovery_probe:
+                self._recovery_identity = self._recovery_probe()
+
+    async def _run_tests_applied(
         self, patch: str | None = None, test_files: list[str] | None = None, timeout: int = 600
     ) -> list[TestResult]:
         """Run tests with an optional patch and specific test files."""
@@ -115,26 +210,46 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
 
         logger.info(f"Starting test {test_files}")
 
-        # Apply patch if provided
-        if patch:
-            if not await self._apply_patch(patch):
-                raise RuntimeError("Failed to apply patch")
-
         if self._install_after_patch and self._install_command:
             logger.info(f"Installing after patch with command: {self._install_command}")
             stdout, return_code = await self._execute_command(self._install_command)
             logger.info(f"Installation output: {stdout} {return_code}")
+            if return_code:
+                raise RuntimeError(f"Installation after patch failed with return code {return_code}")
 
+        self.last_test_execution = []
+        self.last_test_results = []
         test_results = []
         if test_files:  # Check if test_files is not None
-            test_spec = self.test_spec
 
             # Run test files one by one to be sure to know which file the test failed on
             for test_file in test_files:
                 test_command = self._test_script([test_file])
+                # The editable install in a reused prefix can point at the
+                # pristine baseline instead of the agent's /testbed workspace.
+                # Put the workspace (and src/ for src-layout repos) first so
+                # generated tests exercise the patched code.
+                pythonpath = shlex.quote(f"{self.repo_path / 'src'}:{self.repo_path}")
+                test_command = f"PYTHONPATH={pythonpath}:${{PYTHONPATH:-}} {test_command}"
                 logger.info(f"Test command: {test_command}")
 
-                stdout, return_code = await self._execute_command(test_command, timeout=timeout)
+                start = datetime.now()
+                self.last_command_output = ""
+                try:
+                    stdout, return_code = await self._execute_command(test_command, timeout=timeout)
+                except asyncio.CancelledError:
+                    stdout = self.last_command_output
+                    partial = parse_log(stdout, self.swebench_instance["repo"])
+                    for result in partial:
+                        result.file_path = result.file_path or test_file
+                        result.timed_out = True
+                    self.last_test_results = [*test_results, *partial]
+                    self.last_test_execution.append({"command": test_command, "target": test_file,
+                        "return_code": None, "partial": True, "output_excerpt": stdout[-8000:],
+                        "duration": (datetime.now() - start).total_seconds()})
+                    raise
+                self.last_test_execution.append({"command": test_command, "target": test_file,
+                    "return_code": return_code, "duration": (datetime.now() - start).total_seconds()})
 
                 timed_out = return_code == -1  # -1 indicates timeout
 
@@ -150,7 +265,7 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
                 if self.storage:
                     await self._save_execution_log(test_command, patch, stdout, return_code)
 
-                testbed_results = parse_log(stdout, test_spec.repo)
+                testbed_results = parse_log(stdout, self.swebench_instance["repo"])
 
                 # Set timeout flag and ensure file_path is set for all results
                 for result in testbed_results:
@@ -174,10 +289,11 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
                     )
                     testbed_results = [basic_result]
 
+                if return_code != 0 and all(r.status == TestStatus.PASSED for r in testbed_results):
+                    testbed_results.append(TestResult(status=TestStatus.ERROR, file_path=test_file,
+                        failure_output=f"Command exited {return_code} despite parsed passing tests"))
                 test_results.extend(testbed_results)
-
-        if patch:
-            await self.reset_modified_files(patch)
+                self.last_test_results = list(test_results)
 
         return test_results
 
@@ -194,6 +310,8 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
         Returns:
             EvaluationResult or None if evaluation fails
         """
+        if self.generation_only:
+            raise RuntimeError("Official grading is unavailable in the generation runtime")
         if not patch:
             report = {
                 self.instance_id: {
@@ -278,126 +396,60 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
         return return_code == 0
 
     async def _wait_for_install(self):
-        """Wait for the installation process to complete if it's running."""
-        if self._install_task is not None and not self._install_task.done():
-            logger.info("Waiting for installation process to complete...")
+        if self._install_task is not None:
             try:
-                await self._install_task
-            except Exception as e:
-                logger.error(f"Installation process failed: {str(e)}")
-                raise RuntimeError("Installation process failed") from e
+                successful = await self._install_task
+            except Exception as exc:
+                raise RuntimeError("Installation process failed") from exc
+            if not successful:
+                raise RuntimeError("Installation process returned failure")
+        self._installation_ready = True
 
-    async def _execute_command(
-        self, command: str, cwd: Path | None = None, timeout: int | None = None
-    ) -> Tuple[str, int]:
-        """Execute a shell command and return combined output and return code."""
-
-        # Prepend conda activation to the command using . instead of source
-        conda_activate = ". /opt/miniconda3/bin/activate && conda activate testbed && "
+    async def _execute_command(self, command: str, cwd: Path | None = None, timeout: int | None = None,
+                               input_bytes: bytes | None = None) -> Tuple[str, int]:
+        from moatless.runtime.native_tools import tool_process
         if not self._skip_conda_activate:
-            command = conda_activate + command
-
-        bash_command = f'bash -l -c "{command}"'
-
-        logger.info(f"Executing command: {bash_command} in {cwd} with timeout {timeout}")
-        process = await asyncio.create_subprocess_shell(
-            bash_command,
-            cwd=str(self.repo_path),
-            env=os.environ.copy(),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,  # redirect stderr to stdout
-            start_new_session=True  # Create new process group for proper cleanup
+            command = ". /opt/miniconda3/bin/activate && conda activate testbed && " + command
+        argv, environment = tool_process(["bash", "-lc", command])
+        process = await asyncio.create_subprocess_exec(
+            *argv, cwd=str(cwd or self.repo_path), env=environment,
+            stdin=asyncio.subprocess.PIPE if input_bytes is not None else None,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, start_new_session=True,
         )
-
-        # Use a more robust timeout approach
-        if timeout is None:
-            # No timeout specified, wait indefinitely
-            stdout, _ = await process.communicate()
-            return stdout.decode(), process.returncode or 0
-        
-        # Implement dual timeout mechanism for robustness
-        # Create a task for process.communicate()
-        comm_task = asyncio.create_task(process.communicate())
-        
-        # Also create a backup timer that will forcefully kill the process
-        async def backup_killer():
-            await asyncio.sleep(timeout)
-            if not comm_task.done():
-                logger.warning(f"Backup timeout triggered after {timeout} seconds, forcefully killing process")
-                try:
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                except Exception as e:
-                    logger.error(f"Error in backup killer: {e}")
-                    try:
-                        process.kill()
-                    except Exception:
-                        pass
-        
-        killer_task = asyncio.create_task(backup_killer())
-        
+        communication = asyncio.create_task(process.communicate(input_bytes))
         try:
-            # Use wait_for as primary timeout mechanism
-            stdout, _ = await asyncio.wait_for(comm_task, timeout=timeout)
-            killer_task.cancel()  # Cancel backup killer if we finish normally
-            return stdout.decode(), process.returncode or 0
-        except asyncio.TimeoutError:
-            # Ensure the backup killer has a chance to run
-            await asyncio.sleep(0.1)
-            # Kill the entire process group to ensure all child processes are terminated
+            stdout, _ = await asyncio.wait_for(asyncio.shield(communication), timeout=timeout)
+            return stdout.decode(errors="replace"), process.returncode
+        except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
             try:
-                # Use process group ID (negative PID) to kill all processes in the group
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
-                # Process already dead
                 pass
-            except AttributeError:
-                # Fallback for systems without killpg
-                process.kill()
-            
-            try:
-                await asyncio.wait_for(process.wait(), timeout=1.0)
-            except asyncio.TimeoutError:
-                # Force kill if still not dead
-                try:
-                    process.kill()
-                except Exception:
-                    pass
-            except Exception:
-                pass
-                
-            # Return partial output if any was captured before timeout
-            partial_output = ""
-            if process.stdout:
-                try:
-                    partial_data = await asyncio.wait_for(process.stdout.read(), timeout=1.0)
-                    partial_output = partial_data.decode()
-                except Exception:
-                    pass
-            
-            # Add timeout message to the output
-            timeout_msg = f"\n\n[ERROR] Command execution timed out after {timeout} seconds\n"
-            combined_output = partial_output + timeout_msg
-            
-            logger.warning(f"Command timed out after {timeout} seconds: {command}")
-            
-            # Cancel the backup killer task
-            killer_task.cancel()
-            try:
-                await killer_task
-            except asyncio.CancelledError:
-                pass
-            
-            return combined_output, -1  # Use -1 to indicate timeout
+            stdout, _ = await communication
+            self.last_command_output = stdout.decode(errors="replace")
+            if isinstance(exc, asyncio.CancelledError):
+                raise
+            return stdout.decode(errors="replace") + f"\n[ERROR] Command execution timed out after {timeout} seconds\n", -1
+
 
     async def _apply_patch(self, patch: str) -> bool:
         """Apply a git patch to the repository."""
         logger.debug("Applying patch to local repository")
 
         # Save patch to a temporary file
-        patch_file = self.repo_path / "temp_patch.diff"
+        with tempfile.NamedTemporaryFile(prefix="moatless-patch-", suffix=".diff", delete=False) as temporary:
+            patch_file = Path(temporary.name)
         try:
             with open(patch_file, "w") as f:
                 f.write(patch if patch.endswith("\n") else patch + "\n")
+
+            if self.generation_only:
+                quoted = shlex.quote(str(patch_file))
+                _, check_code = await self._execute_command(f"git apply --check {quoted}")
+                if check_code:
+                    return False
+                _, apply_code = await self._execute_command(f"git apply --binary {quoted}")
+                return apply_code == 0
 
             # First try with git apply
             git_apply_cmd = f"git apply -v {str(patch_file)}"
@@ -497,7 +549,7 @@ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
             .get(self.swebench_instance["version"], {})
             .get("test_cmd", "")
         )
-        return " ".join([test_cmd, *directives])
+        return " ".join([test_cmd, *(shlex.quote(d) for d in directives)])
 
     async def reset_modified_files(self, patch: str):
         modified_files = self.get_modified_files(patch)

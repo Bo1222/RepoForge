@@ -147,7 +147,12 @@ class FileRepository(Repository):
         elif file_path.startswith("repo/"):
             file_path = file_path.replace("repo/", "")
 
-        return os.path.join(self.repo_path, file_path)
+        full_path = os.path.join(self.repo_path, file_path)
+        if os.environ.get("GENERATION_EXECUTION_BACKEND") == "native":
+            from pathlib import Path
+            if not Path(full_path).resolve().is_relative_to(Path(self.repo_path).resolve()):
+                raise ValueError("Native repository path escapes the public task workspace")
+        return full_path
 
     def get_relative_path(self, file_path: str) -> str:
         """
@@ -213,13 +218,23 @@ class FileRepository(Repository):
             f.write("")
 
     def save_file(self, file_path: str, updated_content: str):
-        assert updated_content, "Updated content must be provided"
-
-        if not self.file_exists(file_path):
-            file = self.create_empty_file(file_path)
-
-        with open(self.get_full_path(file_path), "w") as f:
-            f.write(updated_content)
+        import tempfile
+        import stat
+        path = Path(self.get_full_path(file_path))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
+                temporary = stream.name
+                stream.write(updated_content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(temporary, mode)
+            os.replace(temporary, path)
+        finally:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
 
     @tracer.start_as_current_span("matching_files")
     async def matching_files(self, file_pattern: str) -> list[str]:

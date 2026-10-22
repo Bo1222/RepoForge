@@ -19,14 +19,18 @@ The official Moatless web UI, FastAPI backend and custom Docker execution route 
 The local Textual/Rich CLI uses a shared SessionService, LangGraphFlow, with ordinary chat or an isolated Git worktree for coding. It supports reading, search, editing, commands, tests, follow-up tasks, cancellation, recovery, and patch export. See the [CLI guide](docs/interactive_cli.md).
 
 ```bash
-uv run moatless chat --model deepseek/deepseek-chat
+uv run moatless chat --config moatless/evaluation/profiles/flash_nonthinking_a0.json
 # Coding tasks:
-uv run moatless chat --repo /path/to/clean-repo --model deepseek/deepseek-chat
-uv run moatless run --repo /path/to/clean-repo --task-file task.md
+uv run moatless chat --repo /path/to/clean-repo --config moatless/evaluation/profiles/flash_nonthinking_a0.json
+uv run moatless run --repo /path/to/clean-repo --task-file task.md --config moatless/evaluation/profiles/flash_nonthinking_a0.json
 uv run moatless resume SESSION_ID
 ```
 
 Enter sends; Shift+Enter inserts a newline; `/help` lists commands. Omit --repo for ordinary chat; /model displays the configured model locally; /repo PATH starts a new coding context. Coding requires a clean source repository. Changes stay in the worktree until `/apply` previews the patch and asks for confirmation.
+
+New CLI sessions default to `openai/deepseek-flash` through DeepSeek's OpenAI-compatible API, with `DEEPSEEK_API_KEY` and native thinking explicitly disabled. The example profile opts into Managed facts with TaskState and repository instructions disabled. Saved sessions retain their original configuration. `Thoughts in Action` in the historical benchmark table controls action formatting, not provider-native reasoning; the table includes both Chat and Reasoner models.
+
+T4/T5 staged experiment commands and current acceptance limits are documented in [the execution plan](docs/T4_T5_execution_plan.md) and [report](docs/T4_T5_execution_report.md). The official SWE-bench Harness remains separate from generation.
 
 The CLI does not depend on Docker. Worktrees isolate code changes; tools run with the current user's permissions and do not provide a process or filesystem security sandbox. Initial acceptance targets Python/pytest repositories and requires a clean source repository.
 

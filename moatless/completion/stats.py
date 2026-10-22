@@ -1,15 +1,22 @@
 import json
 import logging
 import time
-from token import OP
-from typing import Any, Optional, Union, List
+from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
 # Model costs per million tokens
 MODEL_COSTS = {
+    # Frozen reference prices: DeepSeek official peak USD/1M, 2026-10-12.
+    # Used consistently for experiment budgets, not claimed as provider bills.
+    "openai/deepseek-flash": {
+        "input": 0.30, "output": 1.20, "cache": 0.006, "cached_included": True,
+    },
+    "deepseek-flash": {
+        "input": 0.30, "output": 1.20, "cache": 0.006, "cached_included": True,
+    },
     "claude-3-5-haiku-20241022": {
         "input": 0.80,
         "output": 4.0,
@@ -150,6 +157,12 @@ class Usage(BaseModel):
 
         self.cache_write_tokens = usage.get("cache_creation_input_tokens", 0)
 
+        if model in {"openai/deepseek-flash", "deepseek-flash"}:
+            self.completion_cost = self.calculate_cost(
+                model, self.prompt_tokens, self.completion_tokens, self.cache_read_tokens
+            )
+            return self
+
         try:
             from litellm.cost_calculator import completion_cost
 
@@ -201,6 +214,7 @@ class CompletionAttempt(BaseModel):
         default=None, description="Reason for failure if the attempt was unsuccessful"
     )
     attempt_number: int = Field(default=1, description="The attempt number for this completion")
+    invalid_response: dict | None = Field(default=None, description="Archived invalid response; never replayed into retry history")
 
     @staticmethod
     def _current_time_ms() -> float:

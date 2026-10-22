@@ -10,7 +10,9 @@ def count_tokens(content: str, model: str = "gpt-3.5-turbo") -> int:
     Count tokens in `content` based on the model name.
 
     1) If `model.startswith("voyage")`, use VoyageAI client.
-    2) Otherwise, try to use `tiktoken`. If tiktoken raises KeyError
+    2) Jina and BGE-M3 use a local cl100k estimate for chunk sizing/logs.
+       Actual token usage comes from the embedding service response.
+    3) Otherwise, try to use `tiktoken`. If tiktoken raises KeyError
        (unrecognized model name), fallback to Hugging Face tokenizer.
     """
     if model.startswith("voyage"):
@@ -43,7 +45,8 @@ def count_tokens(content: str, model: str = "gpt-3.5-turbo") -> int:
                     "tiktoken_cache",
                 )
 
-            _tiktoken_encoders[model] = tiktoken.encoding_for_model(model)
+            tokenizer_model = "gpt-3.5-turbo" if model.startswith("jina-") or model == "BAAI/bge-m3" else model
+            _tiktoken_encoders[model] = tiktoken.encoding_for_model(tokenizer_model)
 
             # Clean up TIKTOKEN_CACHE_DIR if we set it
             if should_revert:

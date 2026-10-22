@@ -82,7 +82,7 @@ class SimpleFaissVectorStore(BasePydanticVectorStore):
         **kwargs: Any,
     ) -> None:
         """Initialize params."""
-        super().__init__(d=d, **kwargs)  # Pass d to parent constructor
+        super().__init__(d=faiss_index.d, **kwargs)
 
         import_err_msg = """
             `faiss` package not found. For instructions on
@@ -100,7 +100,7 @@ class SimpleFaissVectorStore(BasePydanticVectorStore):
 
     @classmethod
     def from_defaults(cls, d: int = 1536):
-        faiss_index = faiss.IndexIDMap(faiss.IndexFlatL2(1536))
+        faiss_index = faiss.IndexIDMap(faiss.IndexFlatL2(d))
         return cls(faiss_index, d)
 
     @property

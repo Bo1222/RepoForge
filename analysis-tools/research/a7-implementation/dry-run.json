@@ -1,0 +1,39 @@
+{
+ "output": "/tmp/A7_dev_sanity_dryrun_final4",
+ "variant": "a7",
+ "jobs": [
+  "pytest-dev__pytest-7490",
+  "django__django-10914",
+  "sympy__sympy-12481",
+  "scikit-learn__scikit-learn-14053",
+  "astropy__astropy-8872"
+ ],
+ "profiles": [
+  "a7"
+ ],
+ "agent_configs": [
+  "a7"
+ ],
+ "actions": [
+  "SemanticSearch",
+  "FindClass",
+  "FindFunction",
+  "FindCodeSnippet",
+  "ViewCode",
+  "StringReplace",
+  "CreateFile",
+  "AppendString",
+  "RunTests",
+  "VerifiedFinish",
+  "Reject",
+  "RegisterAcceptancePlan",
+  "CheckSyntax",
+  "ReplanRepair",
+  "ExplainTestConflict"
+ ],
+ "repair": {
+  "protocol": "acceptance-repair-v3",
+  "variant": "a7"
+ },
+ "manifest_hash": "8746ec1a0bdf4199b2b437172b2a852f8283eecda4d59f1186e6db0dc9cb5549"
+}

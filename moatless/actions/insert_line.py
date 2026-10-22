@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 from pydantic import ConfigDict, Field
 
@@ -97,18 +96,10 @@ class InsertLine(Action, CodeActionValueMixin, CodeModificationMixin):
         file_context: FileContext | None = None,
         workspace: Workspace | None = None,
     ) -> Observation:
-        if args.path.startswith("/repo"):
-            args.path = args.path[5:]
-        if args.path.startswith("/"):
-            args.path = args.path[1:]
-
-        path = Path(args.path)
-
-        if not file_context.file_exists(str(path)):
-            return Observation.create(
-                message=f"File {path} not found.",
-                properties={"fail_reason": "file_not_found"},
-            )
+        path_str = self.normalize_path(args.path)
+        path, error = self.validate_file_access(path_str, file_context)
+        if error is not None:
+            return error
 
         context_file = file_context.get_context_file(str(path))
         if not context_file:
@@ -123,6 +114,9 @@ class InsertLine(Action, CodeActionValueMixin, CodeModificationMixin):
                 properties={"fail_reason": "lines_not_in_context"},
             )
 
+        token, conflict = self.edit_token(file_context, path)
+        if conflict:
+            return conflict
         file_text = context_file.content.expandtabs()
         new_str = args.new_str.expandtabs()
         file_text_lines = file_text.split("\n")
@@ -145,7 +139,13 @@ class InsertLine(Action, CodeActionValueMixin, CodeModificationMixin):
         new_file_text = "\n".join(new_file_text_lines)
         snippet = "\n".join(snippet_lines)
 
-        context_file.apply_changes(new_file_text)
+        syntax_error, syntax_check = await self.validate_candidate(str(path), file_text, new_file_text)
+        if syntax_error is not None:
+            return syntax_error
+
+        conflict = self.commit_candidate(context_file, new_file_text, token)
+        if conflict:
+            return conflict
 
         # Format the snippet with line numbers
         snippet_with_lines = "\n".join(
@@ -160,4 +160,4 @@ class InsertLine(Action, CodeActionValueMixin, CodeModificationMixin):
             "Edit the file again if necessary."
         )
 
-        return Observation.create(message=message)
+        return Observation.create(message=message, properties={"syntax_checks": [syntax_check], "syntax_checked": syntax_check["status"] == "valid"})

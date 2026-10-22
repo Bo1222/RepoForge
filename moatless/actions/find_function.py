@@ -2,6 +2,7 @@ from typing import ClassVar, Optional
 
 from pydantic import ConfigDict, Field, model_validator
 
+from moatless.actions.query_terms import query_terms
 from moatless.actions.schema import ActionArguments
 from moatless.actions.search_base import SearchBaseAction, SearchBaseArgs, logger
 from moatless.codeblocks import CodeBlockType
@@ -78,6 +79,15 @@ class FindFunctionArgs(SearchBaseArgs):
 
 class FindFunction(SearchBaseAction):
     args_schema: ClassVar[type[ActionArguments]] = FindFunctionArgs
+
+    def _fallback_queries(self, args: FindFunctionArgs) -> list[str]:
+        names = [args.function_name]
+        if args.class_name:
+            names.extend([args.class_name, f"{args.class_name}.{args.function_name}"])
+        terms = list(names)
+        for name in names:
+            terms.extend(query_terms(name))
+        return list(dict.fromkeys(term for term in terms if term))
 
     async def _search(self, args: FindFunctionArgs) -> SearchCodeResponse:
         logger.info(

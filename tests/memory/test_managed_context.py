@@ -231,7 +231,10 @@ async def test_validation_retry_cannot_bypass_final_request_budget(monkeypatch):
                             policy=ContextPolicy(context_window=8192, max_input_tokens=1200)))
     await agent.initialize(Workspace(repository=InMemRepository()))
     node = Node(node_id=0, user_message="Fix").create_child()
-    with pytest.raises(ContextBudgetExceeded):
-        await agent.generate_actions(node)
-    assert len(calls) == 1
-    assert "context_budget_exceeded" in node.error
+    # Compact protocol corrections remain within budget; only the required
+    # envelope overflowing is a ContextBudgetExceeded. Invalid calls are bounded.
+    await agent.generate_actions(node)
+    assert len(calls) == 3
+    assert "Completion validation error" in node.error
+    for request in calls:
+        assert TokenEstimator("gpt-4o-mini").count({"messages": request["messages"], "tools": request["tools"]}) <= 1200

@@ -1,0 +1,105 @@
+{
+  "purpose": "Public-page access and source-link verification; no credentials or raw HTML retained",
+  "probes": [
+    {
+      "requested_url": "https://post.smzdm.com/p/adog635d/",
+      "checked_at": "2026-10-21T06:59:51.919178+00:00",
+      "status": 200,
+      "final_url": "https://post.smzdm.com/p/adog635d/",
+      "html_sha256": "06d9eb53c83b0340d51c7891a729d0e0cdc40633b46490c39649a69297553208",
+      "bytes": 155332,
+      "page_title": [
+        "干中学：3天肝出LangGraph简历Agent_办公软件_什么值得买"
+      ],
+      "public_xhs_links": [
+        "https://www.xiaohongshu.com/explore/695533c3000000002103cef4"
+      ]
+    },
+    {
+      "requested_url": "https://post.smzdm.com/p/aggkne0m/",
+      "checked_at": "2026-10-21T06:59:51.921842+00:00",
+      "status": 200,
+      "final_url": "https://post.smzdm.com/p/aggkne0m/",
+      "html_sha256": "067c5b6e49627772c4e9a44038cca096f8cc95d73d6ee58d24b2a6dbb9c576e4",
+      "bytes": 154969,
+      "page_title": [
+        "全栈转大模型开发的第65天_服务软件_什么值得买"
+      ],
+      "public_xhs_links": [
+        "https://www.xiaohongshu.com/explore/699b5e6a00000000150398d4"
+      ]
+    },
+    {
+      "requested_url": "https://post.smzdm.com/p/a7090mz5/",
+      "checked_at": "2026-10-21T06:59:51.922591+00:00",
+      "status": 200,
+      "final_url": "https://post.smzdm.com/p/a7090mz5/",
+      "html_sha256": "71ab371021b0147a12cd7627d2049b7d1c209336bf121da69647663a0d699c19",
+      "bytes": 154683,
+      "page_title": [
+        "我做了个开源简历优化skills_服务软件_什么值得买"
+      ],
+      "public_xhs_links": [
+        "https://www.xiaohongshu.com/explore/699fe5600000000015033347"
+      ]
+    },
+    {
+      "requested_url": "https://post.smzdm.com/p/arz4ede7/",
+      "checked_at": "2026-10-21T06:59:52.308728+00:00",
+      "status": 200,
+      "final_url": "https://post.smzdm.com/p/arz4ede7/",
+      "html_sha256": "8d8bb3e80a593101946ea4ed25bd5a9f850ab18490bb1e8e33183fe476d6e536",
+      "bytes": 156359,
+      "page_title": [
+        "AI Agent 转行路径：从学习误区到就业标准_考试认证_什么值得买"
+      ],
+      "public_xhs_links": [
+        "https://www.xiaohongshu.com/explore/69be8d73000000021a02907c"
+      ]
+    },
+    {
+      "requested_url": "https://post.smzdm.com/p/akovx69e/",
+      "checked_at": "2026-10-21T06:59:52.399496+00:00",
+      "status": 200,
+      "final_url": "https://post.smzdm.com/p/akovx69e/",
+      "html_sha256": "d923a3015970b16650eff359b915cccd8f54cba6a3118c09891fa26ba774e4c6",
+      "bytes": 155657,
+      "page_title": [
+        "非科班0经验转llm找到第一份大厂大模型实习_服务软件_什么值得买"
+      ],
+      "public_xhs_links": [
+        "https://www.xiaohongshu.com/explore/697312df000000001a02a85a"
+      ]
+    },
+    {
+      "requested_url": "https://www.xiaohongshu.com/search_result?keyword=agent%20%E7%AE%80%E5%8E%86&type=51",
+      "checked_at": "2026-10-21T06:59:52.471103+00:00",
+      "status": 200,
+      "final_url": "https://www.xiaohongshu.com/search_result/?keyword=agent%20%E7%AE%80%E5%8E%86&type=51",
+      "html_sha256": "500a8d09aef88d82438f149f7eb9db41fb72be24211d5cf21662c80eaaed5fe6",
+      "bytes": 60607,
+      "page_title": [
+        "agent 简历 - 小红书搜索"
+      ],
+      "public_xhs_links": [],
+      "search_feed_count": 0,
+      "note_detail_count": 0,
+      "logged_in": false
+    },
+    {
+      "requested_url": "https://www.xiaohongshu.com/explore/695533c3000000002103cef4",
+      "checked_at": "2026-10-21T06:59:52.894008+00:00",
+      "status": 200,
+      "final_url": "https://www.xiaohongshu.com/404?source=/404/sec_jrmWAVvB?redirectPath=https%3A%2F%2Fwww.xiaohongshu.com%2Fexplore%2F695533c3000000002103cef4&error_code=300031&error_msg=%E5%BD%93%E5%89%8D%E7%AC%94%E8%AE%B0%E6%9A%82%E6%97%B6%E6%97%A0%E6%B3%95%E6%B5%8F%E8%A7%88&uuid=b6a70260-fa0e-4563-8eb8-a4329c081565&verifyMsg=",
+      "html_sha256": "011c44cf688fbb0f0f1a7c8e25d6c02d0dafdb2449c29dc70da1a371eb94f67d",
+      "bytes": 97136,
+      "page_title": [
+        "小红书 - 你访问的页面不见了"
+      ],
+      "public_xhs_links": [],
+      "search_feed_count": 0,
+      "note_detail_count": 0,
+      "logged_in": false
+    }
+  ]
+}

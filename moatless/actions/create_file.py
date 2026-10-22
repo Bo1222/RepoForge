@@ -105,9 +105,17 @@ class CreateFile(Action, CodeActionValueMixin, CodeModificationMixin):
                 properties={"fail_reason": "file_exists"},
             )
 
+        token, conflict = self.edit_token(file_context, path)
+        if conflict:
+            return conflict
+        syntax_error, syntax_check = await self.validate_candidate(str(path), "", args.file_text)
+        if syntax_error:
+            return syntax_error
         context_file = file_context.add_file(str(path), show_all_spans=True)
-        context_file.apply_changes(args.file_text)
+        conflict = self.commit_candidate(context_file, args.file_text, token)
+        if conflict:
+            return conflict
 
         message = f"File created successfully at: {path}"
 
-        return Observation.create(message=message, summary=message)
+        return Observation.create(message=message, summary=message, properties={"syntax_checks": [syntax_check], "syntax_checked": syntax_check["status"] == "valid"})

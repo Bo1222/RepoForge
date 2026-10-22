@@ -105,6 +105,8 @@ class PytestSmokeRuntime(RuntimeEnvironment):
                 timeout=30,
             )
             self.runs.append({"returncode": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr})
+            self.last_test_execution = [{"target": path, "command": "real pytest", "return_code": proc.returncode}
+                                        for path in test_files or ["test_calc.py"]]
             return [
                 TestResult(
                     name="test_add",
@@ -121,14 +123,45 @@ def normalize(value):
         return {
             k: normalize(v)
             for k, v in value.items()
-            if k not in {"timestamp", "start_time", "end_time", "test_duration", "execution_time"}
+            if k not in {"timestamp", "start_time", "end_time", "test_duration", "execution_time", "started_at", "duration"}
         }
     if isinstance(value, list):
         return [normalize(v) for v in value]
     return value
 
 
-async def replay(flow_class=AgenticLoop, coding=True):
+def historical_test_projection(value):
+    """D07: project out only additive workspace-test provenance for M0 checks.
+
+    Raw replays retain all execution receipts, including newly added return codes.
+    Arguments, output, usage, patches and artifact changes remain compared;
+    v2 execution facts are independently tested against actual pytest processes.
+    """
+    result = copy.deepcopy(value)
+    additive = {"test_source", "test_origins", "product_patch_hash", "tested_patch_hash",
+                "result_statuses", "result_count", "product_source", "runner", "environment", "test_bundle_hash",
+                "input_identity", "check_id", "introduced_failures", "public_baseline", "test_files",
+                "result_counts", "test_results", "test_execution", "return_code", "timed_out", "complete",
+                "patch_stale", "continuation_safe", "targets", "execution_status", "recipe_version", "base_identity",
+                "verification_inputs", "product_inputs_hash", "runner_fingerprint", "input_identity_after", "product_files",
+                "started_at", "duration", "commands", "partial", "uncompleted_targets", "related_targets"}
+    for node in result.get("trajectory", {}).get("nodes", []):
+        observations = [node.get("output", {})]
+        observations.extend(step.get("observation", {}) for step in node.get("action_steps", [])
+                            )
+        for observation in observations:
+            props = observation.get("properties") or {}
+            props.pop("syntax_checked", None)
+            props.pop("syntax_checks", None)
+            if props.get("test_source") == "workspace":
+                for key in additive:
+                    props.pop(key, None)
+                if not props:
+                    observation.pop("properties", None)
+    return result
+
+
+async def replay(flow_class=AgenticLoop, coding=True, managed=False):
     events = []
 
     async def capture(event):
@@ -152,7 +185,13 @@ async def replay(flow_class=AgenticLoop, coding=True):
             responses = [response(RespondArgs(message="Offline Respond-only smoke."))]
             actions = [Respond()]
         model = ScriptedCompletion(responses)
-        agent = ActionAgent(completion_model=model, system_prompt=PROMPT, actions=actions)
+        memory_options = {}
+        if managed:
+            from moatless.message_history.managed import ManagedMessageHistoryGenerator
+            from moatless.message_history.policy import ContextPolicy
+            memory_options["memory"] = ManagedMessageHistoryGenerator(policy=ContextPolicy(
+                context_window=1048576, enable_task_state=False, load_repo_instructions=False))
+        agent = ActionAgent(completion_model=model, system_prompt=PROMPT, actions=actions, **memory_options)
         flow = flow_class.create(
             message="Fix add" if coding else "Respond",
             agent=agent,
@@ -190,6 +229,7 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--flow", choices=["loop", "graph"], default="loop")
     parser.add_argument("--respond", action="store_true")
+    parser.add_argument("--managed", action="store_true", help="Same-source Managed facts migration comparison")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     flow_class = AgenticLoop
@@ -197,7 +237,7 @@ async def main():
         from moatless.flow.langgraph_flow import LangGraphFlow
 
         flow_class = LangGraphFlow
-    result, runs = await replay(flow_class, coding=not args.respond)
+    result, runs = await replay(flow_class, coding=not args.respond, managed=args.managed)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")

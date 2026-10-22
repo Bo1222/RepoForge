@@ -13,12 +13,15 @@ class TestRunTestsAction:
     def file_context(self):
         mock_file_context = MagicMock(spec=FileContext)
         mock_file_context.file_exists = lambda path: True
+        mock_file_context._files = {}
+        mock_file_context.generate_git_patch.return_value = ""
         return mock_file_context
 
     @pytest.fixture
     def workspace(self):
         mock_workspace = MagicMock(spec=Workspace)
         mock_workspace.runtime = AsyncMock()
+        mock_workspace._environment = None
         return mock_workspace
 
     @pytest.fixture
@@ -100,11 +103,17 @@ class TestRunTestsAction:
         # Setup file_context and repository mocks
         file_context.file_exists.return_value = True
         workspace.runtime.run_tests.return_value = test_results
+        # A real input manifest is required even for this output-format test.
+        from moatless.repository.repository import InMemRepository
+        repository = InMemRepository({"tests/file1_test.py": "def test_one(): pass\n"}, shadow_mode=True)
+        workspace.repository = repository
+        file_context = FileContext(repo=repository)
 
         # Mock repository checks
         mock_repository = MagicMock()
         mock_repository.file_exists.return_value = True
         mock_repository.is_directory.return_value = False
+        mock_repository.get_file_content.return_value = "def test_one(): pass\n"
 
         # Create and initialize the action
         action = RunTests()

@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from fnmatch import fnmatch
 from typing import ClassVar, Optional
 
@@ -9,6 +10,7 @@ from moatless.actions.schema import ActionArguments
 from moatless.actions.search_base import SearchBaseAction, SearchBaseArgs
 from moatless.completion.schema import FewShotExample
 from moatless.file_context import FileContext
+from moatless.index.hybrid import fuse_hits
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +92,14 @@ class FindCodeSnippet(SearchBaseAction):
         description="The maximum number of search results to return. Default is 10.",
     )
 
+    def _fallback_queries(self, args):
+        from moatless.actions.query_terms import query_terms
+        return query_terms(args.code_snippet)
+
     async def _search_for_context(self, args: FindCodeSnippetArgs) -> tuple[FileContext, bool]:
         logger.info(f"{self.name}: {args.code_snippet} (file_pattern: {args.file_pattern})")
 
-        matches = await self._repository.find_exact_matches(
+        matches = await self.search_repository.find_exact_matches(
             search_text=args.code_snippet, file_pattern=args.file_pattern
         )
         logger.info(f"Found {len(matches)} matches")
@@ -101,18 +107,50 @@ class FindCodeSnippet(SearchBaseAction):
         if args.file_pattern:
             # Normalize the pattern to handle both **/*.py and *.py cases
             pattern = args.file_pattern.replace("**/", "*")
+            directory = args.file_pattern.rstrip("/")
+            is_directory = self._repository.is_directory(directory)
             matches = [
                 (file_path, line_num)
                 for file_path, line_num in matches
-                if fnmatch(os.path.basename(file_path), pattern) or fnmatch(file_path, args.file_pattern)
+                if (is_directory and file_path.startswith(directory + "/"))
+                or fnmatch(os.path.basename(file_path), pattern) or fnmatch(file_path, args.file_pattern)
             ]
             logger.info(f"Filtered {len(matches)} matches to {len(matches)} matches")
 
-        search_result_context = FileContext(repo=self._repository)
-        for file_path, start_line in matches[: self.max_hits]:
-            num_lines = len(args.code_snippet.splitlines())
-            end_line = start_line + num_lines - 1
+        search_result_context = FileContext(repo=self.search_repository)
+        if matches:
+            for file_path, start_line in matches[: self.max_hits]:
+                num_lines = len(args.code_snippet.splitlines())
+                end_line = start_line + num_lines - 1
 
-            search_result_context.add_line_span_to_context(file_path, start_line, end_line, add_extra=False)
+                search_result_context.add_line_span_to_context(file_path, start_line, end_line, add_extra=False)
+            self._last_search_attempts = {"initial": {"hits": len(matches)}, "fallback_used": False}
+            return search_result_context, False
 
+        # Exact grep missed.  Try identifier-level grep first, then semantic
+        # retrieval.  This is the common failure mode in long trajectories:
+        # the model knows a symbol but not the exact surrounding text.
+        tokens = list(dict.fromkeys(re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", args.code_snippet)))[:3]
+        recovered = []
+        for token in tokens:
+            token_matches = await self.search_repository.find_exact_matches(
+                search_text=token, file_pattern=args.file_pattern
+            )
+            recovered.extend(token_matches)
+        recovered = list(dict.fromkeys(recovered))
+        if recovered:
+            for file_path, start_line in recovered[: self.max_hits]:
+                search_result_context.add_line_span_to_context(
+                    file_path, start_line, start_line, add_extra=False
+                )
+            self._last_search_attempts = {"initial": {"hits": 0}, "fallback_used": True,
+                                          "fallback": "identifier_grep", "hits": len(recovered)}
+            return search_result_context, True
+
+        fallback, details = await self._fallback_context(args)
+        if fallback is not None and not fallback.is_empty():
+            self._last_search_attempts = {"initial": {"hits": 0}, "fallback_used": True, **details}
+            return fallback, True
+
+        self._last_search_attempts = {"initial": {"hits": 0}, "fallback_used": False, "hits": 0}
         return search_result_context, False

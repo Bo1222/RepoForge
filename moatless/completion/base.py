@@ -14,7 +14,6 @@ from litellm.types.utils import ModelResponse as LitellmModelResponse
 from openai import APIConnectionError
 from opentelemetry import trace
 from pydantic import BaseModel, Field, PrivateAttr
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from moatless.completion.schema import (
     AllMessageValues,
@@ -319,6 +318,7 @@ class BaseCompletionModel(MoatlessComponent, ABC):
         retry_count = 0
         completion_response = None
         invocation = CompletionInvocation(model=self.model)
+        transient_retries = 0
 
         @tenacity.retry(
             retry=tenacity.retry_if_exception_type(CompletionRetryError),
@@ -328,7 +328,7 @@ class BaseCompletionModel(MoatlessComponent, ABC):
             before_sleep=lambda retry_state: logger.info(f"Retrying completion with {len(messages)} messages"),
         )
         async def _do_completion_with_validation():
-            nonlocal retry_count, completion_response
+            nonlocal retry_count, completion_response, transient_retries
             retry_count += 1
 
             if self._request_context_hook:
@@ -336,7 +336,13 @@ class BaseCompletionModel(MoatlessComponent, ABC):
 
             with invocation:
                 try:
-                    completion_response = await self._execute_completion(messages, invocation)
+                    try:
+                        completion_response = await self._execute_completion(messages, invocation)
+                    except (APIConnectionError, RateLimitError, asyncio.TimeoutError) as exc:
+                        if transient_retries >= 1:
+                            raise
+                        transient_retries += 1
+                        raise CompletionRetryError("Transient request failure; retry once") from exc
 
                     if invocation.current_attempt:
                         invocation.current_attempt.update_from_response(completion_response, self.model)
@@ -349,10 +355,8 @@ class BaseCompletionModel(MoatlessComponent, ABC):
                         if invocation.current_attempt:
                             invocation.current_attempt.success = False
                             invocation.current_attempt.failure_reason = "Empty response"
-                        raise CompletionRejectError(
-                            "Completion response is empty",
-                            completion_invocation=invocation,
-                        )
+                            invocation.current_attempt.invalid_response = completion_response.model_dump()
+                        raise CompletionRetryError("Empty or length-limited response; return a compact valid tool call")
 
                     try:
                         # Validate the response - may raise CompletionRetryError
@@ -387,31 +391,28 @@ class BaseCompletionModel(MoatlessComponent, ABC):
                         if invocation.current_attempt:
                             invocation.current_attempt.success = False
                             invocation.current_attempt.failure_reason = str(e)
+                            invocation.current_attempt.invalid_response = completion_response.model_dump()
 
-                        tool_call_id = None
-
-                        if completion_response.choices[0].message.tool_calls:
-                            # TODO: Support multiple tool calls
-                            tool_call_id = completion_response.choices[0].message.tool_calls[0].id
-
-                        msg_dict = completion_response.choices[0].message.model_dump()
-                        if "reasoning_content" in msg_dict:
-                            # TODO: Is this Deepseek specific?
-                            del msg_dict["reasoning_content"]
-
-                        messages.append(msg_dict)
-
-                        if e.retry_messages:
-                            logger.warning(f"Post validation failed with retry messages: {e.retry_messages}")
-                            messages.extend(e.retry_messages)
+                        from moatless.message_history.policy import content_hash
+                        import json
+                        raw = completion_response.choices[0].message.model_dump()
+                        # The full response is archived by CompletionAttempt.
+                        # Retry history is a bounded, syntactically legal rejection.
+                        calls = raw.get("tool_calls") or []
+                        if calls and all(len(c.get("function", {}).get("name", "")) <= 128 and len(c.get("id", "")) <= 128 for c in calls):
+                            compact = []
+                            for call in calls:
+                                compact.append({"id": call["id"], "type": "function", "function": {
+                                    "name": call["function"]["name"],
+                                    "arguments": json.dumps({"rejected_arguments_hash": content_hash(call["function"].get("arguments")),
+                                                             "not_executed": True})}})
+                            messages.append({"role": "assistant", "tool_calls": compact})
+                            for call in compact:
+                                messages.append({"role": "tool", "tool_call_id": call["id"],
+                                    "content": "Not executed. Correct the tool schema: " + str(e)[:800]})
                         else:
-                            logger.warning(f"Post validation failed with retry message: {e}")
-                            if tool_call_id:
-                                messages.append(
-                                    ChatCompletionToolMessage(role="tool", content=str(e), tool_call_id=tool_call_id)  # type: ignore
-                                )
-                            else:
-                                messages.append(ChatCompletionUserMessage(role="user", content=str(e)))  # type: ignore
+                            messages.append({"role": "user", "content":
+                                "Response invalid; return a complete valid tool call. " + str(e)[:800]})
                         raise e
                 except Exception as e:
                     # Any exception will be handled by the context manager
@@ -479,103 +480,94 @@ class BaseCompletionModel(MoatlessComponent, ABC):
         if self.merge_same_role_messages:
             messages = self._merge_same_role_messages(messages)
 
-        attempt_count = 0
+        # The validation loop owns the total request/retry budget.
+        try:
+            if "claude" in self.model:
+                self._inject_prompt_caching(messages)
 
-        @retry(
-            retry=tenacity.retry_if_not_exception_type((asyncio.CancelledError, BadRequestError, CompletionRuntimeError)),
-            wait=wait_exponential(multiplier=5, min=5, max=60),
-            stop=stop_after_attempt(3),
-            reraise=True,
-            before_sleep=lambda retry_state: logger.warning(
-                f"Request failed, retrying in {retry_state.next_action.sleep} seconds"
-            ),
-        )
-        async def _do_completion_with_rate_limit_retry():
-            nonlocal attempt_count
-            attempt_count += 1
+            # Build LiteLLM metadata: model-level + node context
+            request_metadata = dict(self.metadata or {})
+            try:
+                node_ctx = current_node_id.get()
+                if node_ctx is not None:
+                    request_metadata["node_id"] = node_ctx
+                step_ctx = current_action_step.get()
+                if step_ctx is not None:
+                    request_metadata["action_step"] = step_ctx
+                phase_ctx = current_phase.get()
+                if phase_ctx is not None:
+                    request_metadata["phase"] = phase_ctx
+            except Exception:
+                pass
 
-            with invocation:
-                try:
-                    if "claude" in self.model:
-                        self._inject_prompt_caching(messages)
+            completion_kwargs = {
+                "model": self.model,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
+                "messages": messages,
+                "metadata": request_metadata,
+                "timeout": self.timeout,
+                **self._completion_params,
+            }
 
-                    # Build LiteLLM metadata: model-level + node context
-                    request_metadata = dict(self.metadata or {})
-                    try:
-                        node_ctx = current_node_id.get()
-                        if node_ctx is not None:
-                            request_metadata["node_id"] = node_ctx
-                        step_ctx = current_action_step.get()
-                        if step_ctx is not None:
-                            request_metadata["action_step"] = step_ctx
-                        phase_ctx = current_phase.get()
-                        if phase_ctx is not None:
-                            request_metadata["phase"] = phase_ctx
-                    except Exception:
-                        pass
+            if (self.model == "openai/deepseek-flash" and
+                    (self.model_base_url or "").rstrip("/") == "https://api.deepseek.com" and
+                    not completion_kwargs.get("api_key")):
+                raise CompletionRuntimeError("Explicit DEEPSEEK_API_KEY is required; OpenAI credential fallback is disabled")
 
-                    completion_kwargs = {
-                        "model": self.model,
-                        "max_tokens": self.max_tokens,
-                        "temperature": self.temperature,
-                        "messages": messages,
-                        "metadata": request_metadata,
-                        "timeout": self.timeout,
-                        **self._completion_params,
-                    }
+            if self._request_context_hook:
+                self._request_context_hook(completion_kwargs["messages"])
 
-                    if self._request_context_hook:
-                        self._request_context_hook(completion_kwargs["messages"])
+            if self.reasoning_effort:
+                completion_kwargs["allowed_openai_params"] = ["reasoning_effort"]
+                completion_kwargs["reasoning_effort"] = self.reasoning_effort
 
-                    if self.reasoning_effort:
-                        completion_kwargs["allowed_openai_params"] = ["reasoning_effort"]
-                        completion_kwargs["reasoning_effort"] = self.reasoning_effort
-                    
-                    response = await litellm.acompletion(**completion_kwargs)
+            response = await litellm.acompletion(**completion_kwargs)
 
-                    if invocation.current_attempt:
-                        invocation.current_attempt.update_from_response(response, self.model)
-                        invocation.current_attempt.success = True
+            if invocation.current_attempt:
+                invocation.current_attempt.update_from_response(response, self.model)
+                invocation.current_attempt.success = True
 
-                    return response
+            return response
 
-                except BadRequestError as e:
-                    if invocation.current_attempt:
-                        invocation.current_attempt.failure_reason = f"BadRequestError: {str(e)}"
+        except BadRequestError as e:
+            if invocation.current_attempt:
+                invocation.current_attempt.failure_reason = f"BadRequestError: {str(e)}"
 
-                    if hasattr(e, "response") and e.response:
-                        response_text = e.response.text
-                    else:
-                        response_text = None
+            if hasattr(e, "response") and e.response:
+                response_text = e.response.text
+            else:
+                response_text = None
 
-                    logger.exception(f"LiteLLM completion failed. Model: {self.model}, " f"Response: {response_text}")
+            logger.exception(f"LiteLLM completion failed. Model: {self.model}, " f"Response: {response_text}")
 
-                    error = CompletionRuntimeError(message=str(e), completion_invocation=invocation)
-                    raise error from e
+            error = CompletionRuntimeError(message=str(e), completion_invocation=invocation)
+            raise error from e
 
-                except APIConnectionError as e:
-                    if invocation.current_attempt:
-                        invocation.current_attempt.failure_reason = f"APIConnectionError: {str(e)}"
+        except (APIConnectionError, asyncio.TimeoutError) as e:
+            if invocation.current_attempt:
+                invocation.current_attempt.failure_reason = f"APIConnectionError: {str(e)}"
 
-                    logger.exception(f"API connection error: {e}")
-                    raise  # Let tenacity handle the retry
+            logger.exception(f"API connection error: {e}")
+            raise  # The validation loop owns retries.
 
-                except RateLimitError as e:
-                    if invocation.current_attempt:
-                        invocation.current_attempt.failure_reason = f"RateLimitError: {str(e)}"
+        except RateLimitError as e:
+            if invocation.current_attempt:
+                invocation.current_attempt.failure_reason = f"RateLimitError: {str(e)}"
 
-                    raise  # Let tenacity handle the retry
+            raise  # The validation loop owns retries.
 
-                except Exception as e:
-                    if invocation.current_attempt:
-                        invocation.current_attempt.failure_reason = f"Exception: {str(e)}"
+        except CompletionRuntimeError:
+            raise
+        except Exception as e:
+            if invocation.current_attempt:
+                invocation.current_attempt.failure_reason = f"Exception: {str(e)}"
 
-                    logger.exception(f"LiteLLM completion failed. Model: {self.model}, " f"Error: {e}")
+            logger.exception(f"LiteLLM completion failed. Model: {self.model}, " f"Error: {e}")
 
-                    error = CompletionRuntimeError(message=str(e), completion_invocation=invocation)
-                    raise error from e
+            error = CompletionRuntimeError(message=str(e), completion_invocation=invocation)
+            raise error from e
 
-        return await _do_completion_with_rate_limit_retry()
 
     def _get_schema_names(self):
         return [schema.__name__ for schema in self._response_schema] if self._response_schema else ["None"]

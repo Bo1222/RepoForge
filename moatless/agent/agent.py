@@ -1,4 +1,5 @@
 from datetime import datetime
+import asyncio
 import logging
 import traceback
 from collections.abc import Callable
@@ -55,6 +56,8 @@ class ActionAgent(MoatlessComponent):
         description="Message history generator to be used for generating completions",
     )
     shadow_mode: bool = Field(True, description="Set to true to not persist changes done by the agent.")
+    model_timeout: float | None = Field(None, gt=0, description="Optional shared generation deadline for Loop/Graph experiments")
+    tool_timeout: float | None = Field(None, gt=0, description="Optional shared action deadline for Loop/Graph experiments")
 
     _action_map: dict[type[ActionArguments], Action] = PrivateAttr(default_factory=dict)
     _workspace: Workspace | None = PrivateAttr(default=None)
@@ -147,7 +150,10 @@ class ActionAgent(MoatlessComponent):
             raise RuntimeError("Node already executed")
         if node.action_steps:
             return
-        await self._generate_actions(node)
+        if self.model_timeout is None:
+            await self._generate_actions(node)
+        else:
+            await asyncio.wait_for(self._generate_actions(node), timeout=self.model_timeout)
         duplicate_node = node.find_node_with_same_action_steps()
         if duplicate_node:
             node.is_duplicate = True
@@ -168,7 +174,15 @@ class ActionAgent(MoatlessComponent):
             raise RuntimeError(f"Action step {step_index} already executed")
         token = current_action_step.set(step_index)
         try:
-            await self._execute(node, step)
+            from moatless.actions.run_tests import RunTests
+            action = self._action_map.get(type(step.action))
+            managed_test = isinstance(action, RunTests)
+            if managed_test and self.tool_timeout is not None:
+                action.timeout = min(action.timeout, self.tool_timeout)
+            if self.tool_timeout is None or managed_test:
+                await self._execute(node, step)
+            else:
+                await asyncio.wait_for(self._execute(node, step), timeout=self.tool_timeout)
         finally:
             current_action_step.reset(token)
 
@@ -410,6 +424,9 @@ class ActionAgent(MoatlessComponent):
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
         dump = super().model_dump(**kwargs)
+        for name in ("model_timeout", "tool_timeout"):
+            if getattr(self, name) is None:
+                dump.pop(name, None)  # preserve historical configuration shape
 
         dump["actions"] = []
         for action in self.actions:

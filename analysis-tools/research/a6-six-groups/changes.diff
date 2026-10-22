@@ -1,0 +1,3184 @@
+--- baseline/moatless/actions/append_string.py
++++ final/moatless/actions/append_string.py
+@@ -78,6 +78,9 @@
+                 properties={"fail_reason": "context_error"},
+             )
+ 
++        token, conflict = self.edit_token(file_context, path)
++        if conflict:
++            return conflict
+         file_text = context_file.content.expandtabs()
+         new_str = args.new_str.expandtabs()
+ 
+@@ -102,12 +105,14 @@
+ 
+         new_file_text = file_text + new_str
+ 
+-        syntax_error = self.validate_python_syntax(str(path), file_text, new_file_text)
++        syntax_error, syntax_check = await self.validate_candidate(str(path), file_text, new_file_text)
+         if syntax_error is not None:
+             return syntax_error
+ 
+         diff = do_diff(str(path), file_text, new_file_text)
+-        context_file.apply_changes(new_file_text)
++        conflict = self.commit_candidate(context_file, new_file_text, token)
++        if conflict:
++            return conflict
+ 
+         message = (
+             f"The file {path} has been edited. "
+@@ -118,5 +123,5 @@
+         return Observation.create(
+             message=message,
+             summary=message,
+-            properties={"diff": diff, "success": True},
++            properties={"diff": diff, "success": True, "syntax_checks": [syntax_check], "syntax_checked": syntax_check["status"] == "valid"},
+         )
+--- baseline/moatless/actions/check_syntax.py
++++ final/moatless/actions/check_syntax.py
+@@ -0,0 +1,30 @@
++from pydantic import ConfigDict, Field
++from moatless.actions.action import Action
++from moatless.actions.schema import ActionArguments, Observation
++from moatless.actions.code_modification_mixin import CodeModificationMixin
++
++
++class CheckSyntaxArgs(ActionArguments):
++    """Compile current Python sources in the task interpreter without executing them."""
++
++    model_config = ConfigDict(title="CheckSyntax")
++    paths: list[str] = Field(min_length=1, max_length=20)
++
++
++class CheckSyntax(Action, CodeModificationMixin):
++    args_schema = CheckSyntaxArgs
++
++    async def execute(self, args, file_context=None):
++        from moatless.repository_context import file_content
++
++        checks = []
++        for path in args.paths:
++            content = file_content(self._workspace, file_context, path)
++            if content is None:
++                return Observation.create("Source not found: " + path, properties={"fail_reason": "file_not_found"})
++            _, check = await self.validate_candidate(path, "", content)
++            checks.append(check)
++        return Observation.create(
++            "Target compilation: " + str([{k: v for k, v in check.items() if k != "environment"} for check in checks]),
++            properties={"syntax_checks": checks},
++        )
+--- baseline/moatless/actions/claude_text_editor.py
++++ final/moatless/actions/claude_text_editor.py
+@@ -285,6 +285,9 @@
+                 message=f"File {path} not found.",
+                 properties={"fail_reason": "file_not_found"},
+             )
++        token, conflict = self.edit_token(file_context, path)
++        if conflict:
++            return conflict
+         file_text = context_file.content.expandtabs()
+         new_str = new_str.expandtabs()
+         file_text_lines = file_text.split("\n")
+@@ -308,7 +311,12 @@
+         snippet = "\n".join(snippet_lines)
+ 
+         diff = do_diff(str(path), file_text, new_file_text)
+-        context_file.apply_changes(new_file_text)
++        error, check = await self.validate_candidate(str(path), file_text, new_file_text)
++        if error:
++            return error
++        conflict = self.commit_candidate(context_file, new_file_text, token)
++        if conflict:
++            return conflict
+ 
+         success_msg = f"The file {path} has been edited. "
+         success_msg += self._make_output(
+@@ -320,7 +328,7 @@
+ 
+         return Observation.create(
+             message=success_msg,
+-            properties={"diff": diff},
++            properties={"diff": diff, "syntax_checks": [check], "syntax_checked": check["status"] == "valid"},
+         )
+ 
+     def _make_output(
+--- baseline/moatless/actions/code_modification_mixin.py
++++ final/moatless/actions/code_modification_mixin.py
+@@ -112,6 +112,56 @@
+             )
+         return None
+ 
++    def edit_token(self, context, path):
++        from moatless.edit_guard import EditConflict, source_version
++        try:
++            return source_version(context.repository, str(path), context._files.get(str(path))), None
++        except EditConflict as exc:
++            return None, Observation.create(str(exc), properties={"fail_reason": "edit_conflict"})
++
++    def commit_candidate(self, file, content, token):
++        from moatless.edit_guard import EditConflict
++        try:
++            file.apply_changes(content, expected_source_version=token)
++        except EditConflict as exc:
++            return Observation.create(str(exc), properties={"fail_reason": "edit_conflict", "execution_status": "invalid_args"})
++        return None
++
++    async def validate_candidate(self, path, old_content, candidate):
++        from moatless.runtime.deadline import invoke
++        from moatless.message_history.policy import content_hash
++        from moatless.execution_memory import environment_version
++        from moatless.runtime.runtime import RuntimeEnvironment
++        if not str(path).endswith(".py"):
++            return None, {"status": "not_applicable", "path": str(path)}
++        runtime = self._workspace.runtime if self._workspace else None
++        environment_before = environment_version(self._workspace) if self._workspace else None
++        check = {"status": "unavailable", "reason": "target_interpreter_not_configured"}
++        if isinstance(runtime, RuntimeEnvironment):
++            try:
++                result, timeout = await invoke(runtime.compile_python(candidate, str(path)), timeout=10, cleanup_grace=2)
++                check = result if not timeout else {"status": "unavailable", "reason": "compiler_timeout"}
++            except (OSError, ValueError) as exc:
++                check = {"status": "unavailable", "reason": type(exc).__name__}
++        check = {**check, "path": str(path), "content_hash": content_hash(candidate),
++                 "environment": environment_version(self._workspace) if self._workspace else None}
++        if check["environment"] != environment_before:
++            check.update(status="unavailable", reason="compiler_environment_changed")
++        if check["status"] == "invalid":
++            old, timeout = await invoke(runtime.compile_python(old_content, str(path)), timeout=10, cleanup_grace=2)
++            if not timeout and old.get("status") == "invalid":
++                return None, check  # Allow incremental repair; finalization still requires valid compilation.
++            return Observation.create("Candidate not applied: target Python compilation failed. " + str(check.get("message")),
++                properties={"fail_reason": "syntax_error", "syntax_error": check, "syntax_checks": [check]}), check
++        if check["status"] == "unavailable":
++            # Preserve useful host diagnostics without claiming target compatibility.
++            diagnostic = self.validate_python_syntax(str(path), old_content, candidate)
++            if diagnostic:
++                diagnostic.properties["syntax_checks"] = [check]
++                diagnostic.properties["syntax_checked"] = False
++                return diagnostic, check
++        return None, check
++
+     def format_snippet_with_lines(self, snippet: str, start_line: int) -> str:
+         """Format a code snippet with line numbers"""
+         return "\n".join(f"{i + start_line:6}\t{line}" for i, line in enumerate(snippet.split("\n")))
+--- baseline/moatless/actions/create_file.py
++++ final/moatless/actions/create_file.py
+@@ -105,12 +105,17 @@
+                 properties={"fail_reason": "file_exists"},
+             )
+ 
+-        syntax_error = self.validate_python_syntax(str(path), "", args.file_text)
++        token, conflict = self.edit_token(file_context, path)
++        if conflict:
++            return conflict
++        syntax_error, syntax_check = await self.validate_candidate(str(path), "", args.file_text)
+         if syntax_error:
+             return syntax_error
+         context_file = file_context.add_file(str(path), show_all_spans=True)
+-        context_file.apply_changes(args.file_text)
++        conflict = self.commit_candidate(context_file, args.file_text, token)
++        if conflict:
++            return conflict
+ 
+         message = f"File created successfully at: {path}"
+ 
+-        return Observation.create(message=message, summary=message)
++        return Observation.create(message=message, summary=message, properties={"syntax_checks": [syntax_check], "syntax_checked": syntax_check["status"] == "valid"})
+--- baseline/moatless/actions/create_python_file.py
++++ final/moatless/actions/create_python_file.py
+@@ -110,8 +110,16 @@
+                 properties={"fail_reason": "file_exists"},
+             )
+ 
++        token, conflict = self.edit_token(file_context, path)
++        if conflict:
++            return conflict
++        error, check = await self.validate_candidate(str(path), "", args.file_text)
++        if error:
++            return error
+         context_file = file_context.add_file(str(path), show_all_spans=True)
+-        context_file.apply_changes(args.file_text)
++        conflict = self.commit_candidate(context_file, args.file_text, token)
++        if conflict:
++            return conflict
+ 
+         message = f"File created successfully at: {path}"
+ 
+@@ -120,6 +128,9 @@
+             run_script = RunPythonScript()
+             await run_script.initialize(self.workspace)
+             run_args = RunPythonScriptArgs(thoughts="Executing created Python file", script_path=str(path))
+-            return await run_script.execute(run_args, file_context)
++            observation = await run_script.execute(run_args, file_context)
++            observation.properties = {**(observation.properties or {}), "syntax_checks": [check],
++                                      "syntax_checked": check["status"] == "valid"}
++            return observation
+             
+-        return Observation.create(message=message, summary=message)
++        return Observation.create(message=message, summary=message, properties={"syntax_checks": [check], "syntax_checked": check["status"] == "valid"})
+--- baseline/moatless/actions/explain_test_conflict.py
++++ final/moatless/actions/explain_test_conflict.py
+@@ -0,0 +1,37 @@
++"""Record a public, execution-backed conflict for partial delivery only."""
++
++from pydantic import ConfigDict, Field
++from moatless.actions.action import Action
++from moatless.actions.schema import ActionArguments, Observation
++
++
++class ExplainTestConflictArgs(ActionArguments):
++    """Cite an original assertion conflicting with a proven public issue behavior.
++
++    This can only support partially_verified delivery. It never turns failing
++    tests into passes or exempts a mandatory acceptance check.
++    """
++
++    model_config = ConfigDict(title="ExplainTestConflict", extra="forbid")
++    criterion_id: str
++    candidate_source: str
++    failing_case: str
++    public_quote: str = Field(min_length=3)
++    original_assertion: str = Field(min_length=6)
++    explanation: str = Field(min_length=20, max_length=2000)
++
++
++class ExplainTestConflict(Action):
++    args_schema = ExplainTestConflictArgs
++
++    async def execute_for_node(self, args, node):
++        from moatless.policy.conflicts import validate_conflict
++
++        claim = args.model_dump(exclude={"thoughts"})
++        error = validate_conflict(node, self._workspace, claim)
++        if error:
++            return Observation.create(error, properties={"fail_reason": "invalid_args"})
++        return Observation.create(
++            "Public conflict evidence recorded; only partial delivery is eligible after all task checks pass.",
++            properties={"expectation_conflict": claim},
++        )
+--- baseline/moatless/actions/insert_line.py
++++ final/moatless/actions/insert_line.py
+@@ -114,6 +114,9 @@
+                 properties={"fail_reason": "lines_not_in_context"},
+             )
+ 
++        token, conflict = self.edit_token(file_context, path)
++        if conflict:
++            return conflict
+         file_text = context_file.content.expandtabs()
+         new_str = args.new_str.expandtabs()
+         file_text_lines = file_text.split("\n")
+@@ -136,11 +139,13 @@
+         new_file_text = "\n".join(new_file_text_lines)
+         snippet = "\n".join(snippet_lines)
+ 
+-        syntax_error = self.validate_python_syntax(str(path), file_text, new_file_text)
++        syntax_error, syntax_check = await self.validate_candidate(str(path), file_text, new_file_text)
+         if syntax_error is not None:
+             return syntax_error
+ 
+-        context_file.apply_changes(new_file_text)
++        conflict = self.commit_candidate(context_file, new_file_text, token)
++        if conflict:
++            return conflict
+ 
+         # Format the snippet with line numbers
+         snippet_with_lines = "\n".join(
+@@ -155,4 +160,4 @@
+             "Edit the file again if necessary."
+         )
+ 
+-        return Observation.create(message=message)
++        return Observation.create(message=message, properties={"syntax_checks": [syntax_check], "syntax_checked": syntax_check["status"] == "valid"})
+--- baseline/moatless/actions/replan_repair.py
++++ final/moatless/actions/replan_repair.py
+@@ -0,0 +1,26 @@
++from pydantic import ConfigDict, Field
++from moatless.actions.action import Action
++from moatless.actions.schema import ActionArguments, Observation
++
++
++class ReplanRepairArgs(ActionArguments):
++    """Submit a revised diagnosis after reading new evidence for a blocked failure family.
++
++    The controller validates evidence references before allowing the final repair.
++    """
++
++    model_config = ConfigDict(title="ReplanRepair", extra="forbid")
++    family_id: str
++    hypothesis: str = Field(min_length=12, max_length=2000)
++    evidence_sources: list[str] = Field(min_length=1, max_length=10)
++    next_steps: str = Field(min_length=12, max_length=2000)
++
++
++class ReplanRepair(Action):
++    args_schema = ReplanRepairArgs
++
++    async def execute_for_node(self, args, node):
++        return Observation.create(
++            "Replan submitted; execution evidence must be accepted by the controller.",
++            properties={"replan_proposal": args.model_dump(exclude={"thoughts"})},
++        )
+--- baseline/moatless/actions/run_tests.py
++++ final/moatless/actions/run_tests.py
+@@ -1,4 +1,3 @@
+-import asyncio
+ import logging
+ from typing import Literal
+ 
+@@ -109,9 +108,11 @@
+         description="The maximum number of tokens in the test result output message",
+     )
+     timeout: float = Field(
+-        110,
++        120,
+         description="Per-invocation wall-clock timeout in seconds; the job continues with a tool_timeout observation",
+     )
++
++    cleanup_grace: float = Field(default=10, gt=0)
+ 
+     async def initialize(self, workspace: Workspace):
+         await super().initialize(workspace)
+@@ -126,10 +127,14 @@
+         """Run one explicit recipe. No implicit source switching or baseline run."""
+         if file_context is None:
+             raise ValueError("File context must be provided")
+-        from moatless.actions.test_targets import discover_test_targets, is_verifiable_test_module
+-        from moatless.execution_memory import environment_version
++        from moatless.actions.test_targets import discover_test_targets, is_verifiable_test_module, is_related_test
+         from moatless.message_history.policy import content_hash
+         from moatless.repository_context import file_content
++        from moatless.verification_inputs import capture_recipe, verification_patch, verification_input, declared_inputs
++        from moatless.runtime.deadline import invoke
++        from datetime import datetime, timezone
++        import time
++        from subprocess import SubprocessError
+ 
+         targets = list(dict.fromkeys(args.test_files))
+         invalid = [path for path in targets if "::" in path or not is_verifiable_test_module(
+@@ -140,7 +145,13 @@
+                             "test_results": [], "candidates": discover_test_targets(self._repository, [])[:5]})
+         product = file_context.generate_git_patch(ignore_tests=True)
+         full = file_context.generate_git_patch()
+-        origins, contents = {}, {}
++        try:
++            declared = declared_inputs(self._workspace, targets)
++            recipe = capture_recipe(self._workspace, file_context, targets, args.test_source, args.product_source)
++        except (OSError, ValueError, SubprocessError) as exc:
++            return Observation.create("Verification inputs unavailable: " + str(exc)[:500],
++                properties={"fail_reason": "environment_error", "execution_status": "environment_error", "complete": False})
++        origins = {}
+         for path in targets:
+             file = file_context._files.get(path)
+             base = file.get_base_content() if file else self._repository.get_file_content(path)
+@@ -149,32 +160,35 @@
+             if args.test_source == "base_public" and not base:
+                 return Observation.create(message="base_public requires original public tests.",
+                     properties={"fail_reason": "no_test_files", "execution_status": "invalid_args"})
+-            contents[path] = base if args.test_source == "base_public" else current
+         # The runtime starts from base. A baseline with a workspace repro retains
+         # exactly the same test changes, but excludes the product changes.
+         if args.product_source == "base":
+-            patch = "" if args.test_source == "base_public" else _test_patch(file_context)
++            patch = "" if args.test_source == "base_public" else verification_patch(file_context, declared)
+         else:
+-            patch = product if args.test_source == "base_public" else full
++            patch = ("\n".join(f.patch for f in file_context.files if f.patch and not verification_input(f.file_path, declared))
++                     if args.test_source == "base_public" else full)
+         tested_product = "" if args.product_source == "base" else product
+-        env = environment_version(self._workspace)
+-        recipe = {"product_patch_hash": content_hash(tested_product), "test_bundle_hash": content_hash(contents),
+-                  "runner": type(self._workspace.runtime).__qualname__, "environment": env,
+-                  "targets": targets, "test_source": args.test_source, "product_source": args.product_source}
+-        props = {**recipe, "input_identity": content_hash(recipe), "tested_patch_hash": content_hash(patch),
+-                 "check_id": args.check_id, "test_origins": origins, "introduced_failures": None,
+-                 "public_baseline": {"status": "not_run"}, "test_files": targets}
++        props = {**recipe, "product_patch_hash": content_hash(tested_product), "input_identity": content_hash(recipe),
++                 "tested_patch_hash": content_hash(patch), "check_id": args.check_id, "test_origins": origins,
++                 "introduced_failures": None, "public_baseline": {"status": "unknown", "reason": "baseline_not_run"},
++                 "test_files": targets, "runner": type(self._workspace.runtime).__qualname__,
++                 "product_files": [f.file_path for f in file_context.files if f.patch and not verification_input(f.file_path, declared)]}
++        props["related_targets"] = {path: is_related_test(_TestSource(self._repository, file_context, args.test_source),
++                                                       path, props["product_files"]) for path in targets} if props["product_files"] else {}
+         runtime = self._workspace.runtime
+         # Clear invocation buffers before starting, never reuse previous results.
+         for attr in ("last_test_execution", "last_test_results"):
+             if hasattr(runtime, attr):
+                 setattr(runtime, attr, [])
+         timed_out = False
++        started_at, started = datetime.now(timezone.utc).isoformat(), time.monotonic()
+         try:
+-            results = await asyncio.wait_for(runtime.run_tests(test_files=targets, patch=patch), timeout=self.timeout)
+-        except asyncio.TimeoutError:
+-            timed_out = True
+-            results = list(getattr(runtime, "last_test_results", []) or [])
++            kwargs = {"test_files": targets, "patch": patch}
++            if getattr(runtime, "supports_managed_deadline", False) is True:
++                kwargs["managed_deadline"] = True
++            results, timed_out = await invoke(runtime.run_tests(**kwargs), timeout=self.timeout, cleanup_grace=self.cleanup_grace)
++            if timed_out:
++                results = list(getattr(runtime, "last_test_results", []) or [])
+         except (OSError, RuntimeError) as exc:
+             return Observation.create(message=f"Test environment error: {type(exc).__name__}: {str(exc)[:800]}",
+                 properties={**props, "fail_reason": "environment_error", "execution_status": "environment_error",
+@@ -186,13 +200,23 @@
+         timed_out = timed_out or any(r.timed_out for r in results)
+         complete = not timed_out and set(targets) <= {r.file_path for r in results}
+         counts = {value: statuses.count(value) for value in set(statuses)}
++        binding_error = None
++        try:
++            after_recipe = capture_recipe(self._workspace, file_context, targets, args.test_source, args.product_source)
++        except (OSError, ValueError, SubprocessError) as exc:
++            after_recipe, binding_error = None, str(exc)[:500]
+         props.update(result_statuses=statuses, result_counts=counts, result_count=len(results),
+             test_results=[r.model_dump(mode="json") for r in results], test_execution=executions,
+             return_code=code, timed_out=timed_out, complete=complete,
+-            patch_stale=(product != file_context.generate_git_patch(ignore_tests=True)
+-                         or full != file_context.generate_git_patch()
+-                         or env != environment_version(self._workspace)),
++            patch_stale=(recipe != after_recipe),
+             execution_status="timeout" if timed_out else "ok")
++        props.update(started_at=started_at, duration=time.monotonic() - started,
++                     commands=[entry.get("command") for entry in executions], partial=not complete,
++                     uncompleted_targets=sorted(set(targets) - {r.file_path for r in results if not r.timed_out}))
++        props["input_identity_after"] = content_hash(after_recipe) if after_recipe is not None else None
++        if binding_error:
++            props.update(fail_reason="environment_error", execution_status="environment_error", complete=False,
++                         input_binding_error=binding_error)
+         props["continuation_safe"] = getattr(runtime, "last_test_cleanup_confirmed", None) if timed_out else True
+         if timed_out:
+             props["fail_reason"] = "tool_timeout"
+@@ -313,11 +337,6 @@
+         ]
+ 
+ 
+-def _test_patch(context):
+-    from moatless.utils.file import is_test
+-    return "\n".join(file.patch for file in context.files if file.patch and is_test(file.file_path))
+-
+-
+ class _TestSource:
+     def __init__(self, repository, context, source):
+         self.repository, self.context, self.source = repository, context, source
+--- baseline/moatless/actions/string_replace.py
++++ final/moatless/actions/string_replace.py
+@@ -266,6 +266,9 @@
+         if not context_file:
+             raise ValueError(f"File {path} not found in file context")
+ 
++        token, conflict = self.edit_token(file_context, path)
++        if conflict:
++            return conflict
+         file_content = context_file.content.expandtabs()
+         old_str = args.old_str.expandtabs()
+         new_str = args.new_str.expandtabs()
+@@ -439,12 +442,15 @@
+         diff = context_file.generate_patch(file_content, new_file_content)
+ 
+         if str(path).endswith(".py"):
+-            syntax_error = self.validate_python_syntax(str(path), file_content, new_file_content)
++            syntax_error, syntax_check = await self.validate_candidate(str(path), file_content, new_file_content)
+             if syntax_error is not None:
+                 return syntax_error
+-            properties["syntax_checked"] = True
+-
+-        context_file.apply_changes(new_file_content)
++            properties["syntax_checked"] = syntax_check["status"] == "valid"
++            properties["syntax_checks"] = [syntax_check]
++
++        conflict = self.commit_candidate(context_file, new_file_content, token)
++        if conflict:
++            return conflict
+ 
+         # Create a snippet of the edited section
+         snippet_start_line = max(0, start_line - SNIPPET_LINES - 1)
+--- baseline/moatless/agent/agent.py
++++ final/moatless/agent/agent.py
+@@ -174,7 +174,12 @@
+             raise RuntimeError(f"Action step {step_index} already executed")
+         token = current_action_step.set(step_index)
+         try:
+-            if self.tool_timeout is None:
++            from moatless.actions.run_tests import RunTests
++            action = self._action_map.get(type(step.action))
++            managed_test = isinstance(action, RunTests)
++            if managed_test and self.tool_timeout is not None:
++                action.timeout = min(action.timeout, self.tool_timeout)
++            if self.tool_timeout is None or managed_test:
+                 await self._execute(node, step)
+             else:
+                 await asyncio.wait_for(self._execute(node, step), timeout=self.tool_timeout)
+--- baseline/moatless/edit_guard.py
++++ final/moatless/edit_guard.py
+@@ -0,0 +1,17 @@
++"""Optimistic edit tokens include both the overlay and its underlying source."""
++
++from moatless.message_history.policy import content_hash
++
++
++class EditConflict(ValueError):
++    pass
++
++
++def source_version(repository, path, file=None):
++    disk = repository.get_file_content(path)
++    overlay = file.content if file is not None else disk
++    if file is not None and file._is_new and not file.was_edited and disk is None:
++        overlay = None
++    if not repository.shadow_mode and file is not None and disk != overlay:
++        raise EditConflict("Cached source differs from the current file; read it again before editing")
++    return content_hash({"path": path, "overlay": overlay, "source": disk})
+--- baseline/moatless/evaluation/experiment.py
++++ final/moatless/evaluation/experiment.py
+@@ -117,11 +117,19 @@
+         if "max_identify_tokens" in action:
+             action["completion_model"] = {**auxiliary, "max_tokens": action["max_identify_tokens"]}
+     if variant == "a6":
+-        config["actions"].append({"action_class": "moatless.actions.register_acceptance_plan.RegisterAcceptancePlan"})
++        config["actions"].extend([
++            {"action_class": "moatless.actions.register_acceptance_plan.RegisterAcceptancePlan"},
++            {"action_class": "moatless.actions.check_syntax.CheckSyntax"},
++            {"action_class": "moatless.actions.replan_repair.ReplanRepair"},
++            {"action_class": "moatless.actions.explain_test_conflict.ExplainTestConflict"}])
+         config["system_prompt"] += ("\nRegisterAcceptancePlan before editing: extract observable criteria from public issue quotes. "
+-            "Link mandatory explicit test modules. Issue behavior requires base failure/current pass with identical tests. "
++            "Use one explicit test module per invocation and separate mandatory checks for additional modules. "
++            "Issue behavior requires base failure/current pass with identical tests. "
+             "Never mark criteria passed yourself. A passed check only finishes the task when every obligation is satisfied. "
+             "Tests are an observation barrier: wait for results before proposing further edits. "
++            "After repeated failed repairs, read new evidence and call ReplanRepair before editing again. "
++            "An original assertion conflicting with proven public issue behavior may be recorded with ExplainTestConflict; "
++            "this only permits partial delivery and never waives mandatory checks. "
+             "When all requirements pass the controller finalizes automatically; hidden resolution is unknown.")
+     config["completion_model"] = model
+     config["model_timeout"] = model["timeout"]
+@@ -251,7 +259,7 @@
+     if repair_profile == "a6":
+         manifest["profiles"] = A6_PROFILES
+         manifest["agent_configs"] = {"a6": agent_config(root, "a6", model)}
+-        manifest["repair"] = {"protocol": "acceptance-repair-v1", "variant": "a6"}
++        manifest["repair"] = {"protocol": "acceptance-repair-v2", "variant": "a6"}
+     manifest["manifest_hash"] = content_hash(manifest)
+     write_json(output / "manifest.json", manifest)
+     jobs = make_jobs(manifest)
+@@ -318,7 +326,8 @@
+     if manifest.get("repair"):
+         if manifest.get("t6") or manifest.get("t7") or manifest.get("exploration"):
+             raise ValueError("Repair protocol cannot reuse another experiment protocol")
+-        if manifest["repair"] != {"protocol": "acceptance-repair-v1", "variant": "a6"}:
++        if manifest["repair"] not in ({"protocol": "acceptance-repair-v1", "variant": "a6"},
++                                     {"protocol": "acceptance-repair-v2", "variant": "a6"}):
+             raise ValueError("Unknown repair protocol")
+         if manifest.get("profiles", {}).get("a6") != A6_PROFILES["a6"]:
+             raise ValueError("Repair manifest requires the explicit a6 profile")
+--- baseline/moatless/evaluation/generation.py
++++ final/moatless/evaluation/generation.py
+@@ -265,9 +265,12 @@
+         if bundle["profile"].get("action_policy", {}).get("variant") == "a6":
+             from moatless.policy.repair import assess
+             assessment = assess(flow.root.get_last_node(), workspace)
+-            checkpoint = (getattr(flow, "graph_state", None) or {}).get("repair_state", {}).get("verified_checkpoint")
+-            if completion.get("status") == "verified" and (
+-                    assessment.state != "ready" or not checkpoint or checkpoint["patch_hash"] != content_hash(patch)):
++            partial = completion.get("status") == "partially_verified"
++            checkpoint_key = "partial_checkpoint" if partial else "verified_checkpoint"
++            checkpoint = (getattr(flow, "graph_state", None) or {}).get("repair_state", {}).get(checkpoint_key)
++            if completion.get("status") in {"verified", "partially_verified"} and (
++                    assessment.state != ("partial_ready" if partial else "ready")
++                    or not checkpoint or checkpoint["patch_hash"] != content_hash(patch)):
+                 completion = {"status": "unverified", "reason": "export_inputs_changed",
+                               "assessment": assessment.model_dump(mode="json"), "resolved": None, "official_harness": "not_run"}
+                 flow.root.get_last_node().completion_status = completion
+--- baseline/moatless/execution_memory.py
++++ final/moatless/execution_memory.py
+@@ -13,7 +13,7 @@
+ 
+ class TestRunRecord(BaseModel):
+     model_config = ConfigDict(frozen=True)
+-    version: Literal[1, 2] = 2
++    version: Literal[1, 2, 3] = 3
+     source_id: str
+     command: str | None = None
+     targets: list[str] = Field(default_factory=list)
+@@ -29,7 +29,14 @@
+     product_patch_hash: str | None = None
+     tested_patch_hash: str | None = None
+     introduced_failures: list[str] | None = None
++    recipe_version: int | None = None
+     input_identity: str | None = None
++    input_identity_after: str | None = None
++    base_identity: dict | None = None
++    verification_inputs: dict | None = None
++    product_inputs_hash: str | None = None
++    runner_fingerprint: str | None = None
++    public_baseline: dict | None = None
+     test_bundle_hash: str | None = None
+     runner: str | None = None
+     product_source: str = "current"
+@@ -37,6 +44,13 @@
+     complete: bool | None = None
+     timed_out: bool = False
+     patch_stale: bool = False
++    product_files: list[str] = Field(default_factory=list)
++    related_targets: dict[str, bool] = Field(default_factory=dict)
++    commands: list[str | None] = Field(default_factory=list)
++    started_at: str | None = None
++    duration: float | None = None
++    partial: bool = False
++    uncompleted_targets: list[str] = Field(default_factory=list)
+     results: list[dict] = Field(default_factory=list)
+     # Historical field retained for reading old trajectories. Export never
+     # selects a patch from receipts; checkpoints support explicit recovery.
+@@ -44,12 +58,14 @@
+ 
+ 
+ def environment_version(workspace) -> str:
+-    runtime, environment = workspace.runtime, workspace._environment
++    runtime, environment = workspace.runtime, getattr(workspace, "_environment", None)
+     def identity(component):
+         if component is None:
+             return None
++        from moatless.runtime.runtime import RuntimeEnvironment
+         return {"class": f"{type(component).__module__}.{type(component).__name__}",
+                 "instance_id": getattr(component, "instance_id", None),
++                "compiler": component.compilation_configuration() if isinstance(component, RuntimeEnvironment) else None,
+                 "env": getattr(component, "env", None), "shell": getattr(component, "shell", None)}
+     # Only the digest is retained; no environment values/credentials are logged.
+     return content_hash({"python": sys.version, "prefix": sys.prefix,
+@@ -96,7 +112,7 @@
+     if observation.properties is None:
+         observation.properties = {}
+     properties = observation.properties
+-    if step.action.name in {"StringReplace", "InsertLine", "AppendString"}:
++    if step.action.name in {"StringReplace", "InsertLine", "InsertLines", "AppendString"}:
+         properties["auto_loaded"] = [path for path in action_paths(step.action)
+             if node.file_context and path in node.file_context._files and path not in before.get("context_files", [])]
+     execution = {"source_id": source, "workspace_before": before["workspace"], "workspace_after": after,
+@@ -163,7 +179,10 @@
+                                tested_patch_hash=properties.get("tested_patch_hash"),
+                                introduced_failures=properties.get("introduced_failures"),
+                                **{key: properties[key] for key in ("input_identity", "test_bundle_hash", "runner",
+-                                   "product_source", "check_id", "complete", "timed_out", "patch_stale") if key in properties},
++                                   "product_source", "check_id", "complete", "timed_out", "patch_stale", "recipe_version",
++                                   "input_identity_after", "base_identity", "verification_inputs", "product_inputs_hash",
++                                   "runner_fingerprint", "public_baseline", "product_files", "related_targets", "commands", "started_at",
++                                   "duration", "partial", "uncompleted_targets") if key in properties},
+                                results=properties.get("test_results", []),
+                                product_patch=properties.get("product_patch"))
+         properties["test_run"] = record.model_dump()
+@@ -193,6 +212,19 @@
+             if key in latest and record.get("complete") is True:
+                 records[latest[key]]["superseded"] = True
+             record["superseded"] = False
++            if record.get("recipe_version") == 3:
++                from moatless.verification_inputs import capture_recipe
++                try:
++                    expected = capture_recipe(workspace, node.file_context, record["targets"],
++                                              record["test_source"], record["product_source"])
++                    same_inputs = record["input_identity"] == content_hash(expected) == record.get("input_identity_after")
++                except (OSError, ValueError):
++                    same_inputs = False
++                record["effective_status"] = record["status"] if same_inputs and not record["patch_stale"] else "stale"
++                if record.get("complete") is True:
++                    latest[key] = len(records)
++                records.append(record)
++                continue
+             same_workspace = record["workspace_before"] == record["workspace_after"] == current
+             if record["test_source"] == "base_public":
+                 same_workspace = (record["workspace_before"] == record["workspace_after"]
+@@ -205,6 +237,22 @@
+             if record.get("complete") is True:
+                 latest[key] = len(records)
+             records.append(record)
++    # Comparisons are derived immutable relations, not mutations of old receipts.
++    from moatless.verification_inputs import compare_runs
++    for candidate in records:
++        if candidate.get("product_source") != "current":
++            continue
++        baselines = [row for row in records if row.get("product_source") == "base"
++                     and set(row["targets"]) == set(candidate["targets"])
++                     and row["test_source"] == candidate["test_source"]]
++        comparisons = [compare_runs(candidate, baseline) for baseline in baselines]
++        comparison = next((row for row in reversed(comparisons) if row["status"] == "known"),
++                          comparisons[-1] if comparisons else compare_runs(candidate, None))
++        candidate["comparison"] = comparison
++        candidate["public_baseline"] = {"status": comparison["status"],
++                                        "source_id": comparison.get("baseline_source"),
++                                        "reason": comparison.get("reason")}
++        candidate["introduced_failures"] = comparison["introduced_failures"]
+     return records
+ 
+ 
+--- baseline/moatless/file_context.py
++++ final/moatless/file_context.py
+@@ -215,7 +215,7 @@
+ 
+         return self._cached_content
+ 
+-    def apply_changes(self, updated_content: str) -> set[str]:
++    def apply_changes(self, updated_content: str, expected_source_version: str | None = None) -> set[str]:
+         """
+         Applies new content to the ContextFile by generating a patch between the base content and the new content.
+ 
+@@ -225,14 +225,16 @@
+         Returns:
+             set[str]: Set of new span IDs added to context
+         """
++        if expected_source_version is not None:
++            from moatless.edit_guard import EditConflict, source_version
++            if source_version(self._repo, self.file_path, self) != expected_source_version:
++                raise EditConflict("Source changed during edit validation; candidate was not committed")
+         # Cache base content before first edit if not already cached
+         if self._cached_base_content is None and not self.was_edited:
+             self.get_base_content()  # This will cache the base content
+ 
+-        self.was_edited = True
+-
+         base_content = self.get_base_content()
+-        self.patch = self.generate_patch(base_content, updated_content)
++        candidate_patch = self.generate_patch(base_content, updated_content)
+ 
+         if not self.shadow_mode:
+             logger.info(f"Saving file {self.file_path} to disk")
+@@ -244,11 +246,15 @@
+                 # Update patch with the actual git diff if available
+                 git_patch = self._repo.file_diff(self.file_path)
+                 if git_patch:
+-                    self.patch = git_patch
++                    candidate_patch = git_patch
+         else:
+             logger.info(f"Updating cached content for {self.file_path}")
+             # In shadow mode, update cached content to the new content
+             self._cached_content = updated_content
++
++        # Publish context state only after the atomic disk commit succeeds.
++        self.was_edited = True
++        self.patch = candidate_patch
+ 
+         new_span_ids = set()
+ 
+--- baseline/moatless/flow/langgraph_flow.py
++++ final/moatless/flow/langgraph_flow.py
+@@ -65,6 +65,8 @@
+             }
+         if self.action_policy.variant != "off":
+             signature["action_policy"] = self.action_policy.model_dump(mode="json")
++            if self.action_policy.variant == "a6":
++                signature["repair_protocol"] = "a6-six-groups-v2"
+         return digest(signature)
+ 
+     def persist_snapshot(self):
+@@ -348,6 +350,11 @@
+                 state, node, RejectError("No executable actions generated"), "model_rejection", "no_actions"
+             )
+         if node.is_duplicate:
++            if self.action_policy.variant == "a6":
++                node.is_duplicate = False
++                self._skip_pending(node, 0, "repeated_proposal_requires_new_evidence")
++                node.policy_feedback = "Repeated proposal without new evidence. Read a related source or change the diagnostic query before another repair."
++                return self._save(state, phase="assess", action_cursor=0)
+             return self._save(state, phase="commit", finish_reason="duplicate")
+         return self._save(state, phase="policy")
+ 
+@@ -428,6 +435,16 @@
+ 
+     async def _execute_action(self, state: GraphState, runtime: Runtime[GraphRuntime]) -> GraphState:
+         node = self._load(state, runtime)
++        if self.action_policy.variant == "a6":
++            from moatless.actions.run_tests import RunTests
++            executed_tests = sum(1 for previous in node.get_trajectory() for step in previous.action_steps
++                if step.action.name == "RunTests" and step.observation is not None
++                and (step.observation.properties or {}).get("execution_status") != "skipped")
++            if node.action_steps[state["action_cursor"]].action.name == "RunTests" and executed_tests >= self.action_policy.max_verification_attempts:
++                return self._repair_stop(state, node, "verification_budget_exhausted", deepcopy(state["repair_state"]))
++            for action in self.agent.actions:
++                if isinstance(action, RunTests) and self.tool_timeout:
++                    action.timeout = min(action.timeout, self.tool_timeout)
+         try:
+             await asyncio.wait_for(
+                 runtime.context.agent.execute_action_step(node, state["action_cursor"]), timeout=(None if node.action_steps[state["action_cursor"]].action.name == "RunTests" else self.tool_timeout)
+@@ -486,11 +503,24 @@
+         if step.action.name == "Finish":
+             self._skip_pending(node, state["action_cursor"], "completion_requires_assessment")
+             return self._save(state, phase="assess", repair_state=saved)
++        if step.action.name == "RunTests" and len(step.action.test_files) != 1:
++            self._skip_pending(node, state["action_cursor"], "single_test_module_required")
++            node.policy_feedback = "Run one explicit module per invocation; register separate mandatory checks for additional modules."
++            return self._save(state, phase="commit", action_cursor=len(node.action_steps), repair_state=saved)
+         if (step.action.name == "StringReplace" and step.action.old_str == step.action.new_str):
+             self._skip_pending(node, state["action_cursor"], "no_changes")
+             node.policy_feedback = "No-op replacement rejected before execution. Read evidence or propose an actual repair."
+             return self._save(state, phase="commit", action_cursor=len(node.action_steps), repair_state=saved)
+-        writes = {"StringReplace", "CreateFile", "InsertLine", "AppendString", "TextEditor", "Bash"}
++        writes = {"StringReplace", "CreateFile", "InsertLine", "InsertLines", "AppendString", "TextEditor", "str_replace_editor", "Bash", "RunPythonScript"}
++        pending_replans = {key: value for key, value in saved.get("replans", {}).items() if value["status"] == "required"}
++        if pending_replans and step.action.name in writes:
++            for gate in pending_replans.values():
++                gate["rejections"] += 1
++            if max(gate["rejections"] for gate in pending_replans.values()) >= 2:
++                return self._repair_stop(state, node, "replan_exhausted", saved)
++            self._skip_pending(node, state["action_cursor"], "evidence_based_replan_required")
++            node.policy_feedback = "Read new diagnostic evidence, then submit ReplanRepair for these families: " + str(list(pending_replans))
++            return self._save(state, phase="commit", action_cursor=len(node.action_steps), repair_state=saved)
+         path = getattr(step.action, "path", None)
+         if step.action.name in writes and saved.get("edit_loops", {}).get(path, {}).get("blocked"):
+             self._skip_pending(node, state["action_cursor"], "edit_loop")
+@@ -523,7 +553,7 @@
+             observed = node.action_steps[index]
+             path = getattr(observed.action, "path", None)
+             loops = saved.setdefault("edit_loops", {})
+-            if observed.action.name in {"StringReplace", "CreateFile", "InsertLine", "AppendString"} and last_props.get("fail_reason"):
++            if observed.action.name in {"StringReplace", "CreateFile", "InsertLine", "InsertLines", "AppendString", "str_replace_editor"} and last_props.get("fail_reason"):
+                 loop = loops.setdefault(path, {"failures": 0, "blocked": False})
+                 loop["failures"] += 1
+                 loop["blocked"] = loop["failures"] >= 2
+@@ -537,30 +567,52 @@
+ 
+         feedback["failures"] = feedback["failures"][:8]
+         node.policy_feedback = "Acceptance assessment: " + __import__("json").dumps(feedback, ensure_ascii=False)
+-        if assessment.state == "ready":
++        if assessment.state in {"ready", "partial_ready"}:
+             self._skip_pending(node, state["action_cursor"] + 1, "acceptance_satisfied")
+             return self._save(state, phase="finalize", repair_state=saved)
+         cursor = state["action_cursor"] + 1
+         while cursor < len(node.action_steps) and node.action_steps[cursor].is_executed():
+             cursor += 1
+-        # A family is stable across patch versions. Only an actual failed
+-        # validation of a changed candidate consumes a repair attempt.
+-        for failure in assessment.failures:
+-            family = content_hash({"kind": failure["kind"], "tests": failure.get("tests"), "file": failure.get("file")})
+-            counter = saved.setdefault("failure_families", {}).setdefault(family, {"patches": [], "repair_attempts": 0})
+-            if assessment.patch_hash not in counter["patches"]:
+-                if counter["patches"]:
+-                    counter["repair_attempts"] += 1
+-                counter["patches"].append(assessment.patch_hash)
+-            if counter["repair_attempts"] >= self.action_policy.max_repair_attempts:
+-                return self._repair_stop(state, node, "repair_exhausted", saved)
+-            if counter["repair_attempts"] == 2:
+-                node.policy_feedback += " Replan the diagnosis before the final bounded repair; do not repeat the same edit."
++        from moatless.execution_memory import test_records
++        from moatless.policy.replanning import update_repair_control, accept_replan
++        exhausted = update_repair_control(node, test_records(node, runtime.context.workspace), saved,
++                                          self.action_policy.max_repair_attempts, assessment.failure_obligations)
++        if exhausted:
++            return self._repair_stop(state, node, exhausted, saved)
++        proposal = last_props.get("replan_proposal")
++        if proposal:
++            accepted, message = accept_replan(node, proposal, saved)
++            last_props["replan_validation"] = {"accepted": accepted, "message": message}
++            node.policy_feedback += " " + message
++            if not accepted:
++                gates = [saved.get("replans", {}).get(proposal["family_id"])]
++                if not gates[0]:
++                    gates = [gate for gate in saved.get("replans", {}).values() if gate["status"] == "required"]
++                for gate in gates:
++                    if not gate:
++                        continue
++                    gate["rejections"] += 1
++                    if gate["rejections"] >= 2:
++                        return self._repair_stop(state, node, "replan_exhausted", saved)
++        required = [key for key, gate in saved.get("replans", {}).items() if gate["status"] == "required"]
++        if required:
++            node.policy_feedback += " Required action: read new evidence and submit ReplanRepair. Family IDs: " + str(required)
+         # Continue a fresh model repair/read proposal; dispatch checks when a
+         # response is exhausted, an edit has occurred, or Finish was proposed.
+         if cursor < len(node.action_steps):
+             return self._save(state, phase="policy", action_cursor=cursor, repair_state=saved)
+-        if assessment.next_check and node.file_context.generate_git_patch(ignore_tests=True).strip():
++        if assessment.syntax_pending and not assessment.failures:
++            from moatless.actions.check_syntax import CheckSyntaxArgs
++            if CheckSyntaxArgs not in self.agent.action_map:
++                raise ValueError("a6 requires CheckSyntax to validate the target interpreter")
++            key = content_hash({"syntax": assessment.syntax_pending, "patch": assessment.patch_hash})
++            attempts = saved.setdefault("syntax_attempts", {})
++            if attempts.get(key, 0) >= 2:
++                return self._repair_stop(state, node, "verification_unavailable", saved)
++            attempts[key] = attempts.get(key, 0) + 1
++            node.action_steps.append(ActionStep(action=CheckSyntaxArgs(paths=assessment.syntax_pending[:1]), origin="policy"))
++            return self._save(state, phase="execute", action_cursor=len(node.action_steps)-1, repair_state=saved)
++        if assessment.next_check and not required and node.file_context.generate_git_patch(ignore_tests=True).strip():
+             total = sum(saved.get("attempts", {}).values())
+             if total >= self.action_policy.max_verification_attempts:
+                 return self._repair_stop(state, node, "verification_budget_exhausted", saved)
+@@ -586,19 +638,23 @@
+         node = self._load(state, runtime)
+         saved = deepcopy(state["repair_state"])
+         assessment = assess(node, runtime.context.workspace)
+-        if assessment.state != "ready":
++        if assessment.state not in {"ready", "partial_ready"}:
+             saved["assessment"] = assessment.model_dump(mode="json")
+             return self._save(state, phase="assess", repair_state=saved)
+         plan = registered_plan(node)
+         checkpoint = VerifiedCheckpoint(product_patch=node.file_context.generate_git_patch(ignore_tests=True),
+             patch_hash=assessment.patch_hash, plan_revision=plan.revision,
+             receipt_sources=assessment.receipts, environment=environment_version(runtime.context.workspace))
+-        saved["verified_checkpoint"] = checkpoint.model_dump(mode="json")
++        partial = assessment.state == "partial_ready"
++        checkpoint_key = "partial_checkpoint" if partial else "verified_checkpoint"
++        saved[checkpoint_key] = checkpoint.model_dump(mode="json")
++        reason = "acceptance_partially_satisfied" if partial else "acceptance_satisfied"
+         node.terminal = True
+-        node.completion_status = {"version": 2, "status": "verified", "reason": "acceptance_satisfied",
+-            "verification_scope": "public acceptance checks", "checkpoint": saved["verified_checkpoint"],
++        node.completion_status = {"version": 2, "status": "partially_verified" if partial else "verified", "reason": reason,
++            "verification_scope": "public acceptance checks", "checkpoint": saved[checkpoint_key],
++            "explained_failures": assessment.explained_failures,
+             "official_harness": "not_run", "resolved": None}
+-        return self._save(state, phase="commit", finish_reason="acceptance_satisfied", repair_state=saved,
++        return self._save(state, phase="commit", finish_reason=reason, repair_state=saved,
+                           action_cursor=len(node.action_steps))
+ 
+     async def _commit_iteration(self, state: GraphState, runtime: Runtime[GraphRuntime]) -> GraphState:
+@@ -679,6 +735,16 @@
+                     except (ValueError, KeyError, TypeError) as exc:
+                         raise RecoveryConflict(f"Invalid durable snapshot: {exc}") from exc
+                     self._graph_state = recovered
++                    if self.action_policy.variant == "a6":
++                        from moatless.policy.repair import assess
++                        repair = recovered.get("repair_state", {})
++                        partial = bool(repair.get("partial_checkpoint"))
++                        checkpoint = repair.get("partial_checkpoint" if partial else "verified_checkpoint")
++                        if checkpoint:
++                            summary = assess(self.root.get_last_node(), self.agent._workspace)
++                            if (summary.state != ("partial_ready" if partial else "ready")
++                                    or checkpoint["patch_hash"] != summary.patch_hash):
++                                raise RecoveryConflict("Saved verification inputs changed; revalidate in a new run before claiming completion")
+                     if recovered["error"]:
+                         raise RuntimeError(
+                             f"Saved {recovered['error_kind']}: {recovered['error']}; start a new run after explicit reconciliation"
+--- baseline/moatless/message_history/managed.py
++++ final/moatless/message_history/managed.py
+@@ -113,6 +113,15 @@
+                         stale.append(source)
+                 facts = {key: value for key, value in (observation.properties or {}).items()
+                          if key in {"return_code", "fail_reason", "test_status", "test_command", "test_run"}}
++                if "test_run" in facts:
++                    # The full immutable manifest/timing/output stays on the
++                    # receipt and is readable by source ID. Project only the
++                    # current control facts into the model request.
++                    receipt = tests_by_source.get(source, facts["test_run"])
++                    fields = {"source_id", "status", "effective_status", "test_source", "product_source", "targets",
++                              "return_code", "counts", "input_identity", "input_identity_after", "complete", "timed_out",
++                              "product_patch_hash", "tested_patch_hash", "comparison", "public_baseline", "introduced_failures"}
++                    facts["test_run"] = {key: value for key, value in receipt.items() if key in fields}
+                 if facts:
+                     from moatless.message_history.policy import canonical_json
+                     prefix += canonical_json(facts) + "\n"
+--- baseline/moatless/policy/conflicts.py
++++ final/moatless/policy/conflicts.py
+@@ -0,0 +1,57 @@
++"""Failing original expectations are explained, never rewritten as success."""
++
++import ast
++
++
++def validate_conflict(node, workspace, claim, records=None):
++    from moatless.policy.repair import registered_plan
++    from moatless.execution_memory import test_records
++    from moatless.verification_inputs import test_identity, content_bytes
++
++    plan = registered_plan(node)
++    criterion = next((item for item in plan.criteria if item.id == claim.get("criterion_id")), None) if plan else None
++    if not criterion or criterion.kind != "issue_behavior" or criterion.public_quote != claim.get("public_quote"):
++        return "Conflict must cite an exact registered public issue behavior quote"
++    record = next(
++        (
++            r
++            for r in (records if records is not None else test_records(node, workspace))
++            if r["source_id"] == claim.get("candidate_source")
++        ),
++        None,
++    )
++    if not record or record.get("effective_status") != "failed" or record.get("test_source") != "base_public":
++        return "Conflict requires a fresh failing original-public execution"
++    comparison = record.get("comparison") or {}
++    if comparison.get("status") != "known" or claim.get("failing_case") not in (
++        comparison.get("introduced_failures") or []
++    ):
++        return "Conflict requires a comparable original pass -> current failure, with full test identity"
++    result = next((item for item in record.get("results", []) if test_identity(item) == claim["failing_case"]), None)
++    if not result:
++        return "Failing test identity not found"
++    source = content_bytes(workspace.repository, node.file_context, result["file_path"], base=True)
++    try:
++        text = source.decode() if source is not None else ""
++        assertions = {
++            ast.get_source_segment(text, item) for item in ast.walk(ast.parse(text)) if isinstance(item, ast.Assert)
++        }
++    except (ValueError, SyntaxError, UnicodeError):
++        return "Original assertion cannot be verified"
++    if claim.get("original_assertion") not in assertions:
++        return "Cite the exact original assert statement; a model explanation alone cannot exempt a failure"
++    return None
++
++
++def explained_conflicts(node, workspace, records, satisfied):
++    claims = []
++    for previous in node.get_trajectory():
++        for step in previous.action_steps:
++            claim = (step.observation.properties or {}).get("expectation_conflict") if step.observation else None
++            if (
++                claim
++                and claim.get("criterion_id") in satisfied
++                and validate_conflict(node, workspace, claim, records) is None
++            ):
++                claims.append(claim)
++    return claims
+--- baseline/moatless/policy/obligations.py
++++ final/moatless/policy/obligations.py
+@@ -0,0 +1,110 @@
++"""Known failures remain obligations until fresh execution discharges them."""
++
++import re
++
++from moatless.actions.test_targets import is_related_test
++from moatless.message_history.policy import content_hash
++from moatless.verification_inputs import test_identity
++
++
++def complete_current_pass(record):
++    return (
++        record.get("effective_status") == "passed"
++        and record.get("complete") is True
++        and record.get("return_code") == 0
++        and not record.get("timed_out")
++        and record.get("recipe_version") == 3
++        and record.get("counts", {}).get("passed", 0) > 0
++    )
++
++
++def failure_family(record, result):
++    """Cause identity, independent of requested target batches and patch hashes."""
++    frames = [
++        f"{frame.get('file_path')}::{frame.get('method') or ''}"
++        for frame in result.get("stacktrace", [])
++        if frame.get("file_path") in record.get("product_files", [])
++    ]
++    text = result.get("failure_output") or ""
++    error = re.findall(r"\b[A-Za-z_][A-Za-z_0-9]*(?:Error|Exception)\b", text)
++    cause = {"frames": sorted(set(frames)), "error": error[-1] if error else "test_failure"}
++    if not frames:
++        cause["product_files"] = sorted(record.get("product_files", []))
++    return content_hash(cause)
++
++
++def unresolved_failures(records, repository, changed, checks):
++    """Replay facts, never infer resolution from a new candidate or new target."""
++    obligations = {}
++    for record in records:
++        if record.get("product_source", "current") != "current" or record.get("timed_out"):
++            continue
++        targets = record.get("targets", [])
++        related = any(
++            record.get("related_targets", {}).get(path) is True
++            or is_related_test(repository, path, record.get("product_files") or changed)
++            for path in targets
++        )
++        related |= any(set(targets) == set(check.targets) for check in checks)
++        if not related:
++            continue
++        if record.get("status") in {"failed", "error"}:
++            failing = [
++                item for item in record.get("results", []) if str(item.get("status", "")).lower() in {"failed", "error"}
++            ]
++            if not failing:
++                failing = [
++                    {"file_path": path, "name": None, "failure_output": "Unparsed test failure"} for path in targets
++                ]
++            for item in failing:
++                case = test_identity(item)
++                key = content_hash(
++                    {
++                        "source": record.get("test_source"),
++                        "case": case,
++                        "module": item.get("file_path") or targets,
++                        "bundle": record.get("test_bundle_hash"),
++                    }
++                )
++                obligations[key] = {
++                    "id": key,
++                    "source_id": record["source_id"],
++                    "test_source": record.get("test_source"),
++                    "test_bundle_hash": record.get("test_bundle_hash"),
++                    "targets": targets,
++                    "case": case,
++                    "module": item.get("file_path"),
++                    "module_hash": (record.get("verification_inputs") or {}).get(item.get("file_path")),
++                    "family": failure_family(record, item),
++                    "patch_hash": record.get("product_patch_hash"),
++                    "excerpt": str(item.get("failure_output") or "")[-1600:],
++                    "current_failure": record.get("effective_status") in {"failed", "error"},
++                }
++        if complete_current_pass(record):
++            passed = {
++                test_identity(item)
++                for item in record.get("results", [])
++                if str(item.get("status", "")).lower() == "passed"
++            }
++            for key, failure in list(obligations.items()):
++                same_bundle = failure["test_bundle_hash"] == record.get("test_bundle_hash")
++                comparison = record.get("comparison") or {}
++                # A newly added repro need not make the old obligation
++                # impossible to discharge. If its original module is unchanged,
++                # a fresh same-case fail->pass in the new, comparable bundle is
++                # additional execution evidence. Editing the failed assertion
++                # itself still cannot erase that failure.
++                comparable_reproof = (
++                    bool(failure["module_hash"])
++                    and failure["module_hash"] == (record.get("verification_inputs") or {}).get(failure["module"])
++                    and comparison.get("status") == "known"
++                    and failure["case"] in (comparison.get("fixed_tests") or [])
++                )
++                if (
++                    failure["test_source"] == record.get("test_source")
++                    and (same_bundle or comparable_reproof)
++                    and set(failure["targets"]) <= set(targets)
++                    and (failure["case"] in passed or failure["case"] is None)
++                ):
++                    del obligations[key]
++    return list(obligations.values())
+--- baseline/moatless/policy/repair.py
++++ final/moatless/policy/repair.py
+@@ -58,12 +58,16 @@
+ 
+ class CompletionAssessment(StrictModel):
+     version: Literal[1] = 1
+-    state: Literal["partial", "repair", "unavailable", "ready"] = "partial"
++    state: Literal["partial", "repair", "unavailable", "ready", "partial_ready"] = "partial"
+     outstanding: list[str] = Field(default_factory=list)
+     failures: list[dict] = Field(default_factory=list)
+     receipts: list[str] = Field(default_factory=list)
+     next_check: dict | None = None
+     patch_hash: str | None = None
++    failure_obligations: list[dict] = Field(default_factory=list)
++    comparisons: list[dict] = Field(default_factory=list)
++    syntax_pending: list[str] = Field(default_factory=list)
++    explained_failures: list[dict] = Field(default_factory=list)
+ 
+ 
+ class VerifiedCheckpoint(StrictModel):
+@@ -85,6 +89,8 @@
+ 
+ 
+ def validate_revision(node, plan):
++    if any(len(check.targets) != 1 for check in plan.checks):
++        raise ValueError("Each check must name one explicit module; register separate checks for additional modules")
+     public_text = "\n".join(n.user_message for n in node.get_trajectory() if n.user_message)
+     for item in plan.criteria:
+         if item.public_quote not in public_text:
+@@ -115,10 +121,10 @@
+ 
+ 
+ def _complete(record):
+-    return (record.get("complete") is True and not record.get("timed_out")
+-            and not record.get("patch_stale") and record.get("input_identity")
+-            and record["workspace_before"] == record["workspace_after"]
+-            and record["environment_before"] == record["environment_after"])
++    return (record.get("recipe_version") == 3 and record.get("complete") is True
++            and not record.get("timed_out") and not record.get("patch_stale")
++            and record.get("input_identity") == record.get("input_identity_after")
++            and bool(record.get("input_identity")))
+ 
+ 
+ def assess(node, workspace) -> CompletionAssessment:
+@@ -134,36 +140,50 @@
+         return result
+     overlay = CurrentRepository(workspace.repository, context)
+     changed = [f.file_path for f in context.files if f.patch and not is_test(f.file_path)]
++    environment = environment_version(workspace)
++    syntax = {}
++    for previous in node.get_trajectory():
++        for step in previous.action_steps:
++            for check in (step.observation.properties or {}).get("syntax_checks", []) if step.observation else []:
++                syntax[(check.get("path"), check.get("content_hash"), check.get("environment"))] = check
+     for path in changed:
+-        if path.endswith(".py"):
+-            try:
+-                compile(overlay.get_file_content(path) or "", path, "exec", dont_inherit=True)
+-            except (SyntaxError, ValueError) as exc:
+-                result.failures.append({"kind": "syntax_error", "file": path, "excerpt": str(exc)})
++        if not path.endswith(".py"):
++            continue
++        check = syntax.get((path, content_hash(overlay.get_file_content(path)), environment))
++        if check and check.get("status") == "valid" and check.get("interpreter"):
++            continue
++        result.outstanding.append("target_syntax:" + path)
++        if check and check.get("status") == "invalid":
++            result.failures.append({"kind": "syntax_error", "file": path, "excerpt": check.get("message", "")})
++        else:
++            result.syntax_pending.append(path)
+     records = test_records(node, workspace)
+     env = environment_version(workspace)
+     current = [r for r in records if not r["superseded"] and r.get("product_source") == "current"
+-               and r.get("product_patch_hash") == digest and r.get("environment_after") == env]
+-    # Any related actual failure blocks success, regardless of the last observation.
+-    for record in current:
+-        if record.get("effective_status") in {"failed", "error"} and not record.get("timed_out"):
+-            if any(is_related_test(overlay, path, changed) for path in record["targets"]) or any(
+-                    set(record["targets"]) == set(c.targets) for c in plan.checks):
+-                from moatless.policy.failures import interpret
+-                excerpt = "\n".join(str(r.get("failure_output") or "") for r in record.get("results", []))
+-                signal = interpret({"test_run": record}, excerpt)
+-                result.failures.append({"source_id": record["source_id"], "tests": record["targets"],
+-                    "kind": signal.kind.value if signal else "test_failure", "failing_tests": sorted(_names(record, "failed") | _names(record, "error")),
+-                    "excerpt": "\n".join(str(r.get("failure_output") or "")[-800:] for r in record.get("results", [])
+-                                            if str(r.get("status", "")).lower() in {"failed", "error"})[:1600]})
++               and r.get("effective_status") != "stale" and r.get("environment_after") == env]
++    from moatless.policy.obligations import unresolved_failures
++    obligations = unresolved_failures(records, overlay, changed, plan.checks)
++    result.failure_obligations = obligations
++    for failure in obligations:
++        if failure["current_failure"]:
++            from moatless.policy.failures import interpret
++            record = next(row for row in records if row["source_id"] == failure["source_id"])
++            signal = interpret({"test_run": record}, failure["excerpt"])
++            kind = signal.kind.value if signal else "test_failure"
++            if failure["case"] in (record.get("comparison", {}).get("introduced_failures") or []):
++                kind = "p2p_regression"
++            result.failures.append({**failure, "kind": kind,
++                                    "tests": failure["targets"], "failing_tests": [failure["case"]]})
++        else:
++            result.outstanding.append("unresolved_failure:" + failure["id"])
++            if result.next_check is None:
++                result.next_check = {"test_files": failure["targets"], "test_source": failure["test_source"]}
+     satisfied = set()
+     valid_public = False
+     had_pending_check = False
+     for check in plan.checks:
+-        source = workspace.repository if check.test_source == "base_public" else overlay
+-        bundle = content_hash({path: (context._files[path].get_base_content()
+-                        if check.test_source == "base_public" and path in context._files else source.get_file_content(path))
+-                        for path in check.targets})
++        from moatless.verification_inputs import capture_recipe
++        bundle = capture_recipe(workspace, context, check.targets, check.test_source)["test_bundle_hash"]
+         matching = [r for r in current if set(r["targets"]) == set(check.targets)
+                     and r.get("test_source") == check.test_source and r.get("test_bundle_hash") == bundle]
+         passes = [r for r in matching if _complete(r) and r.get("effective_status") == "passed"
+@@ -176,44 +196,87 @@
+             continue
+         receipt = passes[-1]
+         result.receipts.append(receipt["source_id"])
+-        if check.proof == "fail_to_pass":
+-            baselines = [r for r in records if not r["superseded"] and _complete(r)
+-                and r.get("product_source") == "base" and r.get("test_source") == check.test_source
+-                and set(r["targets"]) == set(check.targets) and r.get("test_bundle_hash") == bundle
+-                and r.get("runner") == receipt.get("runner") and r.get("environment_after") == env]
+-            # Collection/import errors are not a behavioral reproduction.
+-            baselines = [r for r in baselines if r.get("status") == "failed" and r.get("return_code") == 1
+-                         and _names(r, "failed") and not r.get("counts", {}).get("error")]
+-            if not baselines or not _names(baselines[-1], "failed") <= _names(receipt, "passed"):
+-                result.outstanding.append(check.id + ":public_reproduction")
+-                if result.next_check is None:
+-                    result.next_check = _request(check, "base")
+-                continue
+-            result.receipts.append(baselines[-1]["source_id"])
++        comparison = receipt.get("comparison") or {"status": "unknown", "introduced_failures": None}
++        result.comparisons.append({"check_id": check.id, **comparison})
++        if comparison["status"] != "known":
++            result.outstanding.append(check.id + ":baseline_comparison")
++            if result.next_check is None:
++                result.next_check = _request(check, "base")
++            continue
++        result.receipts.append(comparison["baseline_source"])
++        if comparison["introduced_failures"]:
++            result.failures.append({"kind": "p2p_regression", "tests": comparison["introduced_failures"],
++                                    "source_id": receipt["source_id"], "excerpt": "Introduced failures confirmed by public baseline"})
++            continue
++        if check.proof == "fail_to_pass" and not comparison.get("fixed_tests"):
++            result.outstanding.append(check.id + ":public_reproduction")
++            # Repeating an already green baseline cannot manufacture a repro.
++            continue
+         satisfied.update(check.criteria)
+         valid_public |= check.test_source == "base_public" and any(is_related_test(overlay, path, changed) for path in check.targets)
+     result.outstanding.extend(item.id for item in plan.criteria if item.id not in satisfied)
+-    # New/changed test evidence needs an additional check on original public tests.
++    from moatless.verification_inputs import verification_input, declared_inputs
++    declared = declared_inputs(workspace, [target for check in plan.checks for target in check.targets])
++    modified_auxiliary = [f.file_path for f in context.files if f.patch and verification_input(f.file_path, declared)]
++    if modified_auxiliary:
++        workspace_passes = [r for r in current if r.get("test_source") == "workspace" and _complete(r)
++                            and r.get("effective_status") == "passed" and r.get("return_code") == 0
++                            and r.get("comparison", {}).get("status") == "known"
++                            and not r["comparison"].get("introduced_failures")
++                            and any(is_related_test(overlay, p, changed) for p in r["targets"])]
++        if workspace_passes:
++            result.receipts.extend([workspace_passes[-1]["source_id"], workspace_passes[-1]["comparison"]["baseline_source"]])
++        else:
++            result.outstanding.append("workspace_validation_inputs")
++            if result.next_check is None and not result.failures:
++                targets = discover_test_targets(overlay, changed, require_relation=True)
++                if targets:
++                    incomplete = [r for r in current if r.get("test_source") == "workspace" and _complete(r)
++                                  and r.get("effective_status") == "passed" and set(r["targets"]) == set(targets[:1])]
++                    result.next_check = {"test_files": targets[:1], "test_source": "workspace",
++                                         "product_source": "base" if incomplete else "current"}
++    # Original public regression is independent of outstanding task obligations.
++    # Discharging it must never erase a pending failed-case rerun or baseline.
+     if not valid_public:
+-        result.outstanding.append("original_public_regression")
+-        if result.next_check is None and not result.failures:
+-            targets = discover_test_targets(workspace.repository, changed, require_relation=True)
+-            if targets:
+-                result.next_check = {"test_files": targets[:1], "test_source": "base_public"}
+-            # A controller-dispatched original public check can discharge this
+-            # requirement, but cannot discharge issue behavior criteria.
+-            public = [r for r in current if r.get("test_source") == "base_public" and _complete(r)
+-                      and r.get("effective_status") == "passed" and r.get("return_code") == 0
+-                      and any(is_related_test(overlay, p, changed) for p in r["targets"])]
+-            if public:
++        public = [r for r in current if r.get("test_source") == "base_public" and _complete(r)
++                  and r.get("effective_status") == "passed" and r.get("return_code") == 0
++                  and any(is_related_test(overlay, p, changed) for p in r["targets"])
++                  and r.get("comparison", {}).get("status") == "known"
++                  and not r["comparison"].get("introduced_failures")]
++        if public:
++            result.receipts.extend([public[-1]["source_id"], public[-1]["comparison"]["baseline_source"]])
++        else:
++            result.outstanding.append("original_public_regression")
++            if result.next_check is None and not result.failures:
++                incomplete = [r for r in current if r.get("test_source") == "base_public" and _complete(r)
++                    and r.get("effective_status") == "passed" and r.get("comparison", {}).get("status") != "known"
++                    and any(is_related_test(overlay, p, changed) for p in r["targets"])]
++                if incomplete:
++                    result.next_check = {"test_files": incomplete[-1]["targets"], "test_source": "base_public", "product_source": "base"}
++                else:
++                    targets = discover_test_targets(workspace.repository, changed, require_relation=True)
++                    if targets:
++                        result.next_check = {"test_files": targets[:1], "test_source": "base_public"}
++    from moatless.policy.conflicts import explained_conflicts
++    explained = explained_conflicts(node, workspace, records, satisfied)
++    if explained:
++        explained_keys = {(claim["candidate_source"], claim["failing_case"]) for claim in explained}
++        result.explained_failures = explained
++        result.failures = [failure for failure in result.failures
++                           if (failure.get("source_id"), failure.get("case")) not in explained_keys]
++        # This is a partial delivery path only. The original public failure
++        # and its baseline are retained verbatim, with the public conflict.
++        if not result.failures and "original_public_regression" in result.outstanding:
++            explained_sources = {claim["candidate_source"] for claim in explained}
++            if any(r["source_id"] in explained_sources and _complete(r) for r in current):
+                 result.outstanding.remove("original_public_regression")
+-                result.receipts.append(public[-1]["source_id"])
+-                if not had_pending_check:
+-                    result.next_check = None
++                for record in current:
++                    if record["source_id"] in explained_sources:
++                        result.receipts.extend([record["source_id"], record["comparison"]["baseline_source"]])
+     if result.failures:
+         result.state, result.next_check = "repair", None
+     elif not result.outstanding:
+-        result.state, result.next_check = "ready", None
++        result.state, result.next_check = ("partial_ready" if explained else "ready"), None
+     elif result.next_check is None:
+         result.state = "unavailable"
+     return result
+--- baseline/moatless/policy/replanning.py
++++ final/moatless/policy/replanning.py
+@@ -0,0 +1,134 @@
++"""Durable replan gate and chronological repair attempts, independent of targets."""
++
++from moatless.message_history.policy import content_hash
++from moatless.policy.obligations import failure_family
++
++
++def evidence_rows(node):
++    rows = []
++    for previous in node.get_trajectory():
++        for index, step in enumerate(previous.action_steps):
++            if step.observation is None:
++                continue
++            props = step.observation.properties or {}
++            if props.get("execution_status") == "skipped":
++                continue
++            fact = None
++            if props.get("code_view") and not props.get("fail_reason") and props["code_view"].get("consistent") is True:
++                view = props["code_view"]
++                fact = {
++                    "kind": "read",
++                    "files": view.get("files"),
++                    "ranges": view.get("ranges_by_file"),
++                    "start": view.get("start_line"),
++                    "end": view.get("end_line"),
++                }
++            elif props.get("test_run"):
++                run = props["test_run"]
++                fact = {
++                    "kind": "test",
++                    "inputs": run.get("input_identity"),
++                    "status": run.get("status"),
++                    "results": run.get("results"),
++                    "targets": run.get("targets", []),
++                }
++            if fact:
++                paths = list(fact.get("files") or fact.get("targets") or [])
++                rows.append(
++                    {"source": f"{previous.node_id}:{index}", "fingerprint": content_hash(fact), "paths": paths}
++                )
++    return rows
++
++
++def update_repair_control(node, records, saved, max_repairs, obligations=None):
++    from moatless.verification_inputs import test_identity
++
++    families = saved.setdefault("failure_families", {})
++    case_families = saved.setdefault("case_families", {})
++    replans = saved.setdefault("replans", {})
++    seen = saved.setdefault("counted_failure_receipts", [])
++    evidence = evidence_rows(node)
++    relevant_sources = {item["source_id"] for item in obligations} if obligations is not None else None
++    relevant_cases = {item["case"] for item in obligations if item.get("case")} if obligations is not None else set()
++    sources = [
++        f"{n.node_id}:{i}" for n in node.get_trajectory() for i, step in enumerate(n.action_steps) if step.observation
++    ]
++    for record in records:
++        if (
++            record["source_id"] in seen
++            or record.get("product_source") != "current"
++            or record.get("status") not in {"failed", "error"}
++            or record.get("timed_out")
++        ):
++            continue
++        if (
++            relevant_sources is not None
++            and record["source_id"] not in relevant_sources
++            and not any(test_identity(item) in relevant_cases for item in record.get("results", []))
++        ):
++            continue
++        seen.append(record["source_id"])
++        failing = [
++            item for item in record.get("results", []) if str(item.get("status", "")).lower() in {"failed", "error"}
++        ]
++        if not failing:
++            failing = [{"failure_output": "Unparsed test failure"}]
++        keys = set()
++        for item in failing:
++            case = test_identity(item)
++            # Preserve the first causal family of an unresolved behavior even
++            # when a later patch adds product files or changes the exception.
++            family = (
++                case_families.setdefault(case, failure_family(record, item))
++                if case
++                else content_hash({"unparsed": record["status"]})
++            )
++            keys.add(family)
++        for family in keys:
++            counter = families.setdefault(family, {"last_patch": None, "repair_attempts": 0, "last_source": None})
++            counter["related_files"] = sorted(
++                set(counter.get("related_files", [])) | set(record.get("product_files", []) + record.get("targets", []))
++            )
++            patch = record.get("product_patch_hash")
++            # A -> B -> A is two repair trials, not two unique hashes.
++            if counter["last_patch"] is not None and patch != counter["last_patch"]:
++                counter["repair_attempts"] += 1
++            counter.update(last_patch=patch, last_source=record["source_id"])
++            if counter["repair_attempts"] >= max_repairs:
++                return "repair_exhausted"
++            if counter["repair_attempts"] >= 2 and family not in replans:
++                cutoff = sources.index(record["source_id"])
++                replans[family] = {
++                    "status": "required",
++                    "trigger": record["source_id"],
++                    "rejections": 0,
++                    "related_files": counter["related_files"],
++                    "known_evidence": [r["fingerprint"] for r in evidence if sources.index(r["source"]) <= cutoff],
++                }
++    return None
++
++
++def accept_replan(node, proposal, saved):
++    family = proposal.get("family_id")
++    gate = saved.get("replans", {}).get(family)
++    if not gate or gate["status"] != "required":
++        return False, "No pending replan for this failure family"
++    sources = [
++        f"{n.node_id}:{i}" for n in node.get_trajectory() for i, step in enumerate(n.action_steps) if step.observation
++    ]
++    trigger = sources.index(gate["trigger"])
++    rows = {r["source"]: r for r in evidence_rows(node)}
++    cited = proposal.get("evidence_sources", [])
++    if not cited or any(ref not in rows or sources.index(ref) <= trigger for ref in cited):
++        return False, "Read or execute new evidence after the triggering failure and cite its source IDs"
++    if not any(rows[ref]["fingerprint"] not in gate["known_evidence"] for ref in cited):
++        return False, "Repeated output at the same inputs is not new evidence"
++    if not any(
++        set(rows[ref]["paths"]) & set(gate["related_files"]) and rows[ref]["fingerprint"] not in gate["known_evidence"]
++        for ref in cited
++    ):
++        return False, "New evidence must concern this failure's product files or failing test modules"
++    gate.update(
++        status="accepted", evidence_sources=cited, hypothesis=proposal["hypothesis"], next_steps=proposal["next_steps"]
++    )
++    return True, "Evidence accepted; one final repair trial is available"
+--- baseline/moatless/repository/file.py
++++ final/moatless/repository/file.py
+@@ -218,13 +218,23 @@
+             f.write("")
+ 
+     def save_file(self, file_path: str, updated_content: str):
+-        assert updated_content, "Updated content must be provided"
+-
+-        if not self.file_exists(file_path):
+-            file = self.create_empty_file(file_path)
+-
+-        with open(self.get_full_path(file_path), "w") as f:
+-            f.write(updated_content)
++        import tempfile
++        import stat
++        path = Path(self.get_full_path(file_path))
++        path.parent.mkdir(parents=True, exist_ok=True)
++        mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
++        temporary = None
++        try:
++            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
++                temporary = stream.name
++                stream.write(updated_content)
++                stream.flush()
++                os.fsync(stream.fileno())
++            os.chmod(temporary, mode)
++            os.replace(temporary, path)
++        finally:
++            if temporary and os.path.exists(temporary):
++                os.unlink(temporary)
+ 
+     @tracer.start_as_current_span("matching_files")
+     async def matching_files(self, file_pattern: str) -> list[str]:
+--- baseline/moatless/repository/git.py
++++ final/moatless/repository/git.py
+@@ -142,10 +142,8 @@
+         self.commit(file_path)
+ 
+     def save_file(self, file_path: str, updated_content: Optional[str] = None):
+-        if updated_content:
+-            file = super().save_file(file_path, updated_content)
+-
+-        return file
++        if updated_content is not None:
++            return super().save_file(file_path, updated_content)
+ 
+     def commit(self, file_path: str):
+         commit_message = self.commit_message(file_path)
+--- baseline/moatless/runtime/deadline.py
++++ final/moatless/runtime/deadline.py
+@@ -0,0 +1,55 @@
++"""One invocation deadline plus an independently bounded cleanup grace."""
++
++import asyncio
++from moatless.exceptions import WorkspaceConsistencyError
++
++# Retain uncertain tasks until an adapter finishes cleanup; never silently
++# discard a running external operation or permit another workspace operation.
++_unconfirmed = set()
++
++
++def _retain(task):
++    _unconfirmed.add(task)
++
++    def done(future):
++        _unconfirmed.discard(future)
++        if not future.cancelled():
++            future.exception()
++
++    task.add_done_callback(done)
++
++
++async def _cancel_and_reap(task, grace):
++    task.cancel()
++    done, _ = await asyncio.wait({task}, timeout=grace)
++    if not done:
++        _retain(task)
++        return False
++    if not task.cancelled():
++        exception = task.exception()
++        if exception and not isinstance(exception, asyncio.TimeoutError):
++            raise WorkspaceConsistencyError("External operation failed during cancellation cleanup") from exception
++    return True
++
++
++async def invoke(coroutine, *, timeout, cleanup_grace):
++    """Return (result, timed_out); caller reads adapter partial buffers on timeout."""
++    task = asyncio.create_task(coroutine)
++    try:
++        done, _ = await asyncio.wait({task}, timeout=timeout)
++        if done:
++            try:
++                return task.result(), False
++            except asyncio.TimeoutError:
++                return None, True
++        if not await _cancel_and_reap(task, cleanup_grace):
++            raise WorkspaceConsistencyError("Test cleanup exceeded its grace; external effects are unconfirmed")
++        return None, True
++    except asyncio.CancelledError as cancelled:
++        # User cancellation remains cancellation. The journal leaves an in-flight
++        # operation unconfirmed even if cleanup cannot finish within the grace.
++        try:
++            await _cancel_and_reap(task, cleanup_grace)
++        except Exception:
++            pass  # Pending journal entry remains unconfirmed; cancellation wins.
++        raise cancelled
+--- baseline/moatless/runtime/local.py
++++ final/moatless/runtime/local.py
+@@ -28,6 +28,7 @@
+ 
+ class SweBenchLocalEnvironment(RuntimeEnvironment, BaseEnvironment):
+     """Environment implementation for running swebench tests and evaluations."""
++    supports_managed_deadline = True
+ 
+     def __init__(
+         self,
+@@ -82,6 +83,21 @@
+ 
+         if not resume_ready:
+             self._install_task = asyncio.create_task(self._run_async_installation(self._install_command))
++
++    def verification_configuration(self, targets):
++        return {"adapter": type(self).__qualname__, "commands": [self._test_script([path]) for path in targets],
++                "skip_conda_activate": self._skip_conda_activate, "install": self._install_command,
++                "base_commit": self.swebench_instance["base_commit"], "identity": self._recovery_identity}
++
++    def compilation_configuration(self):
++        return {"python": "python", "skip_conda_activate": self._skip_conda_activate,
++                "identity": self._recovery_identity, "install": self._install_command}
++
++    async def compile_python(self, source, path):
++        from moatless.runtime.python_check import arguments, parse_output
++        command = " ".join(shlex.quote(part) for part in ["python", *arguments(path)])
++        stdout, code = await self._execute_command(command, timeout=None, input_bytes=source.encode())
++        return parse_output(stdout, code)
+ 
+     def recovery_state(self) -> dict | None:
+         # No identity means the legacy runtime stays explicitly opaque.
+@@ -174,13 +190,13 @@
+                 f"Command {f'echo {content} > {path}'} failed with return code {return_code}", return_code, stdout
+             )
+ 
+-    async def run_tests(self, patch: str | None = None, test_files: list[str] | None = None, timeout: int = 600) -> list[TestResult]:
++    async def run_tests(self, patch: str | None = None, test_files: list[str] | None = None, timeout: int = 600, managed_deadline: bool = False) -> list[TestResult]:
+         self.last_test_cleanup_confirmed = False
+         self.last_test_execution, self.last_test_results = [], []
+         await self._wait_for_install()
+         try:
+             async with self._temporary_patch(patch):
+-                return await self._run_tests_applied(patch=patch, test_files=test_files, timeout=timeout)
++                return await self._run_tests_applied(patch=patch, test_files=test_files, timeout=None if managed_deadline else timeout)
+         finally:
+             if self._recovery_probe:
+                 self._recovery_identity = self._recovery_probe()
+@@ -218,7 +234,20 @@
+                 logger.info(f"Test command: {test_command}")
+ 
+                 start = datetime.now()
+-                stdout, return_code = await self._execute_command(test_command, timeout=timeout)
++                self.last_command_output = ""
++                try:
++                    stdout, return_code = await self._execute_command(test_command, timeout=timeout)
++                except asyncio.CancelledError:
++                    stdout = self.last_command_output
++                    partial = parse_log(stdout, self.swebench_instance["repo"])
++                    for result in partial:
++                        result.file_path = result.file_path or test_file
++                        result.timed_out = True
++                    self.last_test_results = [*test_results, *partial]
++                    self.last_test_execution.append({"command": test_command, "target": test_file,
++                        "return_code": None, "partial": True, "output_excerpt": stdout[-8000:],
++                        "duration": (datetime.now() - start).total_seconds()})
++                    raise
+                 self.last_test_execution.append({"command": test_command, "target": test_file,
+                     "return_code": return_code, "duration": (datetime.now() - start).total_seconds()})
+ 
+@@ -376,16 +405,18 @@
+                 raise RuntimeError("Installation process returned failure")
+         self._installation_ready = True
+ 
+-    async def _execute_command(self, command: str, cwd: Path | None = None, timeout: int | None = None) -> Tuple[str, int]:
++    async def _execute_command(self, command: str, cwd: Path | None = None, timeout: int | None = None,
++                               input_bytes: bytes | None = None) -> Tuple[str, int]:
+         from moatless.runtime.native_tools import tool_process
+         if not self._skip_conda_activate:
+             command = ". /opt/miniconda3/bin/activate && conda activate testbed && " + command
+         argv, environment = tool_process(["bash", "-lc", command])
+         process = await asyncio.create_subprocess_exec(
+             *argv, cwd=str(cwd or self.repo_path), env=environment,
++            stdin=asyncio.subprocess.PIPE if input_bytes is not None else None,
+             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, start_new_session=True,
+         )
+-        communication = asyncio.create_task(process.communicate())
++        communication = asyncio.create_task(process.communicate(input_bytes))
+         try:
+             stdout, _ = await asyncio.wait_for(asyncio.shield(communication), timeout=timeout)
+             return stdout.decode(errors="replace"), process.returncode
+@@ -395,6 +426,7 @@
+             except ProcessLookupError:
+                 pass
+             stdout, _ = await communication
++            self.last_command_output = stdout.decode(errors="replace")
+             if isinstance(exc, asyncio.CancelledError):
+                 raise
+             return stdout.decode(errors="replace") + f"\n[ERROR] Command execution timed out after {timeout} seconds\n", -1
+--- baseline/moatless/runtime/python_check.py
++++ final/moatless/runtime/python_check.py
+@@ -0,0 +1,29 @@
++"""Non-executing candidate compilation in the explicitly selected interpreter."""
++
++import json
++
++SCRIPT = """import json,sys
++source=sys.stdin.buffer.read().decode('utf-8')
++result={'status':'valid','interpreter':{'executable':sys.executable,'version':sys.version}}
++try:
++    compile(source,sys.argv[1],'exec',dont_inherit=True)
++except (SyntaxError,ValueError) as exc:
++    result.update(status='invalid',message=str(exc),line=getattr(exc,'lineno',None),column=getattr(exc,'offset',None))
++print('MOATLESS_SYNTAX='+json.dumps(result))
++"""
++
++
++def arguments(path):
++    return ["-c", SCRIPT, path]
++
++
++def parse_output(stdout, code):
++    for line in reversed(stdout.splitlines()):
++        if line.startswith("MOATLESS_SYNTAX=") and code == 0:
++            try:
++                result = json.loads(line.split("=", 1)[1])
++                if result.get("status") in {"valid", "invalid"} and result.get("interpreter"):
++                    return result
++            except (ValueError, TypeError):
++                pass
++    return {"status": "unavailable", "reason": "target_compiler_failed", "return_code": code}
+--- baseline/moatless/runtime/runtime.py
++++ final/moatless/runtime/runtime.py
+@@ -4,6 +4,44 @@
+ 
+ 
+ class RuntimeEnvironment(ABC):
++    supports_managed_deadline = False
++
++    def verification_input_paths(self, targets) -> list[str]:
++        """Explicit public support/data inputs outside conventional test paths."""
++        return list(getattr(self, "verification_files", []))
++
++    def compilation_configuration(self) -> dict:
++        return {"python_executable": getattr(self, "python_executable", None)}
++    def verification_configuration(self, targets) -> dict | None:
++        """Adapters must expose stable public runner settings, never output buffers."""
++        if not getattr(self, "test_command", None) or not getattr(self, "python_executable", None):
++            return None
++        return {"adapter": f"{type(self).__module__}.{type(self).__name__}",
++                "command": getattr(self, "test_command", None),
++                "python_executable": getattr(self, "python_executable", None)}
++
++    async def compile_python(self, source: str, path: str) -> dict:
++        executable = getattr(self, "python_executable", None)
++        if not executable:
++            return {"status": "unavailable", "reason": "target_interpreter_not_configured", "path": path}
++        import asyncio
++        import os
++        import signal
++        from moatless.runtime.python_check import arguments, parse_output
++        process = await asyncio.create_subprocess_exec(executable, *arguments(path), stdin=asyncio.subprocess.PIPE,
++            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, start_new_session=True)
++        communication = asyncio.create_task(process.communicate(source.encode()))
++        try:
++            stdout, _ = await asyncio.shield(communication)
++            return parse_output(stdout.decode(errors="replace"), process.returncode)
++        except asyncio.CancelledError:
++            try:
++                os.killpg(process.pid, signal.SIGKILL)
++            except ProcessLookupError:
++                pass
++            await communication
++            raise
++
+     @abstractmethod
+     async def run_tests(self, patch: str | None = None, test_files: list[str] | None = None) -> list[TestResult]:
+         pass
+--- baseline/moatless/verification_inputs.py
++++ final/moatless/verification_inputs.py
+@@ -0,0 +1,258 @@
++"""Public execution recipes, including test support files and runner configuration.
++
++Hashes are task-local evidence, never an index/answer lookup. Output/cache paths
++are deliberately excluded; unclassified public data is conservatively included.
++"""
++
++import hashlib
++import os
++from pathlib import Path
++import subprocess
++
++from moatless.message_history.policy import content_hash
++from moatless.utils.file import is_test
++
++
++CONFIG_NAMES = {
++    "pytest.ini",
++    ".pytest.ini",
++    "tox.ini",
++    "setup.cfg",
++    "pyproject.toml",
++    "conftest.py",
++    "manage.py",
++    "runtests.py",
++    "test-requirements.txt",
++}
++CACHE_PARTS = {
++    ".git",
++    ".venv",
++    "__pycache__",
++    ".pytest_cache",
++    ".mypy_cache",
++    ".ruff_cache",
++    ".tox",
++    ".coverage",
++    "htmlcov",
++    "node_modules",
++}
++OUTPUT_NAMES = {"coverage.xml", "junit.xml", "report.xml", ".coverage", "pytestdebug.log"}
++
++
++def ignored_output(path):
++    pure = Path(path)
++    if CACHE_PARTS.intersection(pure.parts):
++        return True
++    if verification_input(path):
++        return False  # A fixture named report.xml or *.log is still input.
++    return pure.name in OUTPUT_NAMES or pure.suffix in {".pyc", ".pyo", ".log"}
++
++
++def verification_input(path, declared=()):
++    """Configs/data may affect validation even outside a tests directory."""
++    pure = Path(path)
++    return (
++        path in declared
++        or is_test(path)
++        or pure.name in CONFIG_NAMES
++        or any(part in {"fixtures", "testdata", "test_support", "testsupport", "helpers"} for part in pure.parts)
++        or pure.stem in {"helpers", "testutils", "test_helpers"}
++    )
++
++
++def public_paths(repository):
++    memory = getattr(repository, "files", None)
++    if isinstance(memory, dict):
++        return sorted(path for path in memory if not CACHE_PARTS.intersection(Path(path).parts))
++    root = getattr(repository, "repo_path", None)
++    if not root:
++        return []
++    result = subprocess.run(["git", "ls-files", "-z", "--cached"], cwd=root, capture_output=True, timeout=5)
++    if result.returncode == 0:
++        tracked = {p for p in result.stdout.decode().split("\0") if p and not CACHE_PARTS.intersection(Path(p).parts)}
++        others = subprocess.run(
++            ["git", "ls-files", "-z", "--others", "--exclude-standard"],
++            cwd=root,
++            capture_output=True,
++            check=True,
++            timeout=5,
++        )
++        return sorted(tracked | {p for p in others.stdout.decode().split("\0") if p and not ignored_output(p)})
++    return sorted(
++        str(path.relative_to(root))
++        for path in Path(root).rglob("*")
++        if path.is_file() and not ignored_output(str(path.relative_to(root)))
++    )
++
++
++def content_bytes(repository, context, path, *, base=False):
++    file = context._files.get(path) if context else None
++    if file and (file.patch or file.was_edited or file._is_new) and (base or repository.shadow_mode):
++        if base and file._is_new:
++            return None
++        content = file.get_base_content() if base else file.content
++        return content.encode() if content is not None else None
++    root = getattr(repository, "repo_path", None)
++    if root:
++        target = Path(root) / path
++        if not target.resolve().is_relative_to(Path(root).resolve()):
++            raise ValueError(f"Unbound verification symlink/path: {path}")
++        if target.is_symlink():
++            return (
++                b"symlink\0"
++                + os.readlink(target).encode()
++                + b"\0"
++                + (target.read_bytes() if target.is_file() else b"missing")
++            )
++        return target.read_bytes() if target.is_file() else None
++    content = repository.get_file_content(path)
++    return content.encode() if isinstance(content, str) else content
++
++
++def runner_configuration(runtime, targets):
++    from moatless.runtime.runtime import RuntimeEnvironment
++
++    if not isinstance(runtime, RuntimeEnvironment):
++        return None
++    adapter = getattr(runtime, "verification_configuration", None)
++    if callable(adapter):
++        configuration = adapter(targets)
++        return content_hash(configuration) if isinstance(configuration, dict) and configuration else None
++    # Older adapters have no trusted configuration contract. Keep unknown,
++    # rather than presenting a class name as a complete runner identity.
++    return None
++
++
++def declared_inputs(workspace, targets):
++    from moatless.runtime.runtime import RuntimeEnvironment
++
++    if not isinstance(workspace.runtime, RuntimeEnvironment):
++        return []
++    paths = workspace.runtime.verification_input_paths(targets)
++    if not isinstance(paths, list) or any(
++        not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts for path in paths
++    ):
++        raise ValueError("Verification input paths must be explicit public repository-relative files")
++    return sorted(set(paths))
++
++
++def capture_recipe(workspace, context, targets, test_source="workspace", product_source="current"):
++    from moatless.execution_memory import environment_version
++
++    repository = workspace.repository
++    declared = declared_inputs(workspace, targets)
++    paths = (
++        set(public_paths(repository))
++        | set(declared)
++        | {p for p, f in context._files.items() if f.patch or not ignored_output(p)}
++    )
++    base_files, products, tests = {}, {}, {}
++    for path in sorted(paths):
++        if CACHE_PARTS.intersection(Path(path).parts):
++            continue
++        original = content_bytes(repository, context, path, base=True)
++        original_hash = hashlib.sha256(original).hexdigest() if original is not None else "missing"
++        base_files[path] = original_hash
++        auxiliary = verification_input(path, declared) or path in targets
++        use_base = test_source == "base_public" if auxiliary else product_source == "base"
++        value = content_bytes(repository, context, path, base=use_base)
++        if value is not None:
++            (tests if auxiliary else products)[path] = hashlib.sha256(value).hexdigest()
++    identity = {"commit": getattr(repository, "initial_commit", None) or None, "tree": content_hash(base_files)}
++    # A new workspace repro is absent from the base; its absence must not
++    # change the immutable base identity when the context learns that file.
++    identity["tree"] = content_hash({p: h for p, h in base_files.items() if h != "missing"})
++    return {
++        "recipe_version": 3,
++        "base_identity": identity,
++        "verification_inputs": tests,
++        "test_bundle_hash": content_hash(tests),
++        "product_inputs_hash": content_hash(products),
++        "runner_fingerprint": runner_configuration(workspace.runtime, targets),
++        "environment": environment_version(workspace),
++        "targets": sorted(targets),
++        "test_source": test_source,
++        "product_source": product_source,
++    }
++
++
++def verification_patch(context, declared=()):
++    """Retain the same workspace test/config/data bundle on base product code."""
++    return "\n".join(
++        file.patch for file in context.files if file.patch and verification_input(file.file_path, declared)
++    )
++
++
++def test_identity(result):
++    name = result.get("name")
++    path = result.get("file_path")
++    if not name or not path:
++        return None
++    # Preserve class and parametrization supplied by the runner. Never reduce
++    # a node id to its final function name.
++    method = result.get("method")
++    return f"{path}::{name}" + (f"::{method}" if method and method not in name else "")
++
++
++def compare_runs(candidate, baseline):
++    """Compare executions only when the actual public recipes are compatible."""
++    unknown = {
++        "status": "unknown",
++        "introduced_failures": None,
++        "preexisting_failures": None,
++        "baseline_source": baseline.get("source_id") if baseline else None,
++    }
++    if not baseline:
++        return {**unknown, "reason": "baseline_not_run"}
++    for record in (candidate, baseline):
++        if (
++            record.get("recipe_version") != 3
++            or record.get("complete") is not True
++            or record.get("timed_out")
++            or record.get("patch_stale")
++            or record.get("return_code") not in {0, 1}
++            or record.get("counts", {}).get("error")
++            or not record.get("runner_fingerprint")
++            or record.get("input_identity") != record.get("input_identity_after")
++            or not record.get("input_identity")
++            or record.get("environment_before") != record.get("environment_after")
++        ):
++            return {**unknown, "reason": "incomplete_or_unbound_execution"}
++    if candidate.get("product_source") != "current" or baseline.get("product_source") != "base":
++        return {**unknown, "reason": "not_a_product_baseline_pair"}
++    for key in ("base_identity", "test_bundle_hash", "runner_fingerprint", "environment_after", "test_source"):
++        if candidate.get(key) != baseline.get(key):
++            return {**unknown, "reason": "different_" + key}
++    if set(candidate.get("targets", [])) != set(baseline.get("targets", [])):
++        return {**unknown, "reason": "different_targets"}
++    rows = []
++    for record in (candidate, baseline):
++        outcomes = {}
++        for item in record.get("results", []):
++            key = test_identity(item)
++            status = str(item.get("status", "")).lower()
++            if key is None or key in outcomes or status not in {"passed", "failed"}:
++                return {**unknown, "reason": "missing_ambiguous_or_unexecuted_test_identity"}
++            outcomes[key] = status
++        observed = {status: list(outcomes.values()).count(status) for status in set(outcomes.values())}
++        if (
++            any(record.get("counts", {}).get(status, 0) != observed.get(status, 0) for status in {"passed", "failed"})
++            or (record["return_code"] == 0 and observed.get("failed", 0))
++            or (record["return_code"] == 1 and not observed.get("failed", 0))
++        ):
++            return {**unknown, "reason": "exit_or_count_conflicts_with_parsed_results"}
++        rows.append(outcomes)
++    actual, original = rows
++    if not actual or actual.keys() != original.keys():
++        return {**unknown, "reason": "different_collected_tests"}
++    introduced = sorted(key for key in actual if actual[key] == "failed" and original[key] == "passed")
++    preexisting = sorted(key for key in actual if actual[key] == original[key] == "failed")
++    fixed = sorted(key for key in actual if actual[key] == "passed" and original[key] == "failed")
++    return {
++        "status": "known",
++        "introduced_failures": introduced,
++        "preexisting_failures": preexisting,
++        "fixed_tests": fixed,
++        "baseline_source": baseline.get("source_id"),
++        "candidate_source": candidate.get("source_id"),
++    }
+--- baseline/scripts/migration_smoke.py
++++ final/scripts/migration_smoke.py
+@@ -123,7 +123,7 @@
+         return {
+             k: normalize(v)
+             for k, v in value.items()
+-            if k not in {"timestamp", "start_time", "end_time", "test_duration", "execution_time"}
++            if k not in {"timestamp", "start_time", "end_time", "test_duration", "execution_time", "started_at", "duration"}
+         }
+     if isinstance(value, list):
+         return [normalize(v) for v in value]
+@@ -142,7 +142,9 @@
+                 "result_statuses", "result_count", "product_source", "runner", "environment", "test_bundle_hash",
+                 "input_identity", "check_id", "introduced_failures", "public_baseline", "test_files",
+                 "result_counts", "test_results", "test_execution", "return_code", "timed_out", "complete",
+-                "patch_stale", "continuation_safe", "targets", "execution_status"}
++                "patch_stale", "continuation_safe", "targets", "execution_status", "recipe_version", "base_identity",
++                "verification_inputs", "product_inputs_hash", "runner_fingerprint", "input_identity_after", "product_files",
++                "started_at", "duration", "commands", "partial", "uncompleted_targets", "related_targets"}
+     for node in result.get("trajectory", {}).get("nodes", []):
+         observations = [node.get("output", {})]
+         observations.extend(step.get("observation", {}) for step in node.get("action_steps", [])
+@@ -150,6 +152,7 @@
+         for observation in observations:
+             props = observation.get("properties") or {}
+             props.pop("syntax_checked", None)
++            props.pop("syntax_checks", None)
+             if props.get("test_source") == "workspace":
+                 for key in additive:
+                     props.pop(key, None)
+--- baseline/tests/actions/test_run_tests.py
++++ final/tests/actions/test_run_tests.py
+@@ -103,6 +103,11 @@
+         # Setup file_context and repository mocks
+         file_context.file_exists.return_value = True
+         workspace.runtime.run_tests.return_value = test_results
++        # A real input manifest is required even for this output-format test.
++        from moatless.repository.repository import InMemRepository
++        repository = InMemRepository({"tests/file1_test.py": "def test_one(): pass\n"}, shadow_mode=True)
++        workspace.repository = repository
++        file_context = FileContext(repo=repository)
+ 
+         # Mock repository checks
+         mock_repository = MagicMock()
+--- baseline/tests/actions/test_target_compile_commit.py
++++ final/tests/actions/test_target_compile_commit.py
+@@ -0,0 +1,180 @@
++"""Target compiler facts and optimistic commit checks across write tools."""
++
++import asyncio
++from pathlib import Path
++import sys
++
++import pytest
++
++from tests.memory.test_repository_context import setup, execute
++from moatless.actions.string_replace import StringReplace, StringReplaceArgs
++from moatless.actions.create_file import CreateFile, CreateFileArgs
++from moatless.actions.insert_line import InsertLine, InsertLinesArgs
++from moatless.actions.append_string import AppendString, AppendStringArgs
++from moatless.actions.claude_text_editor import ClaudeEditTool, EditActionArguments
++from moatless.runtime.runtime import NoEnvironment
++from moatless.file_context import FileContext
++from moatless.repository.file import FileRepository
++
++
++def write_cases():
++    return [
++        (StringReplace(), StringReplaceArgs(path="calc.py", old_str="value = 1", new_str="value = 2")),
++        (AppendString(), AppendStringArgs(path="calc.py", new_str="\nother = 2\n")),
++        (InsertLine(), InsertLinesArgs(path="calc.py", insert_line=1, new_str="other = 2\n")),
++        (CreateFile(), CreateFileArgs(path="new.py", file_text="value = 2\n")),
++        (ClaudeEditTool(), EditActionArguments(command="insert", path="calc.py", insert_line=1, new_str="other = 2\n")),
++    ]
++
++
++@pytest.mark.asyncio
++async def test_real_target_interpreter_and_nonexecuting_compile(tmp_path):
++    runtime = NoEnvironment()
++    runtime.python_executable = "/usr/bin/python3"
++    side_effect = tmp_path / "executed"
++    check = await runtime.compile_python(f"open({str(side_effect)!r},'w').write('bad')\n", "calc.py")
++    assert check["status"] == "valid" and check["interpreter"]["executable"] == "/usr/bin/python3"
++    assert check["interpreter"]["executable"] != sys.executable
++    assert not side_effect.exists()
++    invalid = await runtime.compile_python("return True\n", "calc.py")
++    assert invalid["status"] == "invalid" and invalid["line"] == 1
++
++
++@pytest.mark.asyncio
++async def test_unavailable_target_does_not_claim_host_compatibility(tmp_path):
++    (tmp_path / "calc.py").write_text("value = 1\n")
++    agent, root, _ = await setup(tmp_path, actions=[StringReplace()], runtime=NoEnvironment())
++    node = await execute(agent, root, StringReplaceArgs(path="calc.py", old_str="value = 1", new_str="value = 2"))
++    assert node.observation.properties["syntax_checked"] is False
++    assert node.observation.properties["syntax_checks"][0]["status"] == "unavailable"
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("action,args", write_cases(), ids=["replace", "append", "insert", "create", "text_editor"])
++async def test_source_mutated_during_compilation_is_never_overwritten(tmp_path, action, args):
++    (tmp_path / "calc.py").write_text("value = 1\n")
++    runtime = NoEnvironment()
++    runtime.python_executable = "/usr/bin/python3"
++    compile_target = runtime.compile_python
++
++    async def concurrent_writer(source, path):
++        check = await compile_target(source, path)
++        (tmp_path / args.path).write_text("external = 99\n")
++        return check
++
++    runtime.compile_python = concurrent_writer
++    agent, root, _ = await setup(tmp_path, actions=[action], runtime=runtime)
++    root.file_context.add_file("calc.py", show_all_spans=True)
++    node = await execute(agent, root, args)
++    assert node.observation.properties["fail_reason"] == "edit_conflict"
++    assert (tmp_path / args.path).read_text() == "external = 99\n"
++    assert not node.file_context.generate_git_patch().strip()
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("action,args", write_cases(), ids=["replace", "append", "insert", "create", "text_editor"])
++async def test_target_rejection_reaches_all_write_tools_before_commit(tmp_path, action, args):
++    (tmp_path / "calc.py").write_text("value = 1\n")
++    runtime = NoEnvironment()
++
++    async def target(source, path):
++        # Deliberately stricter target than the host, to prove tools obey the
++        # adapter result rather than a host compile. The real adapter is tested above.
++        return {
++            "status": "valid" if source.strip() in {"", "value = 1"} else "invalid",
++            "interpreter": {"executable": "target"},
++            "message": "target grammar rejects candidate",
++        }
++
++    runtime.compile_python = target
++    agent, root, _ = await setup(tmp_path, actions=[action], runtime=runtime)
++    root.file_context.add_file("calc.py", show_all_spans=True)
++    node = await execute(agent, root, args)
++    assert node.observation.properties["fail_reason"] == "syntax_error"
++    assert (tmp_path / "calc.py").read_text() == "value = 1\n"
++    assert not (tmp_path / "new.py").exists()
++    assert not node.file_context.generate_git_patch().strip()
++
++
++def test_failed_atomic_write_does_not_publish_context_patch(tmp_path, monkeypatch):
++    (tmp_path / "calc.py").write_text("value = 1\n")
++    repo = FileRepository(repo_path=str(tmp_path))
++    context = FileContext(repo=repo)
++    file = context.add_file("calc.py")
++
++    def fail(*args):
++        raise OSError("filesystem full")
++
++    monkeypatch.setattr("moatless.repository.file.os.replace", fail)
++    with pytest.raises(OSError, match="full"):
++        file.apply_changes("value = 2\n")
++    assert not file.patch and not file.was_edited
++    assert file.content == "value = 1\n" and (tmp_path / "calc.py").read_text() == "value = 1\n"
++    assert list(tmp_path.iterdir()) == [tmp_path / "calc.py"]
++
++
++@pytest.mark.asyncio
++async def test_real_older_target_rejects_host_valid_match_syntax(tmp_path):
++    target = Path("/mnt/data2/home/geqb/tmp-t7-smoke-rebuild/pytest-online-full/bin/python3.9")
++    if not target.exists():
++        pytest.skip("Optional public Python 3.9 task prefix is unavailable")
++    source = "match 1:\n    case 1:\n        value = 2\n"
++    compile(source, "calc.py", "exec")  # valid in the framework's Python 3.10
++    (tmp_path / "calc.py").write_text("value = 1\n")
++    runtime = NoEnvironment()
++    runtime.python_executable = str(target)
++    agent, root, _ = await setup(tmp_path, actions=[StringReplace()], runtime=runtime)
++    node = await execute(agent, root, StringReplaceArgs(path="calc.py", old_str="value = 1", new_str=source))
++    check = node.observation.properties["syntax_error"]
++    assert check["status"] == "invalid" and check["interpreter"]["version"].startswith("3.9.")
++    assert (tmp_path / "calc.py").read_text() == "value = 1\n"
++
++
++@pytest.mark.asyncio
++async def test_large_candidate_uses_stdin_instead_of_shell_argument_limit():
++    runtime = NoEnvironment()
++    runtime.python_executable = "/usr/bin/python3"
++    check = await runtime.compile_python("#" + "large source " * 30000 + "\nvalue = 1\n", "large.py")
++    assert check["status"] == "valid"
++
++
++@pytest.mark.asyncio
++async def test_switching_target_interpreter_invalidates_compilation_and_test_receipts(tmp_path):
++    from tests.policy.test_acceptance_repair import fixture, plan, edit
++    from moatless.actions.register_acceptance_plan import RegisterAcceptancePlanArgs
++    from moatless.actions.run_tests import RunTestsArgs
++    from moatless.actions.check_syntax import CheckSyntaxArgs
++    from moatless.policy.repair import assess
++
++    agent, root, workspace, runtime = await fixture(tmp_path)
++    node = await execute(
++        agent,
++        root,
++        RegisterAcceptancePlanArgs(plan=plan()),
++        edit(),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public", product_source="base"),
++    )
++    assert assess(node, workspace).state == "ready"
++    runtime.python_executable = "/usr/bin/python3"
++    pending = assess(node, workspace)
++    assert pending.state != "ready" and pending.syntax_pending == ["calc.py"]
++    node = await execute(agent, node, CheckSyntaxArgs(paths=["calc.py"]))
++    assert node.observation.properties["syntax_checks"][0]["interpreter"]["executable"] == "/usr/bin/python3"
++
++
++@pytest.mark.asyncio
++async def test_batch_runtime_compiles_stdin_in_actual_task_shell_without_execution(tmp_path, monkeypatch):
++    from moatless.runtime.local import SweBenchLocalEnvironment
++    from tests.runtime.test_generation_runtime import PUBLIC
++
++    monkeypatch.setenv("SKIP_INSTALL", "true")
++    monkeypatch.setenv("SKIP_CONDA_ACTIVATE", "true")
++    runtime = SweBenchLocalEnvironment(tmp_path, PUBLIC, None, generation_only=True)
++    await runtime._wait_for_install()
++    source = "open('must-not-exist','w').write('unsafe')\n" + "#" + "large source " * 30000 + "\n"
++    check = await runtime.compile_python(source, "path with 'quotes.py")
++    assert check["status"] == "valid" and check["interpreter"]["executable"]
++    assert not (tmp_path / "must-not-exist").exists()
++    invalid = await runtime.compile_python("return True\n", "bad.py")
++    assert invalid["status"] == "invalid"
+--- baseline/tests/evaluation/test_generation_worker.py
++++ final/tests/evaluation/test_generation_worker.py
+@@ -128,7 +128,7 @@
+     assert submit_product_only({}) is False
+ 
+ 
+-def test_select_submitted_patch_prefers_last_public_pass():
++def test_select_submitted_patch_keeps_current_version_even_after_historical_public_pass():
+     from moatless.evaluation.generation import select_submitted_patch
+     from moatless.message_history.policy import content_hash
+     old, new = "old-diff", "new-diff"
+@@ -138,7 +138,7 @@
+               "effective_status": "stale", "introduced_failures": [], "status": "passed",
+               "product_patch": old}
+     patch, used = select_submitted_patch(new, [record])
+-    assert used is True and patch == old
++    assert used is False and patch == new
+     current = dict(record, tested_patch_hash=content_hash(new),
+                    product_patch_hash=content_hash(new), effective_status="passed",
+                    product_patch=new)
+--- baseline/tests/policy/test_acceptance_repair.py
++++ final/tests/policy/test_acceptance_repair.py
+@@ -28,6 +28,8 @@
+         pass
+ 
+ from moatless.actions.create_file import CreateFile, CreateFileArgs
++from moatless.actions.check_syntax import CheckSyntax
++from moatless.actions.replan_repair import ReplanRepair
+ from moatless.actions.finish import Finish, FinishArgs
+ from moatless.actions.register_acceptance_plan import RegisterAcceptancePlan, RegisterAcceptancePlanArgs
+ from moatless.actions.run_tests import RunTests, RunTestsArgs
+@@ -51,6 +53,8 @@
+     """Real pytest on supplied public files and patch; no model/provider call."""
+     def __init__(self, files):
+         self.files, self.calls = files, []
++        self.python_executable = sys.executable
++        self.test_command = "python -m pytest -q -c /dev/null --junitxml"
+         self.last_test_execution, self.last_test_results = [], []
+ 
+     def recovery_state(self):
+@@ -100,7 +104,7 @@
+         (tmp_path / name).write_text(content)
+     runtime = PublicPytest(files)
+     agent, root, workspace = await setup(tmp_path, shadow=True, runtime=runtime,
+-        actions=[RegisterAcceptancePlan(), StringReplace(), CreateFile(), RunTests(timeout=2), Finish()])
++        actions=[RegisterAcceptancePlan(), CheckSyntax(), ReplanRepair(), StringReplace(), CreateFile(), RunTests(timeout=3), Finish()])
+     return agent, root, workspace, runtime
+ 
+ 
+@@ -119,7 +123,7 @@
+     assert last.completion_status["status"] == "verified"
+     assert agent.completion_model._calls == 1
+     assert last.action_steps[3].observation.properties["skip_reason"] == "test_observation_barrier"
+-    assert [c["return_code"] for c in runtime.calls] == [0, 1, 0]
++    assert [c["return_code"] for c in runtime.calls] == [0, 1, 0, 0]
+     assert runtime.calls[-1]["targets"] == ["test_other.py"]
+     checkpoint = flow.graph_state["repair_state"]["verified_checkpoint"]
+     assert checkpoint["product_patch"] == last.file_context.generate_git_patch(ignore_tests=True)
+@@ -159,7 +163,7 @@
+                          RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"))
+     assessment = assess(node, workspace)
+     assert assessment.state == "partial"
+-    assert "repro:public_reproduction" in assessment.outstanding
++    assert "repro:baseline_comparison" in assessment.outstanding
+     assert assessment.next_check["product_source"] == "base"
+     node = await execute(agent, node, RunTestsArgs(test_files=["test_calc.py"], test_source="base_public", product_source="base"))
+     assert assess(node, workspace).state == "ready"
+--- baseline/tests/policy/test_six_group_contracts.py
++++ final/tests/policy/test_six_group_contracts.py
+@@ -0,0 +1,529 @@
++"""Behavioral acceptance cases for the six gaps, using public-only executions."""
++
++from copy import deepcopy
++import sys
++
++import pytest
++
++from moatless.actions.check_syntax import CheckSyntaxArgs
++from moatless.actions.create_file import CreateFileArgs
++from moatless.actions.read_file import ReadFile, ReadFileArgs
++from moatless.actions.run_tests import RunTestsArgs
++from moatless.actions.string_replace import StringReplaceArgs
++from moatless.execution_memory import test_records as records
++from moatless.policy.repair import assess
++from moatless.policy.replanning import update_repair_control, accept_replan, evidence_rows
++from moatless.verification_inputs import compare_runs, test_identity as case_identity
++from tests.policy.test_acceptance_repair import fixture, plan, edit
++from moatless.actions.register_acceptance_plan import RegisterAcceptancePlanArgs
++from tests.memory.test_repository_context import execute
++
++
++@pytest.mark.asyncio
++async def test_old_related_failure_survives_edit_and_unrelated_green_until_actual_rerun(tmp_path):
++    agent, root, workspace, runtime = await fixture(
++        tmp_path,
++        {
++            "test_extra.py": "from calc import value\ndef test_extra(): assert value() == 2\n",
++            "test_unrelated.py": "def test_other(): assert True\n",
++        },
++    )
++    node = await execute(
++        agent,
++        root,
++        RegisterAcceptancePlanArgs(plan=plan()),
++        edit(new="return 3"),
++        RunTestsArgs(test_files=["test_extra.py"], test_source="base_public"),
++    )
++    assert assess(node, workspace).failures
++    node = await execute(
++        agent,
++        node,
++        edit("return 3", "return 2"),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public", product_source="base"),
++        RunTestsArgs(test_files=["test_unrelated.py"]),
++    )
++    pending = assess(node, workspace)
++    assert pending.state != "ready"
++    assert pending.failure_obligations[0]["targets"] == ["test_extra.py"]
++    assert pending.next_check["test_files"] == ["test_extra.py"]
++    node = await execute(agent, node, RunTestsArgs(test_files=["test_extra.py"], test_source="base_public"))
++    assert assess(node, workspace).state == "ready"
++    assert records(node, workspace)[0]["status"] == "failed"  # immutable history
++
++
++@pytest.mark.asyncio
++async def test_changing_failed_test_cannot_erase_old_failure(tmp_path):
++    agent, root, workspace, _ = await fixture(tmp_path)
++    node = await execute(
++        agent,
++        root,
++        RegisterAcceptancePlanArgs(plan=plan()),
++        edit(new="return 3"),
++        RunTestsArgs(test_files=["test_calc.py"]),
++    )
++    node = await execute(
++        agent,
++        node,
++        StringReplaceArgs(path="test_calc.py", old_str="== 2", new_str="== 3"),
++        RunTestsArgs(test_files=["test_calc.py"]),
++    )
++    assert assess(node, workspace).failure_obligations
++    assert assess(node, workspace).state != "ready"
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize(
++    "path,old,new",
++    [
++        ("conftest.py", "FLAG = 1", "FLAG = 2"),
++        ("tests/helpers.py", "FLAG = 1", "FLAG = 2"),
++        ("pytest.ini", "addopts = -q", "addopts = -v"),
++        ("tests/data.txt", "one", "two"),
++        ("assets/custom_cases.json", '{"value":1}', '{"value":2}'),
++    ],
++)
++async def test_workspace_auxiliary_edits_invalidate_receipts_and_require_same_baseline_bundle(tmp_path, path, old, new):
++    # Seed nested files before constructing the public runner/base.
++    (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
++    (tmp_path / path).write_text(old + "\n")
++    agent, root, workspace, runtime = await fixture(tmp_path)
++    runtime.files[path] = old + "\n"
++    if path.startswith("assets/"):
++        runtime.verification_files = [path]
++    node = await execute(
++        agent,
++        root,
++        edit(),
++        RunTestsArgs(test_files=["test_calc.py"]),
++        RunTestsArgs(test_files=["test_calc.py"], product_source="base"),
++    )
++    first = records(node, workspace)
++    assert first[0]["comparison"]["status"] == "known"
++    raw = deepcopy(node.action_steps[-2].observation.properties["test_run"])
++    node = await execute(agent, node, StringReplaceArgs(path=path, old_str=old, new_str=new))
++    assert records(node, workspace)[0]["effective_status"] == "stale"
++    node = await execute(agent, node, RunTestsArgs(test_files=["test_calc.py"]))
++    assert records(node, workspace)[-1]["comparison"]["status"] == "unknown"
++    node = await execute(agent, node, RunTestsArgs(test_files=["test_calc.py"], product_source="base"))
++    latest = records(node, workspace)
++    assert latest[-2]["comparison"]["status"] == "known"
++    assert path in latest[-2]["verification_inputs"]
++    assert new in runtime.calls[-1]["patch"]
++    assert raw["input_identity"] == first[0]["input_identity"]
++
++
++@pytest.mark.asyncio
++async def test_cache_outputs_preserve_receipt_but_data_add_delete_runner_and_env_stale_it(tmp_path, monkeypatch):
++    agent, root, workspace, runtime = await fixture(tmp_path)
++    node = await execute(agent, root, edit(), RunTestsArgs(test_files=["test_calc.py"]))
++    for name in ["report.xml", "junit.xml", "result.log", "__pycache__/calc.pyc", ".pytest_cache/v/cache/nodeids"]:
++        target = tmp_path / name
++        target.parent.mkdir(parents=True, exist_ok=True)
++        target.write_text("new output")
++    assert records(node, workspace)[-1]["effective_status"] == "passed"
++    data = tmp_path / "tests" / "dataset.csv"
++    data.parent.mkdir()
++    data.write_text("1,2\n")
++    assert records(node, workspace)[-1]["effective_status"] == "stale"
++    data.unlink()
++    assert records(node, workspace)[-1]["effective_status"] == "passed"
++    original_command = runtime.test_command
++    runtime.test_command = "pytest --new-runner-option"
++    assert records(node, workspace)[-1]["effective_status"] == "stale"
++    runtime.test_command = original_command
++    assert records(node, workspace)[-1]["effective_status"] == "passed"
++    monkeypatch.setenv("TASK_FEATURE_FLAG", "new")
++    assert records(node, workspace)[-1]["effective_status"] == "stale"
++
++
++def pair():
++    common = {
++        "recipe_version": 3,
++        "complete": True,
++        "return_code": 1,
++        "counts": {"passed": 1, "failed": 2},
++        "runner_fingerprint": "runner",
++        "base_identity": {"commit": "base"},
++        "test_bundle_hash": "bundle",
++        "environment_before": "env",
++        "environment_after": "env",
++        "test_source": "workspace",
++        "targets": ["test_calc.py"],
++        "input_identity": "stable",
++        "input_identity_after": "stable",
++    }
++
++    def row(name, status):
++        return {"file_path": "test_calc.py", "name": name, "status": status}
++
++    baseline = {
++        **common,
++        "source_id": "base",
++        "product_source": "base",
++        "results": [
++            row("ClassA::test_value[1]", "PASSED"),
++            row("ClassB::test_value[1]", "FAILED"),
++            row("test_value[2]", "FAILED"),
++        ],
++    }
++    candidate = {
++        **common,
++        "source_id": "current",
++        "product_source": "current",
++        "results": [
++            row("ClassA::test_value[1]", "FAILED"),
++            row("ClassB::test_value[1]", "PASSED"),
++            row("test_value[2]", "FAILED"),
++        ],
++    }
++    return candidate, baseline
++
++
++def test_public_baseline_comparison_reports_regressions_preexisting_and_fixed_by_full_id():
++    candidate, baseline = pair()
++    comparison = compare_runs(candidate, baseline)
++    assert comparison["status"] == "known"
++    assert comparison["introduced_failures"] == ["test_calc.py::ClassA::test_value[1]"]
++    assert comparison["fixed_tests"] == ["test_calc.py::ClassB::test_value[1]"]
++    assert comparison["preexisting_failures"] == ["test_calc.py::test_value[2]"]
++    assert case_identity({"file_path": "x.py", "name": "ClassA", "method": "test_a[p]"}) == "x.py::ClassA::test_a[p]"
++
++
++@pytest.mark.parametrize(
++    "mutation",
++    [
++        "absent",
++        "partial",
++        "timeout",
++        "missing_name",
++        "duplicate",
++        "collection",
++        "skipped",
++        "different_bundle",
++        "different_env",
++        "different_runner",
++        "different_base",
++        "different_ids",
++        "during_edit",
++        "legacy",
++    ],
++)
++def test_untrustworthy_comparison_is_unknown_never_empty_regression_set(mutation):
++    candidate, baseline = pair()
++    if mutation == "absent":
++        baseline = None
++    elif mutation == "partial":
++        baseline["complete"] = False
++    elif mutation == "timeout":
++        baseline["timed_out"] = True
++    elif mutation == "missing_name":
++        baseline["results"][0]["name"] = None
++    elif mutation == "duplicate":
++        baseline["results"].append(baseline["results"][0])
++    elif mutation == "collection":
++        baseline["counts"]["error"] = 1
++    elif mutation == "skipped":
++        baseline["results"][0]["status"] = "SKIPPED"
++    elif mutation == "different_bundle":
++        baseline["test_bundle_hash"] = "different"
++    elif mutation == "different_env":
++        baseline["environment_after"] = "different"
++    elif mutation == "different_runner":
++        baseline["runner_fingerprint"] = "different"
++    elif mutation == "different_base":
++        baseline["base_identity"] = {"commit": "different"}
++    elif mutation == "different_ids":
++        baseline["results"][0]["name"] += "other"
++    elif mutation == "during_edit":
++        baseline["input_identity_after"] = "different"
++    elif mutation == "legacy":
++        baseline["recipe_version"] = 2
++    comparison = compare_runs(candidate, baseline)
++    assert comparison["status"] == "unknown" and comparison["introduced_failures"] is None
++
++
++def failed_record(source, patch, targets=None):
++    return {
++        "source_id": source,
++        "product_source": "current",
++        "status": "failed",
++        "product_patch_hash": patch,
++        "targets": targets or ["test_calc.py"],
++        "product_files": ["calc.py"],
++        "results": [
++            {
++                "status": "FAILED",
++                "file_path": "test_calc.py",
++                "name": "test_value",
++                "failure_output": "AssertionError: wrong value",
++            }
++        ],
++    }
++
++
++@pytest.mark.asyncio
++async def test_repair_revisit_target_change_and_new_evidence_replan_are_durable(tmp_path):
++    agent, root, workspace, _ = await fixture(tmp_path)
++    # Real read observations are the only way to discharge the replan gate.
++    read = ReadFile()
++    await read.initialize(workspace)
++    agent._action_map[ReadFileArgs] = read
++    node = await execute(agent, root, ReadFileArgs(file_path="calc.py"))
++    a, b, a_again = [
++        failed_record(f"{node.node_id}:{i}", patch, targets)
++        for i, patch, targets in [
++            (0, "A", ["test_calc.py"]),
++            (1, "B", ["test_calc.py", "test_extra.py"]),
++            (2, "A", ["test_extra.py"]),
++        ]
++    ]
++    # The source IDs must correspond to actual trajectory entries for chronology.
++    from moatless.node import ActionStep
++    from moatless.actions.schema import Observation
++
++    node.action_steps.extend(
++        [
++            ActionStep(action=RunTestsArgs(test_files=["test_calc.py"]), observation=Observation.create("failure"))
++            for _ in range(2)
++        ]
++    )
++    saved = {}
++    assert update_repair_control(node, [a, b, a_again], saved, 3) is None
++    family, gate = next(iter(saved["replans"].items()))
++    assert saved["failure_families"][family]["repair_attempts"] == 2 and gate["status"] == "required"
++    proposal = {
++        "family_id": family,
++        "hypothesis": "The empty input follows an unhandled branch",
++        "next_steps": "Read the missing branch and repair it",
++        "evidence_sources": [f"{node.node_id}:0"],
++    }
++    assert not accept_replan(node, proposal, saved)[0]  # before trigger
++    repeated = await execute(agent, node, ReadFileArgs(file_path="calc.py"))
++    proposal["evidence_sources"] = [f"{repeated.node_id}:0"]
++    assert not accept_replan(repeated, proposal, saved)[0]  # same content/range
++    fresh = await execute(agent, repeated, ReadFileArgs(file_path="test_calc.py"))
++    proposal["evidence_sources"] = [f"{fresh.node_id}:0"]
++    assert accept_replan(fresh, proposal, saved)[0]
++    saved = deepcopy(saved)  # same serialized structure used by graph journal
++    assert saved["replans"][family]["status"] == "accepted"
++    # Testing the unchanged candidate does not consume another repair trial.
++    same = failed_record(f"{fresh.node_id}:0", "A", ["test_calc.py"])
++    assert update_repair_control(fresh, [a, b, a_again, same], saved, 3) is None
++    final = failed_record(f"{fresh.node_id}:0", "C", ["test_calc.py"])
++    saved["counted_failure_receipts"].remove(final["source_id"])
++    assert update_repair_control(fresh, [final], saved, 3) == "repair_exhausted"
++
++
++@pytest.mark.asyncio
++async def test_base_public_executes_original_helpers_and_new_workspace_helper_does_not_stale_it(tmp_path):
++    (tmp_path / "conftest.py").write_text("FLAG = 1\n")
++    agent, root, workspace, runtime = await fixture(tmp_path)
++    runtime.files["conftest.py"] = "FLAG = 1\n"
++    node = await execute(agent, root, edit(), RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"))
++    before = records(node, workspace)[-1]
++    node = await execute(
++        agent,
++        node,
++        StringReplaceArgs(path="conftest.py", old_str="FLAG = 1", new_str="FLAG = 2"),
++        CreateFileArgs(path="tests/new_helper.py", file_text="FLAG = 9\n"),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"),
++    )
++    after = records(node, workspace)
++    assert after[0]["effective_status"] == "passed"
++    assert before["test_bundle_hash"] == after[-1]["test_bundle_hash"]
++    assert "conftest.py" not in runtime.calls[-1]["patch"] and "new_helper" not in runtime.calls[-1]["patch"]
++
++
++@pytest.mark.asyncio
++async def test_old_assertion_conflict_requires_public_quote_and_execution_and_only_partially_delivers(tmp_path):
++    from moatless.actions.explain_test_conflict import ExplainTestConflict, ExplainTestConflictArgs
++
++    agent, root, workspace, _ = await fixture(
++        tmp_path, {"test_old.py": "from calc import value\ndef test_old(): assert value() == 1\n"}
++    )
++    action = ExplainTestConflict()
++    await action.initialize(workspace)
++    agent._action_map[ExplainTestConflictArgs] = action
++    node = await execute(
++        agent,
++        root,
++        RegisterAcceptancePlanArgs(plan=plan()),
++        edit(),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"),
++        RunTestsArgs(test_files=["test_calc.py"], test_source="base_public", product_source="base"),
++        RunTestsArgs(test_files=["test_old.py"], test_source="base_public"),
++        RunTestsArgs(test_files=["test_old.py"], test_source="base_public", product_source="base"),
++    )
++    assert assess(node, workspace).state == "repair"
++    old = records(node, workspace)[-2]
++    args = ExplainTestConflictArgs(
++        criterion_id="behavior",
++        candidate_source=old["source_id"],
++        failing_case="test_old.py::test_old",
++        public_quote="empty input",
++        original_assertion="assert value() == 1",
++        explanation="The public issue requires the new value, while this old assertion expects the old value",
++    )
++    bad = args.model_copy(update={"original_assertion": "assert True"})
++    denied = await execute(agent, node, bad)
++    assert denied.observation.properties["fail_reason"] == "invalid_args"
++    node = await execute(agent, node, args)
++    assessment = assess(node, workspace)
++    assert assessment.state == "partial_ready", assessment
++    assert assessment.explained_failures and not assessment.failures
++    assert records(node, workspace)[-2]["status"] == "failed"
++    from moatless.flow.langgraph_flow import LangGraphFlow
++    from moatless.actions.finish import FinishArgs
++    from scripts.migration_smoke import response
++
++    agent.completion_model._responses = [response(FinishArgs(finish_reason="review public conflict"))]
++    flow = LangGraphFlow.create(root=root, agent=agent, max_iterations=12, action_policy={"variant": "a6"})
++    last = await flow.run(workspace=workspace, node_id=node.node_id)
++    assert last.completion_status["status"] == "partially_verified"
++    assert "verified_checkpoint" not in flow.graph_state["repair_state"]
++    assert flow.graph_state["repair_state"]["partial_checkpoint"]["patch_hash"] == assessment.patch_hash
++
++
++@pytest.mark.asyncio
++async def test_timeout_partial_pass_is_not_success_and_cleanup_is_explicit(tmp_path):
++    import asyncio
++    from moatless.actions.run_tests import RunTests
++    from moatless.testing.schema import TestResult, TestStatus
++
++    agent, root, workspace, runtime = await fixture(tmp_path)
++
++    async def partial(**kwargs):
++        runtime.last_test_results = [TestResult(name="test_value", file_path="test_calc.py", status=TestStatus.PASSED)]
++        try:
++            await asyncio.Event().wait()
++        finally:
++            runtime.last_test_cleanup_confirmed = True
++
++    runtime.run_tests = partial
++    for action in agent.actions:
++        if isinstance(action, RunTests):
++            action.timeout = 0.02
++    node = await execute(agent, root, edit(), RunTestsArgs(test_files=["test_calc.py"]))
++    record = records(node, workspace)[-1]
++    assert record["counts"] == {"passed": 1} and record["timed_out"] and record["partial"]
++    assert record["status"] == "error" and record["complete"] is False
++    assert node.observation.properties["continuation_safe"] is True
++
++
++def test_exit_code_and_parsed_counts_must_agree_for_comparison():
++    candidate, baseline = pair()
++    baseline["return_code"] = 0
++    assert compare_runs(candidate, baseline)["status"] == "unknown"
++    baseline["return_code"] = 1
++    baseline["counts"] = {"passed": 999, "failed": 2}
++    assert compare_runs(candidate, baseline)["introduced_failures"] is None
++
++
++@pytest.mark.asyncio
++async def test_fixture_log_is_input_even_though_ordinary_logs_are_output(tmp_path):
++    source = tmp_path / "tests" / "fixture.log"
++    source.parent.mkdir()
++    source.write_text("original fixture\n")
++    agent, root, workspace, _ = await fixture(tmp_path)
++    node = await execute(agent, root, edit(), RunTestsArgs(test_files=["test_calc.py"]))
++    assert records(node, workspace)[-1]["effective_status"] == "passed"
++    source.write_text("changed fixture\n")
++    assert records(node, workspace)[-1]["effective_status"] == "stale"
++
++
++@pytest.mark.asyncio
++async def test_removing_import_from_unregistered_failed_test_cannot_erase_its_original_relation(tmp_path):
++    agent, root, workspace, _ = await fixture(
++        tmp_path, {"test_extra.py": "from calc import value\ndef test_extra(): assert value() == 2\n"}
++    )
++    node = await execute(
++        agent,
++        root,
++        RegisterAcceptancePlanArgs(plan=plan()),
++        edit(new="return 3"),
++        RunTestsArgs(test_files=["test_extra.py"]),
++    )
++    node = await execute(
++        agent,
++        node,
++        StringReplaceArgs(path="test_extra.py", old_str="from calc import value", new_str="value = lambda: 2"),
++        RunTestsArgs(test_files=["test_extra.py"]),
++    )
++    pending = assess(node, workspace).failure_obligations
++    assert pending and pending[0]["targets"] == ["test_extra.py"]
++
++
++@pytest.mark.asyncio
++async def test_read_cache_cannot_hide_changed_auxiliary_disk_input(tmp_path):
++    (tmp_path / "conftest.py").write_text("FLAG = 1\n")
++    agent, root, workspace, runtime = await fixture(tmp_path)
++    runtime.files["conftest.py"] = "FLAG = 1\n"
++    root.file_context.add_file("conftest.py", show_all_spans=True)
++    assert root.file_context._files["conftest.py"].content == "FLAG = 1\n"
++    node = await execute(agent, root, edit(), RunTestsArgs(test_files=["test_calc.py"]))
++    assert records(node, workspace)[-1]["effective_status"] == "passed"
++    (tmp_path / "conftest.py").write_text("FLAG = 2\n")
++    assert records(node, workspace)[-1]["effective_status"] == "stale"
++
++
++@pytest.mark.asyncio
++async def test_internal_symlink_input_is_bound_and_external_input_is_unavailable(tmp_path):
++    data = tmp_path / "fixture.txt"
++    data.write_text("one\n")
++    (tmp_path / "fixture_link.txt").symlink_to("fixture.txt")
++    agent, root, workspace, _ = await fixture(tmp_path)
++    node = await execute(agent, root, edit(), RunTestsArgs(test_files=["test_calc.py"]))
++    assert records(node, workspace)[-1]["effective_status"] == "passed"
++    data.write_text("two\n")
++    assert records(node, workspace)[-1]["effective_status"] == "stale"
++    (tmp_path / "external_link.txt").symlink_to("/usr/bin/python3")
++    node = await execute(agent, node, RunTestsArgs(test_files=["test_calc.py"]))
++    assert node.observation.properties["fail_reason"] == "environment_error"
++    assert records(node, workspace)[-1]["status"] != "passed"
++
++
++@pytest.mark.asyncio
++async def test_new_repro_can_reprove_unchanged_old_failure_with_real_new_bundle_baseline(tmp_path):
++    agent, root, workspace, _ = await fixture(
++        tmp_path, {"test_extra.py": "from calc import value\ndef test_extra(): assert value() == 2\n"}
++    )
++    node = await execute(
++        agent,
++        root,
++        RegisterAcceptancePlanArgs(plan=plan()),
++        edit(new="return 3"),
++        RunTestsArgs(test_files=["test_extra.py"]),
++    )
++    node = await execute(
++        agent,
++        node,
++        CreateFileArgs(path="test_new.py", file_text="from calc import value\ndef test_new(): assert value() == 2\n"),
++        edit("return 3", "return 2"),
++        RunTestsArgs(test_files=["test_extra.py"]),
++    )
++    assert assess(node, workspace).failure_obligations  # new bundle alone is insufficient
++    node = await execute(agent, node, RunTestsArgs(test_files=["test_extra.py"], product_source="base"))
++    assert not assess(node, workspace).failure_obligations  # same old case + real comparable fail->pass
++
++
++@pytest.mark.asyncio
++async def test_added_product_file_or_changed_exception_cannot_reset_same_behavior_repair_cap(tmp_path):
++    agent, root, workspace, _ = await fixture(tmp_path)
++    from moatless.node import ActionStep
++    from moatless.actions.schema import Observation
++
++    node = root.create_child()
++    node.action_steps = [
++        ActionStep(action=RunTestsArgs(test_files=["test_calc.py"]), observation=Observation.create("failure"))
++        for _ in range(4)
++    ]
++    rows = [failed_record(f"{node.node_id}:{i}", patch) for i, patch in enumerate(["A", "B", "A", "C"])]
++    rows[1]["product_files"].append("new_product.py")
++    rows[2]["results"][0]["failure_output"] = "ValueError: different symptom of the same failed case"
++    saved = {}
++    assert update_repair_control(node, rows[:3], saved, 3) is None
++    assert len(saved["failure_families"]) == 1
++    assert next(iter(saved["failure_families"].values()))["repair_attempts"] == 2
++    assert update_repair_control(node, rows, saved, 3) == "repair_exhausted"
+--- baseline/tests/policy/test_six_group_flow.py
++++ final/tests/policy/test_six_group_flow.py
+@@ -0,0 +1,197 @@
++"""Exercise the actual graph/journal for bounded recovery, replan and budgets."""
++
++import asyncio
++import sqlite3
++from copy import deepcopy
++
++import pytest
++from moatless.actions.read_file import ReadFile, ReadFileArgs
++from moatless.actions.replan_repair import ReplanRepairArgs
++from moatless.actions.run_tests import RunTests, RunTestsArgs
++from moatless.actions.register_acceptance_plan import RegisterAcceptancePlanArgs
++from moatless.exceptions import WorkspaceConsistencyError
++from moatless.flow.durable import OutcomeJournal, RecoveryConflict
++from moatless.flow.langgraph_flow import LangGraphFlow
++from moatless.message_history.policy import content_hash
++from moatless.policy.obligations import failure_family
++from scripts.migration_smoke import response
++from tests.policy.test_acceptance_repair import fixture, plan, edit
++
++
++@pytest.mark.asyncio
++async def test_model_proposed_tests_share_the_global_verification_budget(tmp_path):
++    agent, root, workspace, runtime = await fixture(tmp_path)
++    agent.completion_model._responses = [
++        response(
++            RegisterAcceptancePlanArgs(plan=plan()), edit(new="return 3"), RunTestsArgs(test_files=["test_calc.py"])
++        ),
++        response(edit("return 3", "return 4"), RunTestsArgs(test_files=["test_calc.py"])),
++    ]
++    flow = LangGraphFlow.create(
++        root=root, agent=agent, max_iterations=5, action_policy={"variant": "a6", "max_verification_attempts": 1}
++    )
++    last = await flow.run(workspace=workspace)
++    assert flow.is_finished() == "verification_budget_exhausted"
++    assert len(runtime.calls) == 1 and last.completion_status["status"] == "unverified"
++
++
++@pytest.mark.asyncio
++async def test_real_replan_gate_survives_durable_resume_and_one_final_failed_trial_exits(tmp_path):
++    directory = tmp_path / "repo"
++    directory.mkdir()
++    agent, root, workspace, runtime = await fixture(directory)
++    read = ReadFile()
++    await read.initialize(workspace)
++    agent._action_map[ReadFileArgs] = read
++    family = failure_family({"product_files": ["calc.py"]}, {"failure_output": "AssertionError"})
++    agent.completion_model._responses = [
++        response(
++            RegisterAcceptancePlanArgs(plan=plan()), edit(new="return 3"), RunTestsArgs(test_files=["test_calc.py"])
++        ),
++        response(edit("return 3", "return 4"), RunTestsArgs(test_files=["test_calc.py"])),
++        response(edit("return 4", "return 3"), RunTestsArgs(test_files=["test_calc.py"])),
++        response(
++            ReadFileArgs(file_path="test_calc.py"),
++            ReplanRepairArgs(
++                family_id=family,
++                hypothesis="The assertion exposes the wrong return branch",
++                evidence_sources=["4:0"],
++                next_steps="Repair the return branch, then rerun the failing module",
++            ),
++        ),
++        response(edit("return 3", "return 5"), RunTestsArgs(test_files=["test_calc.py"])),
++    ]
++    path = str(tmp_path / "checkpoint.sqlite")
++    flow = LangGraphFlow.create(
++        root=root,
++        agent=agent,
++        max_iterations=10,
++        checkpoint_path=path,
++        trajectory_id="replan-proof",
++        action_policy={"variant": "a6"},
++    )
++
++    class Crash(BaseException):
++        pass
++
++    original = flow._journal_node
++
++    def wrapped(name, fn):
++        call = original(name, fn)
++
++        async def run(state, runtime):
++            result = await call(state, runtime)
++            if (
++                name == "assess"
++                and result.get("repair_state", {}).get("replans", {}).get(family, {}).get("status") == "accepted"
++            ):
++                raise Crash()
++            return result
++
++        return run
++
++    flow._journal_node = wrapped
++    with pytest.raises(Crash):
++        await flow.run(workspace=workspace)
++    assert len(runtime.calls) == 3
++    restored = LangGraphFlow.create(
++        root=root,
++        agent=agent,
++        max_iterations=10,
++        checkpoint_path=path,
++        trajectory_id="replan-proof",
++        action_policy={"variant": "a6"},
++    )
++    last = await restored.run(workspace=workspace)
++    assert restored.is_finished() == "repair_exhausted", restored.graph_state["repair_state"]
++    assert len(runtime.calls) == 4 and agent.completion_model._calls == 5
++    saved = restored.graph_state["repair_state"]
++    assert (
++        saved["replans"][family]["status"] == "accepted" and saved["failure_families"][family]["repair_attempts"] == 3
++    )
++    assert last.completion_status["status"] == "unverified"
++
++
++@pytest.mark.asyncio
++async def test_cleanup_exceeding_grace_leaves_pending_operation_and_resume_cannot_replay(tmp_path):
++    directory = tmp_path / "repo"
++    directory.mkdir()
++    agent, root, workspace, runtime = await fixture(directory)
++    released = asyncio.Event()
++    calls = []
++
++    async def stuck(**kwargs):
++        calls.append(1)
++        try:
++            await asyncio.Event().wait()
++        finally:
++            await released.wait()
++
++    runtime.run_tests = stuck
++    for action in agent.actions:
++        if isinstance(action, RunTests):
++            action.timeout, action.cleanup_grace = 0.02, 0.03
++    agent.tool_timeout = 2
++    agent.completion_model._responses = [
++        response(RegisterAcceptancePlanArgs(plan=plan()), edit(), RunTestsArgs(test_files=["test_calc.py"]))
++    ]
++    path = str(tmp_path / "checkpoint.sqlite")
++    kwargs = dict(
++        root=root,
++        agent=agent,
++        max_iterations=5,
++        checkpoint_path=path,
++        trajectory_id="uncertain-cleanup",
++        action_policy={"variant": "a6"},
++        tool_timeout=2,
++    )
++    flow = LangGraphFlow.create(**kwargs)
++    try:
++        with pytest.raises(WorkspaceConsistencyError):
++            await flow.run(workspace=workspace)
++        assert flow.graph_state["error_kind"] == "workspace_consistency"
++        with sqlite3.connect(path + ".outcomes.sqlite") as connection:
++            assert connection.execute("SELECT COUNT(*) FROM flow_operations WHERE status='started'").fetchone()[0] == 1
++        restored = LangGraphFlow.create(**kwargs)
++        with pytest.raises(RecoveryConflict):
++            await restored.run(workspace=workspace)
++        assert calls == [1]
++    finally:
++        released.set()
++        await asyncio.sleep(0.03)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize(
++    "setting,value", [("python_executable", "/usr/bin/python3"), ("test_command", "pytest --changed-runner")]
++)
++async def test_completed_checkpoint_rechecks_compiler_and_runner_inputs_before_reusing_verified(
++    tmp_path, setting, value
++):
++    directory = tmp_path / "repo"
++    directory.mkdir()
++    agent, root, workspace, runtime = await fixture(directory)
++    agent.completion_model._responses = [
++        response(
++            RegisterAcceptancePlanArgs(plan=plan()),
++            edit(),
++            RunTestsArgs(test_files=["test_calc.py"], test_source="base_public"),
++        )
++    ]
++    kwargs = dict(
++        root=root,
++        agent=agent,
++        max_iterations=5,
++        checkpoint_path=str(tmp_path / "checkpoint.sqlite"),
++        trajectory_id="completed-binding",
++        action_policy={"variant": "a6"},
++    )
++    flow = LangGraphFlow.create(**kwargs)
++    last = await flow.run(workspace=workspace)
++    assert last.completion_status["status"] == "verified"
++    calls = len(runtime.calls)
++    setattr(runtime, setting, value)
++    restored = LangGraphFlow.create(**kwargs)
++    with pytest.raises(RecoveryConflict, match="verification inputs changed"):
++        await restored.run(workspace=workspace)
++    assert len(runtime.calls) == calls
+--- baseline/tests/runtime/test_deadline_contract.py
++++ final/tests/runtime/test_deadline_contract.py
+@@ -0,0 +1,99 @@
++"""One real deadline, bounded cleanup and cancellation propagation."""
++
++import asyncio
++import time
++import os
++from pathlib import Path
++import shlex
++
++import pytest
++
++from moatless.exceptions import WorkspaceConsistencyError
++from moatless.runtime.deadline import invoke, _unconfirmed
++from moatless.runtime.local import SweBenchLocalEnvironment
++from tests.runtime.test_generation_runtime import PUBLIC, PATCH, CREATE
++
++
++@pytest.mark.asyncio
++async def test_execution_and_cleanup_have_independent_bounded_budgets():
++    released = asyncio.Event()
++    entered = asyncio.Event()
++
++    async def operation():
++        try:
++            await asyncio.Event().wait()
++        finally:
++            entered.set()
++            await released.wait()  # intentionally uncooperative cleanup
++
++    start = time.monotonic()
++    try:
++        with pytest.raises(WorkspaceConsistencyError, match="grace"):
++            await invoke(operation(), timeout=0.03, cleanup_grace=0.04)
++        assert entered.is_set() and 0.05 <= time.monotonic() - start < 0.5
++        assert _unconfirmed
++    finally:
++        released.set()
++        await asyncio.sleep(0.02)
++    assert not _unconfirmed
++
++
++@pytest.mark.asyncio
++async def test_user_cancellation_propagates_after_cleanup():
++    cleaned = []
++
++    async def operation():
++        try:
++            await asyncio.Event().wait()
++        finally:
++            await asyncio.sleep(0.01)
++            cleaned.append(True)
++
++    task = asyncio.create_task(invoke(operation(), timeout=1, cleanup_grace=0.1))
++    await asyncio.sleep(0.02)
++    task.cancel()
++    with pytest.raises(asyncio.CancelledError):
++        await task
++    assert cleaned == [True]
++
++
++@pytest.mark.asyncio
++async def test_real_test_process_killed_reaped_and_patch_restored(tmp_path, monkeypatch):
++    monkeypatch.setenv("SKIP_INSTALL", "true")
++    monkeypatch.setenv("SKIP_CONDA_ACTIVATE", "true")
++    (tmp_path / "data.txt").write_text("old\n")
++    (tmp_path / "data.txt").chmod(0o640)
++    runtime = SweBenchLocalEnvironment(tmp_path, PUBLIC, None, generation_only=True)
++    pidfile = tmp_path / "pid.txt"
++    # exec keeps the child PID identical to the process-group leader.
++    command = "exec /usr/bin/python3 -c " + shlex.quote(
++        f"import os,time;open({str(pidfile)!r},'w').write(str(os.getpid()));print('started',flush=True);time.sleep(10)"
++    )
++    runtime._test_script = lambda targets: command
++    _, timed_out = await invoke(
++        runtime.run_tests(PATCH + CREATE, ["test.py"], managed_deadline=True), timeout=0.3, cleanup_grace=1
++    )
++    assert timed_out and runtime.last_test_cleanup_confirmed
++    assert (tmp_path / "data.txt").read_text() == "old\n"
++    assert (tmp_path / "data.txt").stat().st_mode & 0o777 == 0o640
++    assert not (tmp_path / "sub").exists()
++    pid = int(pidfile.read_text())
++    with pytest.raises(ProcessLookupError):
++        os.kill(pid, 0)
++
++
++@pytest.mark.asyncio
++async def test_cleanup_failure_is_recovery_error_but_cancellation_still_propagates():
++    async def failed_cleanup():
++        try:
++            await asyncio.Event().wait()
++        finally:
++            raise OSError("restore failed")
++
++    with pytest.raises(WorkspaceConsistencyError, match="cleanup"):
++        await invoke(failed_cleanup(), timeout=0.01, cleanup_grace=0.1)
++    task = asyncio.create_task(invoke(failed_cleanup(), timeout=1, cleanup_grace=0.1))
++    await asyncio.sleep(0.01)
++    task.cancel()
++    with pytest.raises(asyncio.CancelledError):
++        await task

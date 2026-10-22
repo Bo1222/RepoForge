@@ -13,7 +13,7 @@ from moatless.completion.schema import ResponseSchema
 from moatless.exceptions import CompletionRejectError, RejectError
 from moatless.flow.loop import AgenticLoop
 from moatless.node import ActionStep
-from scripts.migration_smoke import ScriptedCompletion, replay, response
+from scripts.migration_smoke import ScriptedCompletion, replay, response, historical_test_projection
 
 BASELINE = Path(__file__).resolve().parents[2] / "experiments/baselines/M0"
 
@@ -31,7 +31,7 @@ def make_flow(responses, **kwargs):
 async def test_frozen_replay(coding):
     actual, _ = await replay(coding=coding)
     expected = json.loads((BASELINE / ("coding.json" if coding else "respond.json")).read_text())
-    assert actual == expected
+    assert historical_test_projection(actual) == expected
 
 
 @pytest.mark.asyncio

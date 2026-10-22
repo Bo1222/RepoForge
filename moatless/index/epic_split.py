@@ -54,6 +54,7 @@ class EpicSplitter(NodeParser):
     min_chunk_size: int = Field(default=256, description="Min tokens to split code.")
     max_chunk_size: int = Field(default=2000, description="Max tokens in one chunk.")
     hard_token_limit: int = Field(default=6000, description="Hard token limit for a chunk.")
+    preserve_content: bool = Field(default=False, description="Preserve oversized and generated content instead of dropping it.")
     repo_path: str = Field(default=None, description="Path to the repository.")
     index_callback: Optional[Callable] = Field(default=None, description="Callback to call when indexing a code block.")
     parser: CodeParser = Field(default=None, description="Code parser to use", exclude=True)
@@ -77,6 +78,7 @@ class EpicSplitter(NodeParser):
         tokenizer: Optional[Callable] = None,
         non_code_file_extensions: list[str] | None = None,
         callback_manager: CallbackManager | None = None,
+        preserve_content: bool = False,
     ) -> None:
         if non_code_file_extensions is None:
             non_code_file_extensions = ["md", "txt"]
@@ -97,6 +99,7 @@ class EpicSplitter(NodeParser):
             min_chunk_size=min_chunk_size,
             max_chunk_size=max_chunk_size,
             hard_token_limit=hard_token_limit,
+            preserve_content=preserve_content,
             max_chunks=max_chunks,
             index_callback=index_callback,
             repo_path=repo_path,
@@ -139,6 +142,13 @@ class EpicSplitter(NodeParser):
 
             except Exception:
                 logger.exception(f"Failed to use epic splitter to split {file_path}. Fallback to treesitter_split().")
+                if self.preserve_content:
+                    fallback = CodeNode(id_=node.id_.replace(self.repo_path + "/", "", 1),
+                        text=content, metadata={**node.metadata, "span_ids": []},
+                        excluded_embed_metadata_keys=node.excluded_embed_metadata_keys,
+                        excluded_llm_metadata_keys=node.excluded_llm_metadata_keys,
+                        metadata_template=node.metadata_template)
+                    all_nodes.extend(self._split_preserved_node(fallback))
                 # TODO: Fall back to treesitter or text split
                 continue
 
@@ -156,7 +166,7 @@ class EpicSplitter(NodeParser):
                 content = self._to_context_string(codeblock, path_tree)
                 chunk_node = self._create_node(content, node, chunk=chunk)
                 if chunk_node:
-                    all_nodes.append(chunk_node)
+                    all_nodes.extend(self._split_preserved_node(chunk_node) if self.preserve_content else [chunk_node])
             parse_time = time.time_ns() - starttime
             if parse_time > 1e9:
                 logger.warning(f"Create nodes for file {file_path} took {parse_time / 1e9:.2f} seconds.")
@@ -170,7 +180,7 @@ class EpicSplitter(NodeParser):
             logger.debug(f"Skipping file {file_path} because it has no tokens.")
             return []
 
-        if tokens > self.hard_token_limit:
+        if tokens > self.hard_token_limit and not self.preserve_content:
             for child in codeblock.children:
                 if (
                     child.type == CodeBlockType.COMMENT and "generated" in child.content.lower()
@@ -407,7 +417,7 @@ class EpicSplitter(NodeParser):
         tokens = count_chunk_tokens(chunk)
 
         # Truncate large chunks
-        if tokens > self.hard_token_limit:
+        if tokens > self.hard_token_limit and not self.preserve_content:
             content = content[: self.hard_token_limit]
             logger.debug(
                 f"Truncating chunk {node_id} in {metadata['file_path']} as it has {tokens} tokens which is"
@@ -432,3 +442,36 @@ class EpicSplitter(NodeParser):
     def _count_tokens(self, text: str):
         tokenizer = get_tokenizer()
         return len(tokenizer(text))
+
+    def _split_preserved_node(self, node: CodeNode) -> list[CodeNode]:
+        """Split on Unicode character boundaries; concatenation preserves text.
+
+        This is a conservative framework-token bound. Host preparation still
+        checks every complete EMBED input with the actual BGE tokenizer.
+        """
+        text = node.text
+        if self._count_tokens(text) <= self.hard_token_limit:
+            return [node]
+        parts = []
+        while text:
+            low, high = 1, len(text)
+            while low < high:
+                middle = (low + high + 1) // 2
+                if self._count_tokens(text[:middle]) <= self.hard_token_limit:
+                    low = middle
+                else:
+                    high = middle - 1
+            size = low
+            line = text.rfind("\n", 0, size)
+            if line >= size // 2:
+                size = line + 1
+            fragment = text[:size]
+            if self._count_tokens(fragment) > self.hard_token_limit:
+                raise ValueError("Chunk limit cannot represent a single Unicode character")
+            part = node.model_copy(deep=True)
+            part.id_ = f"{node.id_}_part{len(parts)}"
+            part.text = fragment
+            part.metadata["tokens"] = self._count_tokens(fragment)
+            parts.append(part)
+            text = text[size:]
+        return parts

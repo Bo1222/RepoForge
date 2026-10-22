@@ -38,6 +38,36 @@ def default_checkpoint_path(project_id: str | None, trajectory_id: str | None, r
     return str(base / "checkpoints" / f"{thread_id(project_id, trajectory_id, run_id)}.sqlite")
 
 
+def _fingerprint_path(path: Path, excluded: Path):
+    if path.name in {".git", "__pycache__", ".pytest_cache"}:
+        return None
+    if path.is_symlink():
+        # Hash the link itself, including broken/cyclic links, without resolving it.
+        return {"type": "symlink", "target": os.readlink(path)}
+    resolved = str(path.resolve())
+    if resolved == str(excluded) or resolved.startswith((f"{excluded}-", f"{excluded}.")):
+        return None
+    if not path.exists():
+        return "deleted"
+    if path.is_file():
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    if path.is_dir():
+        members = {}
+        for child in sorted(path.iterdir()):
+            signature = _fingerprint_path(child, excluded)
+            if signature is not None:
+                members[child.name] = signature
+        head = None
+        if (path / ".git").exists():
+            proc = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+                                  capture_output=True, timeout=10)
+            head = proc.stdout.decode().strip() if proc.returncode == 0 else "unavailable"
+        # Git ls-files can return gitlinks or embedded repositories as directories.
+        # Detect both working-tree edits and a checkout to an identical-content commit.
+        return {"type": "directory", "head": head, "content_hash": digest(members)}
+    return {"type": "special", "mode": path.stat().st_mode}
+
+
 def workspace_fingerprint(workspace: Workspace | None, excluded_path: str) -> dict:
     if workspace is None:
         return {"repository": None, "runtime": None}
@@ -69,17 +99,14 @@ def workspace_fingerprint(workspace: Workspace | None, excluded_path: str) -> di
                 )
                 paths = [base / path.decode() for path in tracked.stdout.split(b"\0") if path]
             else:
-                paths = [p for p in base.rglob("*") if p.is_file()]
+                paths = list(base.iterdir())
             excluded = Path(excluded_path).resolve()
             for path in sorted(set(paths)):
                 if any(p in {".git", "__pycache__", ".pytest_cache"} for p in path.parts):
                     continue
-                resolved = str(path.resolve())
-                if resolved == str(excluded) or resolved.startswith((f"{excluded}-", f"{excluded}.")):
-                    continue  # database, WAL, SHM, thread lock sidecars
-                contents[str(path.relative_to(base))] = (
-                    hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "deleted"
-                )
+                signature = _fingerprint_path(path, excluded)
+                if signature is not None:
+                    contents[str(path.relative_to(base))] = signature
         else:
             contents = getattr(repo, "files", {})
         data["repository"] = {
@@ -92,19 +119,21 @@ def workspace_fingerprint(workspace: Workspace | None, excluded_path: str) -> di
     runtime = workspace.runtime
     if runtime is not None:
         hook = getattr(runtime, "recovery_state", None)
+        adapter_state = hook() if hook else None
         data["runtime"] = {
             "class": f"{type(runtime).__module__}.{type(runtime).__name__}",
             "instance_id": getattr(runtime, "instance_id", None),
-            "state": hook() if hook else None,
-            "recoverable": hook is not None,
+            "state": adapter_state,
+            "recoverable": hook is not None and adapter_state is not None,
         }
     environment = workspace._environment
     if environment is not None and environment is not runtime:
         hook = getattr(environment, "recovery_state", None)
+        adapter_state = hook() if hook else None
         data["environment"] = {
             "class": f"{type(environment).__module__}.{type(environment).__name__}",
-            "state": hook() if hook else None,
-            "recoverable": hook is not None,
+            "state": adapter_state,
+            "recoverable": hook is not None and adapter_state is not None,
         }
     return data
 

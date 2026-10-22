@@ -86,7 +86,7 @@ async def test_insert_multiline(repository, file_context):
     action = InsertLine(repository=repository)
     args = InsertLinesArgs(
         path="test.py",
-        insert_line=1,
+        insert_line=0,
         new_str="""def setup():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ async def test_insert_line_with_indentation(repository, file_context):
     action = InsertLine(repository=repository)
     args = InsertLinesArgs(
         path="test2.py",
-        insert_line=2,
+        insert_line=3,
         new_str='    def new_method(self):\n        return "test"',
         thoughts="Adding new method",
     )

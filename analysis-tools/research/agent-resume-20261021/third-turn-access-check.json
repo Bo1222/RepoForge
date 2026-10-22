@@ -1,0 +1,15 @@
+{
+  "requested_url": "https://www.xiaohongshu.com/search_result?keyword=agent%20%E7%AE%80%E5%8E%86&type=51",
+  "checked_at": "2026-10-21T07:09:11.904569+00:00",
+  "purpose": "Third goal-turn revalidation of the same public-source access blocker",
+  "http_status": 200,
+  "final_url": "https://www.xiaohongshu.com/search_result/?keyword=agent%20%E7%AE%80%E5%8E%86&type=51",
+  "html_sha256": "e2aa3e1da49669ea359ee63f297b66b05ed613b04e1f361a091fffb55eab9f41",
+  "page_title": [
+    "agent 简历 - 小红书搜索"
+  ],
+  "has_initial_state": true,
+  "search_feed_count": 0,
+  "note_detail_count": 0,
+  "logged_in": false
+}

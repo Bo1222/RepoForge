@@ -1,0 +1,9 @@
+# Separate service environment; torch installed from the official cu126 index.
+torch==2.7.1+cu126
+sentence-transformers==5.1.2
+transformers==4.57.1
+fastapi==0.119.1
+uvicorn==0.38.0
+sentencepiece==0.2.1
+psutil==7.1.0
+httpx==0.28.1

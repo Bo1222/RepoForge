@@ -1,0 +1,13 @@
+{
+  "note": "O2 (a5) fixed combination from historical runs; not a single 5-instance run. pytest/django from O2fix2_wrong2_20261021T171549Z; sympy/sklearn/astropy from O2_dev30_sanity_20261021T161545Z. Steps are the O2 steps recorded in analysis-tools/O2_5_RESULT.md.",
+  "variant": "a5",
+  "official_harness": "not_run",
+  "rows": [
+    {"instance_id": "pytest-dev__pytest-7490", "resolved": true, "cost": 0.110810232, "steps": 32, "source": "O2fix2_wrong2_20261021T171549Z"},
+    {"instance_id": "django__django-10914", "resolved": true, "cost": 0.032341416, "steps": 16, "source": "O2fix2_wrong2_20261021T171549Z"},
+    {"instance_id": "sympy__sympy-12481", "resolved": true, "cost": 0.031908156, "steps": 16, "source": "O2_dev30_sanity_20261021T161545Z"},
+    {"instance_id": "scikit-learn__scikit-learn-14053", "resolved": true, "cost": 0.040166916, "steps": 12, "source": "O2_dev30_sanity_20261021T161545Z"},
+    {"instance_id": "astropy__astropy-8872", "resolved": true, "cost": 0.16214593200000002, "steps": 29, "source": "O2_dev30_sanity_20261021T161545Z"}
+  ],
+  "total": {"resolved": 5, "cost": 0.37737265200000004, "steps": 105}
+}

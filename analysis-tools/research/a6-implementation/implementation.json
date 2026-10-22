@@ -1,0 +1,215 @@
+{
+  "baseline_commit": "2268485edb612a54e74f9c64cccdf72c84b4c4ea",
+  "comparison": "initial dirty workspace snapshot -> final workspace; no commit or push",
+  "python": "3.10.9 (main, Mar  1 2023, 18:23:06) [GCC 11.2.0]",
+  "changed_python_files": {
+    "moatless/actions/code_modification_mixin.py": {
+      "before": "8bd0daf86d32ff2bbb32d29fdaf9cf33b00d31be4b56074122105c665594a85a",
+      "after": "0f19b446919ce9c20052ee277662156f794f166a026f310c2fdf2f24e7cb2f3a"
+    },
+    "moatless/actions/create_file.py": {
+      "before": "6b7e8cf58ec96459f65c92151a348fe01c103250a82f8c6f49f89cf367489efc",
+      "after": "769658799a0504e42bc1d425c74416b702abe5e174cbeab2b2f1992f27c81aeb"
+    },
+    "moatless/actions/find_code_snippet.py": {
+      "before": "199ae1bf2590dfcde9cf12c3c0f279175161703535b6da98ff483e127b08256e",
+      "after": "c8c2b14f1e4c07c2256deb48cda5688ea41c604ba145e51e0412bda2713c952a"
+    },
+    "moatless/actions/register_acceptance_plan.py": {
+      "before": null,
+      "after": "1918bdb55efc84dc0f51e51f3baf06555e191ea143ec9a9a978c401e6ab1b536"
+    },
+    "moatless/actions/run_tests.py": {
+      "before": "a6cd35a2c2f9392af2094ff747f1b504fca7339929c3869937e016e80b1ae76b",
+      "after": "6d32ad28f2ab5614215c15ccb4c81204dee6f84b4dac8fd9963821d1cbbc0ce9"
+    },
+    "moatless/actions/search_base.py": {
+      "before": "da26bc800027063c7d907fde30449dbcce76005540619165ac3f7859b6bcbac2",
+      "after": "a4a5e622d3a681849078589b569462b7696c0a70d83f306acc3e253ff4b7bd6d"
+    },
+    "moatless/actions/test_targets.py": {
+      "before": "777f40dbc4de712b0b6e44d9d6617580347465f9e396beac273f63c73a0141bd",
+      "after": "51ee6e1249282da44fc6dc5adb43e26c2d03fdd84142f78b1722c2b41e752cf8"
+    },
+    "moatless/completion/base.py": {
+      "before": "5275003a21ff864a149bd00186e8642b53cc8b7ff62bb7185b6139e9b7f33837",
+      "after": "1ec5854a0d0542980674b3befbb4603d5481d1b06bceb680aee80de187bde23e"
+    },
+    "moatless/completion/stats.py": {
+      "before": "907cf08746cf46ceb6fa74b0e808a6f8589fe97a2d4ea86543cd9530cf1d5eea",
+      "after": "e84956df4734e567974ff26bf3fb6aa200fc42b567be4a824a694434be5ee371"
+    },
+    "moatless/evaluation/experiment.py": {
+      "before": "86ff7c00b5d6a6310a91a14255d4665b7d701491c7dd0f341d184ff0a39e66af",
+      "after": "1aadb09fefc05814bc1ecdf058b54401e6ab25102f68ff651cdef25fd5cb9556"
+    },
+    "moatless/evaluation/generation.py": {
+      "before": "1a4f00aad87ec8a080311e7bd2c5b3597ed8d59bdb61c3c476347ef10eb24cd6",
+      "after": "d2d40e4d5436be340cd0090f56f5f2e875ea2721f174160b4c2caf6a17dc0786"
+    },
+    "moatless/evaluation/verification.py": {
+      "before": "3f3d09c5b174401847120ee239e531e7985fbd0048447510fe27b5ab2e28c7cb",
+      "after": "b95bf6980a29db545875c0edff73f464bde5aa5c3173dc44f369ef863b170de5"
+    },
+    "moatless/exceptions.py": {
+      "before": "baf651e316d4f6eb8f5b13593ab581f94982e5f4647df914c5100a6f7d4f4ca6",
+      "after": "365177a7fe81fa61e9592c565143c4d3e32477ce0c3d5340daec4f2a3527c577"
+    },
+    "moatless/execution_memory.py": {
+      "before": "3c5eae9891249a01f634cf2651c213f557413c5935802ee38c6d106f82129cf5",
+      "after": "257593e375d8a9da5c77419baccac345e85cfc1789c3f2db40d43b47d2142579"
+    },
+    "moatless/flow/graph_state.py": {
+      "before": "3cb9a74a38397346179b3694bfd6dc35f6fcde75682d5ff6e92fc2d35b18e428",
+      "after": "f0dfc119a5a9ad5caa73b2049fa71741c217137149d4fef43d22b51d2f4d0395"
+    },
+    "moatless/flow/langgraph_flow.py": {
+      "before": "b148a6429c134d28e43318c40dacddea52be4445c982af820f8513e772441f1b",
+      "after": "cf879f32784950ae435f65dd1d1a17301c8c46f53911d80c941347314c13d1ea"
+    },
+    "moatless/message_history/builder.py": {
+      "before": "dd1fef5f2d339dc226e6a9610568fecd301252ed2612022f75b46f1f1d85e9d3",
+      "after": "f19d8f6e24ce9751366e117f7fa5a287457eb7dddb5d59f6452a3cc7ea3d72a7"
+    },
+    "moatless/message_history/managed.py": {
+      "before": "5582124c669552b9af0f9db2b088bb1bf78f6252f9406b056cdcf6d860c16572",
+      "after": "8c6c5d10edf488082fb979e887e84123a7f28bd0748ccb2b201e164e7c0ad09f"
+    },
+    "moatless/message_history/policy.py": {
+      "before": "b30c3738ca3d40075b591d664b01219b9fd5bc8f864e866f498a8190fc4f51b3",
+      "after": "2aa8bd4274cc2c016aa83d20ecf9a7653a1cda98ae0688193b67fbfec94330dd"
+    },
+    "moatless/policy/action.py": {
+      "before": "d211e3918fee7a0d25fd5bffb1a261138c04bac56602e1ded3a20464e350711a",
+      "after": "da38a18c3437f14d5150da530282a83af9843396a37f51a6d2a1fcc0a234b117"
+    },
+    "moatless/policy/failures.py": {
+      "before": "11e481dacc65d447e2f964a17a3244b6c5b79e09c88e4a20cc39c61c4649af99",
+      "after": "399efe83f3765baf3412d7c254028d0a113a9c3cd85883f10a6922f8c72dc9a8"
+    },
+    "moatless/policy/repair.py": {
+      "before": null,
+      "after": "9a3c9f00e3c8e56687d202ef4644a04a54da7b2d12efdfc4bf7e279be2756cd6"
+    },
+    "moatless/repository_overlay.py": {
+      "before": null,
+      "after": "3d37e7f770f5a23a7539e23c474eb92a3cdaf6c04a1b06158255f4852c4992c6"
+    },
+    "moatless/runtime/local.py": {
+      "before": "7312cf131fcdf470508bb0ad81406f9e08f7291e187264851f5e2023d8eb2438",
+      "after": "c4b3aac496546899bc2cb0ce43e927c3fe327fd2cec02877d74ea97d94b585b1"
+    },
+    "moatless/tool_result.py": {
+      "before": null,
+      "after": "ad6ee13470a39e7138f6f7f812ad3f4d06aee30d4d7197ab3e5c4b1108c2bbb1"
+    },
+    "tests/actions/test_run_tests.py": {
+      "before": "b6ff26f012074c8fecc3b95800070aa9eb51fd3407049e02b9f4ac737560865b",
+      "after": "e082ae629ee6b258d809f75bab1a5e5a57a81681f7592d0062b5cc83f95d2b17"
+    },
+    "tests/actions/test_t6_tool_contracts.py": {
+      "before": "f7b7543b485e2c458e194891dc0947fc47eebfaa555005f450c43090afab36e1",
+      "after": "596b75d9a3813259556ffde6f15fb202de40fd7a38f396cdf9cf27dec6cc5d86"
+    },
+    "tests/evaluation/test_verification.py": {
+      "before": "bf533704641a4a39d771b0e1c70c9a20fa3a3b887395442ed6e05868a3cf0cdb",
+      "after": "933faabcd77d890cf964913a930804391ec11c3ccbd519c002c042a6042cd75e"
+    },
+    "tests/memory/test_execution_memory.py": {
+      "before": "9aaccc1590ea629139fa891abad933d706a21b1f869720edc0603baa2ed047e3",
+      "after": "e8c630c8e56762dc263547ad14bcff1dcb9e3ad6e7cb4cb1f03c11bf0ae1d769"
+    },
+    "tests/memory/test_managed_context.py": {
+      "before": "edb16ad7c1f84db06817fc8e0a537c9354176f81ea1912515c562cf8b5a4d7ce",
+      "after": "8058667ca874632137558cc24ef519b8c2385c74dc8ede8e3a81e0a90c0ac375"
+    },
+    "tests/policy/test_acceptance_repair.py": {
+      "before": null,
+      "after": "9cd8b2b29f6497bf0006d4500d1a9a4db62ae1ae85e52e3371019b488d4341c3"
+    },
+    "tests/policy/test_action_policy.py": {
+      "before": "878d7bd70203600485149e058b277bbeae441c84877635fdd768e608877fc195",
+      "after": "725090c6eea684140b57c3202328a99d420ebe9b94e2d9804390c53749e127dc"
+    },
+    "tests/policy/test_audit_boundaries.py": {
+      "before": null,
+      "after": "902adb3c87688dc5892559419b51f42987c7642865da9e35a5c690e1de39fe20"
+    },
+    "tests/policy/test_failures.py": {
+      "before": "dc9a53068aaef7f8ab1ecf629925a7d20c644bbca905c04b40b1a1f6c78ba045",
+      "after": "035daebccca3578a022916005842c374e9fc3657dc542b132b36ca4513af17ba"
+    },
+    "tests/selector_tick.py": {
+      "before": null,
+      "after": "35431f1acfbe5d9dc6a02af4ce7cc8618a1737f98b2e4244a38344ce42a99984"
+    }
+  },
+  "validation_runs": [
+    {
+      "log": "final-repair-tests.log",
+      "sha256": "cef313bd38e9256588c870203cb57f2eac83fc386650be4a7cc7abd2e8f9b772",
+      "summary": "98 passed, 29 warnings in 78.08s (0:01:18)",
+      "failed": false
+    },
+    {
+      "log": "final-compatibility-tests.log",
+      "sha256": "b0d3783b16fd45a1347d9ca761767228b6227b691ffa18f2d566f85584dbd666",
+      "summary": "138 passed, 29 warnings in 37.50s",
+      "failed": false
+    },
+    {
+      "log": "protocol-tests.log",
+      "sha256": "845f6f03ac62da13ed57e1dd02b9a109b267d15873f32023ebcbad5e9d76bd95",
+      "summary": "58 passed, 29 warnings in 25.83s",
+      "failed": false
+    },
+    {
+      "log": "final-context-tests.log",
+      "sha256": "f57faa105d5f0d6b0ded9ebc7d988a3098db098b292fde1309731291cfaa0da4",
+      "summary": "28 passed, 31 warnings in 3.32s",
+      "failed": false
+    },
+    {
+      "log": "final-followup-tests.log",
+      "sha256": "a3d9d656a421b77da327396f5cb09bc84ab5405d7df2e083f0f008186c9d15aa",
+      "summary": "32 passed, 30 warnings in 20.28s",
+      "failed": false
+    },
+    {
+      "log": "context-followup-tests.log",
+      "sha256": "014a56fbfd301dcd87ac5337aaf811ccd46a7fdbb09c3cd970da7d63c869cb4c",
+      "summary": "23 passed, 31 warnings in 3.24s",
+      "failed": false
+    },
+    {
+      "log": "search-tests.log",
+      "sha256": "e6bacd25281784b944c6c649d9cfc30357a80f84bd8f52c727515f16f51737f7",
+      "summary": "14 passed, 30 warnings in 2.97s",
+      "failed": false
+    },
+    {
+      "log": "editor-tests.log",
+      "sha256": "95cb9b65201daa3290ba124294bcd8f0417a5f2e50d00c7f6da3b59ccacf8808",
+      "summary": "13 passed, 5 warnings in 1.95s",
+      "failed": false
+    }
+  ],
+  "superseded_runs": {
+    "repair-tests.log": "one obsolete taxonomy expectation corrected; final-repair-tests.log passed",
+    "compatibility-tests.log": "189 passed, 2 old context/retry expectations corrected and revalidated by final-compatibility/context logs"
+  },
+  "model_api_calls": 0,
+  "new_benchmark_runs": 0,
+  "official_harness": "not_run",
+  "resolved": null,
+  "selector_workaround": "real Graph/SQLite with test timer; subprocess smoke uses MOATLESS_TEST_SELECTOR_TICK=1",
+  "limitations": [
+    "a6 public acceptance only; no hidden correctness guarantee",
+    "Python module runner only",
+    "No dependency graph/reranker/index rebuild"
+  ],
+  "script_hashes_without_initial_snapshot": {
+    "scripts/migration_smoke.py": "2b8bbb8657d48553c5f066c0592797c0ced6d0724a17c55546116ad32349d0d6",
+    "scripts/recovery_smoke.py": "9e239c303afb0276150066b80c43c90a074993820bc3a30eeca70d836807b5d1"
+  }
+}

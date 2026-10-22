@@ -285,6 +285,9 @@ class ClaudeEditTool(Action, CodeModificationMixin, CompletionModelMixin):
                 message=f"File {path} not found.",
                 properties={"fail_reason": "file_not_found"},
             )
+        token, conflict = self.edit_token(file_context, path)
+        if conflict:
+            return conflict
         file_text = context_file.content.expandtabs()
         new_str = new_str.expandtabs()
         file_text_lines = file_text.split("\n")
@@ -308,7 +311,12 @@ class ClaudeEditTool(Action, CodeModificationMixin, CompletionModelMixin):
         snippet = "\n".join(snippet_lines)
 
         diff = do_diff(str(path), file_text, new_file_text)
-        context_file.apply_changes(new_file_text)
+        error, check = await self.validate_candidate(str(path), file_text, new_file_text)
+        if error:
+            return error
+        conflict = self.commit_candidate(context_file, new_file_text, token)
+        if conflict:
+            return conflict
 
         success_msg = f"The file {path} has been edited. "
         success_msg += self._make_output(
@@ -320,7 +328,7 @@ class ClaudeEditTool(Action, CodeModificationMixin, CompletionModelMixin):
 
         return Observation.create(
             message=success_msg,
-            properties={"diff": diff},
+            properties={"diff": diff, "syntax_checks": [check], "syntax_checked": check["status"] == "valid"},
         )
 
     def _make_output(

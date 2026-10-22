@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 
 from moatless.actions.finish import Finish, FinishArgs
 from moatless.actions.respond import Respond, RespondArgs
@@ -7,6 +8,27 @@ from moatless.context_data import current_action_step
 from moatless.exceptions import CompletionRejectError, RuntimeError
 from moatless.node import Node
 from scripts.migration_smoke import ScriptedCompletion, response
+
+
+@pytest.mark.asyncio
+async def test_shared_deadlines_for_loop_and_graph_leave_old_config_unchanged(monkeypatch):
+    agent, model, node = setup_agent(response(RespondArgs(message="done")))
+    assert "model_timeout" not in agent.model_dump()
+    original = ScriptedCompletion.create_completion
+    async def slow(*args, **kwargs):
+        await asyncio.sleep(1)
+    agent.model_timeout = .01
+    monkeypatch.setattr(ScriptedCompletion, "create_completion", slow)
+    with pytest.raises(asyncio.TimeoutError):
+        await agent.generate_actions(node)
+    monkeypatch.setattr(ScriptedCompletion, "create_completion", original)
+    agent, model, node = setup_agent(response(RespondArgs(message="done")))
+    await agent.generate_actions(node)
+    agent.tool_timeout = .01
+    monkeypatch.setattr(Respond, "execute", slow)
+    with pytest.raises(asyncio.TimeoutError):
+        await agent.execute_action_step(node, 0)
+    assert current_action_step.get() is None
 
 
 def setup_agent(*responses):

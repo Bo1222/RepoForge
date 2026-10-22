@@ -51,7 +51,7 @@ def default_vector_store(settings: IndexSettings):
     faiss_index = faiss.IndexIDMap(faiss.IndexFlatL2(settings.dimensions))
     from moatless.index.simple_faiss import SimpleFaissVectorStore
 
-    return SimpleFaissVectorStore(faiss_index)
+    return SimpleFaissVectorStore(faiss_index, d=settings.dimensions)
 
 
 class CodeIndex:
@@ -79,7 +79,9 @@ class CodeIndex:
 
         self._code_block_index = code_block_index
 
-        self._embed_model = embed_model or get_embed_model(self._settings.embed_model)
+        self._embed_model = embed_model or get_embed_model(
+            self._settings.embed_model, provider=self._settings.embed_provider,
+            base_url=self._settings.embed_base_url, dimensions=self._settings.dimensions)
         self._vector_store = vector_store or default_vector_store(self._settings)
         self._docstore = docstore or SimpleDocumentStore()
 
@@ -269,7 +271,10 @@ class CodeIndex:
         if file_pattern:
             try:
                 matching_files = await self.matching_files(file_pattern)
-                matching_files = [file for file in matching_files if not is_test(file)]
+                if category == "implementation":
+                    matching_files = [file for file in matching_files if not is_test(file)]
+                elif category == "test":
+                    matching_files = [file for file in matching_files if is_test(file)]
             except Exception:
                 return SearchCodeResponse(
                     message=f"The file pattern {file_pattern} is invalid.",
@@ -778,6 +783,7 @@ class CodeIndex:
             chunk_size=self._settings.chunk_size,
             hard_token_limit=self._settings.hard_token_limit,
             max_chunks=self._settings.max_chunks,
+            preserve_content=self._settings.preserve_chunk_content,
             comment_strategy=self._settings.comment_strategy,
             index_callback=index_callback,
             repo_path=repo_path,

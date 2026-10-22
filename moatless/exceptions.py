@@ -25,6 +25,10 @@ class RejectError(MoatlessError):
     pass
 
 
+class WorkspaceConsistencyError(RuntimeError):
+    """Tool cleanup could not prove a restored workspace; reconcile before resume."""
+
+
 class CompletionError(MoatlessError):
     """Base exception for completion-related errors."""
 

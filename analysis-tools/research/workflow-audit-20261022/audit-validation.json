@@ -1,0 +1,13 @@
+{
+  "goal": "review current issue-repair workflow and identify obvious implementation/algorithm defects",
+  "report": "docs/2026-10-22_Agent_Workflow_逻辑审计.md",
+  "findings": 14,
+  "offline_cases": 18,
+  "source_hashes_checked": 13,
+  "source_changes_since_probes": [],
+  "missing_local_links": [],
+  "existing_test_passes": 19,
+  "graph_integration": "failed_timeout; not certified",
+  "provider_calls": 0,
+  "production_code_modified_by_audit": false
+}

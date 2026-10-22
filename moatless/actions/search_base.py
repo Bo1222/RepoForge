@@ -2,7 +2,7 @@ import logging
 from abc import ABC
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 from moatless.actions.action import Action, CompletionModelMixin
 from moatless.actions.schema import ActionArguments, Observation, RewardScaleEntry
@@ -14,6 +14,8 @@ from moatless.completion.schema import (
 from moatless.completion.stats import CompletionInvocation
 from moatless.file_context import FileContext
 from moatless.index.code_index import CodeIndex
+from moatless.index.hybrid import fuse_hits
+from moatless.index.lexical import bm25_search
 from moatless.index.types import SearchCodeResponse
 from moatless.workspace import Workspace
 
@@ -80,6 +82,13 @@ class Identify(ResponseSchema):
 
 class SearchBaseAction(Action, CompletionModelMixin, ABC):
     args_schema: ClassVar[type[ActionArguments]] = SearchBaseArgs
+    _last_search_attempts: dict = PrivateAttr(default_factory=dict)
+    _active_context: object = PrivateAttr(default=None)
+
+    @property
+    def search_repository(self):
+        from moatless.repository_overlay import CurrentRepository
+        return CurrentRepository(self._repository, self._active_context) if self._active_context else self._repository
 
     max_search_tokens: int = Field(
         2000,
@@ -167,11 +176,48 @@ class SearchBaseAction(Action, CompletionModelMixin, ABC):
 
         properties = {"search_hits": [], "search_tokens": 0}
 
+        self._last_search_attempts = {}
+        self._active_context = file_context
         search_result_context, alternative_suggestion = await self._search_for_context(args)
+        # Index recall may use base code. Reconstruct every rendered hit against
+        # the same current overlay used by execution-memory file versions.
+        current = FileContext(repo=self.search_repository)
+        for hit in search_result_context.files:
+            source = self.search_repository.get_file(hit.file_path)
+            if source is None:
+                continue
+            for span in hit.spans[:3]:
+                if span.span_id and source.module and source.module.find_span_by_id(span.span_id):
+                    current.add_span_to_context(hit.file_path, span.span_id, add_extra=False)
+                elif span.start_line and self.search_repository.get_file_content(hit.file_path) == hit.content:
+                    current.add_line_span_to_context(hit.file_path, span.start_line, span.end_line, add_extra=False)
+        # Include exact symbol definitions added by the current shadow patch.
+        symbol = getattr(args, "function_name", None) or getattr(args, "class_name", None)
+        if symbol:
+            import ast
+            for path, file in file_context._files.items():
+                if not file.patch or not path.endswith(".py"):
+                    continue
+                try:
+                    tree = ast.parse(file.content)
+                except SyntaxError:
+                    continue
+                for item in ast.walk(tree):
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and item.name == symbol:
+                        current.add_line_span_to_context(path, item.lineno, item.end_lineno, add_extra=False)
+        search_result_context = current
+        properties["search_attempts"] = self._last_search_attempts
+        properties["search_hits"] = search_result_context.model_dump(exclude_none=True)
+        properties["search_tokens"] = search_result_context.context_size()
 
         if search_result_context.is_empty():
             properties["fail_reason"] = "no_search_hits"
-            return Observation.create(message="No search results found", properties=properties)
+            from difflib import get_close_matches
+            from moatless.repository_overlay import repository_paths
+            query = args.file_pattern or getattr(args, "function_name", None) or getattr(args, "class_name", None) or ""
+            properties["nearest_paths"] = get_close_matches(query, repository_paths(self._repository), n=5, cutoff=0.1)
+            return Observation.create(message="No search results found. Nearest paths: " + str(properties["nearest_paths"]) +
+                ". Try a symbol name or error substring.", properties=properties)
 
         if not self.use_identifier:
             response_str = ""
@@ -236,14 +282,6 @@ class SearchBaseAction(Action, CompletionModelMixin, ABC):
         span_count = search_result_context.span_count()
         search_result_str = f"Found {span_count} code sections."
 
-        # Apply previous changes to view context
-        # TODO: Refactor
-        for file in file_context.files:
-            if view_context.has_file(file.file_path) and file.patch:
-                context_file = view_context.get_file(file.file_path)
-                if context_file is not None:
-                    context_file.set_patch(file.patch)
-
         new_span_ids = file_context.add_file_context(view_context)
 
         if view_context.is_empty():
@@ -280,18 +318,114 @@ class SearchBaseAction(Action, CompletionModelMixin, ABC):
             execution_completion=completion,
         )
 
+    def _fallback_queries(self, args: SearchBaseArgs) -> list[str]:
+        """Action-specific terms for the last-resort retrieval chain."""
+        return []
+
+    async def _fallback_files(self, args: SearchBaseArgs) -> list[tuple[str, str]]:
+        """A capped (path, content) set for the lexical fallback."""
+        files = getattr(self.search_repository, "files", None)
+        if isinstance(files, dict):
+            return [(str(path), content) for path, content in files.items()
+                    if content and len(content) <= 500_000][:2000]
+        try:
+            index = self.code_index
+            paths = await index.matching_files(args.file_pattern or "**/*.py")
+        except (AttributeError, ValueError, OSError):
+            return []
+        result = []
+        for path in paths[:2000]:
+            try:
+                content = self.search_repository.get_file_content(path)
+            except (OSError, ValueError):
+                continue
+            if content:
+                result.append((path, content))
+        return result
+
+    async def _fallback_context(self, args: SearchBaseArgs):
+        """Deterministic chain: identifier grep -> BM25 -> semantic."""
+        queries = [query for query in self._fallback_queries(args) if query]
+        if not queries:
+            return None, {}
+        context = FileContext(repo=self.search_repository)
+        for query in queries[:6]:
+            try:
+                matches = await self.search_repository.find_exact_matches(
+                    search_text=query, file_pattern=args.file_pattern)
+            except (AttributeError, NotImplementedError, OSError, ValueError):
+                matches = []
+            for path, line in matches[: self.max_hits]:
+                try:
+                    context.add_line_span_to_context(path, line, line, add_extra=False)
+                except (OSError, ValueError, KeyError):
+                    continue
+        if not context.is_empty():
+            return context, {"fallback": "identifier_grep", "queries": queries[:6]}
+        try:
+            lexical = bm25_search(await self._fallback_files(args), " ".join(queries),
+                                  limit=self.max_hits)
+        except (OSError, ValueError):
+            lexical = []
+        for path, line in lexical:
+            try:
+                context.add_line_span_to_context(path, line, line, add_extra=False)
+            except (OSError, ValueError, KeyError):
+                continue
+        if not context.is_empty():
+            return context, {"fallback": "bm25", "queries": queries[:6]}
+        try:
+            index = self.code_index
+        except (AttributeError, ValueError):
+            index = None
+        if index is not None:
+            try:
+                response = await index.semantic_search(
+                    query=" ".join(queries), file_pattern=args.file_pattern,
+                    max_results=self.max_hits, max_spans_per_file=2)
+            except Exception:
+                response = None
+            if response and response.hits:
+                for hit in fuse_hits(" ".join(queries), response.hits):
+                    for span in hit.spans:
+                        try:
+                            context.add_span_to_context(hit.file_path, span.span_id,
+                                                        add_extra=False)
+                        except (OSError, ValueError, KeyError):
+                            continue
+                if not context.is_empty():
+                    return context, {"fallback": "semantic", "queries": queries[:6]}
+        return None, {}
+
     async def _search_for_context(self, args: SearchBaseArgs) -> tuple[FileContext, bool]:
         alternative_suggestion = False
         search_result = await self._search(args)
+        initial_message = search_result.message
+        initial_hits = len(search_result.hits)
         if not search_result.hits:
             search_result = await self._search_for_alternative_suggestion(args)
             alternative_suggestion = True
             logger.info(
                 f"{self.name}: No relevant search results found. Will use alternative suggestion with {len(search_result.hits)} hits."
             )
+        if not search_result.hits:
+            fallback_context, fallback_meta = await self._fallback_context(args)
+            if fallback_context is not None and not fallback_context.is_empty():
+                self._last_search_attempts = {
+                    "initial": {"message": initial_message, "hits": initial_hits},
+                    "fallback_used": True,
+                    **fallback_meta,
+                }
+                return fallback_context, True
+        # These diagnostics survive even when fallback produces useful code.
+        self._last_search_attempts = {
+            "initial": {"message": initial_message, "hits": initial_hits},
+            "fallback_used": alternative_suggestion,
+            "final": {"message": search_result.message, "hits": len(search_result.hits)},
+        }
 
         span_count = 0
-        search_result_context = FileContext(repo=self._repository)
+        search_result_context = FileContext(repo=self.search_repository)
         for hit in search_result.hits:
             span_count += len(hit.spans)
             for span in hit.spans:
@@ -330,7 +464,7 @@ class SearchBaseAction(Action, CompletionModelMixin, ABC):
         messages = [identify_message]
         completion_response = await self.completion_model.create_completion(messages=messages)  # type: ignore
 
-        view_context = FileContext(repo=self._repository)
+        view_context = FileContext(repo=self.search_repository)
         if completion_response.structured_outputs:
             for identified_code in completion_response.structured_outputs:
                 if isinstance(identified_code, Identify) and identified_code.identified_spans:

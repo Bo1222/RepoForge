@@ -10,6 +10,21 @@ from moatless.message_history.managed import ManagedMessageHistoryGenerator
 
 
 @pytest.mark.asyncio
+async def test_flash_config_forwards_native_toggle_and_temperature(tmp_path, repo):
+    import json
+    from pathlib import Path
+    config = json.loads((Path(__file__).resolve().parents[2] / "moatless/evaluation/profiles/flash_nonthinking_a0.json").read_text())
+    config["temperature"] = .25
+    session = await SessionService(tmp_path / "flash").create(str(repo), "Inspect", config)
+    model = session.flow.agent.completion_model
+    assert model.temperature == .25
+    assert model._completion_params["extra_body"]["thinking"]["type"] == "disabled"
+    assert model.model_base_url == "https://api.deepseek.com"
+    assert session.flow.agent.memory.policy.enable_task_state is False
+    assert not any(action.name == "UpdateTaskState" for action in session.flow.agent.actions)
+
+
+@pytest.mark.asyncio
 async def test_cli_context_policy_is_opt_in_and_survives_reload(tmp_path, repo, scripted):
     outputs, calls = scripted
     service = SessionService(tmp_path / "sessions")

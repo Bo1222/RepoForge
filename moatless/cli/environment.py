@@ -7,6 +7,7 @@ import signal
 
 from moatless.environment.local import LocalBashEnvironment
 from moatless.environment.base import BaseEnvironment, EnvironmentExecutionError
+from moatless.runtime.native_tools import tool_process
 
 
 class SessionEnvironment(LocalBashEnvironment):
@@ -34,12 +35,11 @@ class SessionEnvironment(LocalBashEnvironment):
         await asyncio.to_thread(write)
 
     async def command(self, command: str) -> tuple[int, str]:
+        argv, environment = tool_process(["bash", "-c", command], {**os.environ, **(self.env or {})})
         process = await asyncio.create_subprocess_exec(
-            "bash",
-            "-c",
-            command,
+            *argv,
             cwd=self.cwd,
-            env={**os.environ, **(self.env or {})},
+            env=environment,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             start_new_session=True,

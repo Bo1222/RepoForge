@@ -22,11 +22,12 @@ class ContextPolicy(BaseModel):
     recent_interactions: int = Field(default=2, ge=0)
     load_repo_instructions: bool = False
     enable_task_state: bool = True
+    retry_prompt_tokens: int = Field(default=1024, ge=256)
 
     def input_budget(self, output_tokens: int | None) -> int:
         if output_tokens is None or output_tokens < 0:
             raise ValueError("A finite model output token limit is required for context budgeting")
-        safety = max(1024, (self.context_window + 19) // 20)
+        safety = max(self.retry_prompt_tokens, (self.context_window + 19) // 20)
         available = min(self.max_input_tokens, self.context_window - output_tokens - safety)
         if available <= 0:
             raise ContextBudgetExceeded("context_budget_exceeded: no room after output and safety reserves")

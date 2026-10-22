@@ -16,7 +16,7 @@ from moatless.flow.langgraph_flow import LangGraphFlow
 from moatless.flow.loop import AgenticLoop
 from moatless.flow.schema import FlowStatus
 from moatless.node import ActionStep
-from scripts.migration_smoke import ScriptedCompletion, replay, response
+from scripts.migration_smoke import ScriptedCompletion, replay, response, historical_test_projection
 
 BASELINE = Path(__file__).resolve().parents[2] / "experiments/baselines/M0"
 
@@ -29,7 +29,7 @@ def make_flow(responses, flow_class=LangGraphFlow, **kwargs):
 
 def align_event_ids(result):
     # D06 is an intentional metadata addition in M1, checked separately below.
-    result = json.loads(json.dumps(result))
+    result = historical_test_projection(result)
     for event in result["events"]:
         if event["scope"] in {"agent", "action"}:
             event["project_id"] = None

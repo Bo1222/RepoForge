@@ -24,6 +24,7 @@ from moatless.actions.local_coding import (
 )
 from moatless.agent.session_agent import SessionAgent
 from moatless.completion.tool_call import ToolCallCompletionModel
+from moatless.exceptions import CompletionRuntimeError
 from moatless.flow.flow import AgenticFlow
 from moatless.flow.langgraph_flow import LangGraphFlow
 from moatless.flow.durable import OutcomeJournal, RecoveryConflict, thread_id, workspace_fingerprint
@@ -154,7 +155,7 @@ class SessionService:
         if not task.strip():
             raise ValueError("Task cannot be empty")
         config = {
-            "model": os.environ.get("MOATLESS_MODEL", "deepseek/deepseek-chat"),
+            "model": os.environ.get("MOATLESS_MODEL", "openai/deepseek-flash"),
             "max_iterations": 30,
             "max_cost": 2.0,
             "model_timeout": 180,
@@ -163,8 +164,17 @@ class SessionService:
             "env": {},
             **(config or {}),
         }
+        if config["model"] == "openai/deepseek-flash":
+            config.setdefault("base_url", "https://api.deepseek.com")
+            config.setdefault("api_key_env", "DEEPSEEK_API_KEY")
+            # Preserve explicit overrides; the ordinary new-session default is non-thinking.
+            config["params"] = deepcopy(config.get("params", {}))
+            config["params"].setdefault("extra_body", {}).setdefault("thinking", {"type": "disabled"})
         if config["max_iterations"] < 2 or config["max_cost"] is not None and config["max_cost"] < 0:
             raise ValueError("max_iterations must be >=2 and max_cost must be nonnegative")
+        from moatless.policy import ActionPolicyConfig
+        if ActionPolicyConfig(**config.get("action_policy", {})).variant != "off":
+            raise ValueError("ActionPolicy v1 is batch-only; CLI requires action_policy off")
         unknown = set(config["tools"]) - TOOLS.keys()
         if unknown:
             raise ValueError(f"Unknown tools: {sorted(unknown)}")
@@ -185,6 +195,8 @@ class SessionService:
                 model_base_url=config.get("base_url"),
                 model_api_key=api_key(config),
                 max_tokens=config.get("max_tokens", 4096),
+                temperature=config.get("temperature", 0.0),
+                reasoning_effort=config.get("reasoning_effort"),
                 timeout=config["model_timeout"],
                 message_cache=False,
                 params=config.get("params", {}),
@@ -362,7 +374,7 @@ class SessionService:
             key_env = session.info["config"].get("api_key_env")
             if key_env and not api_key(session.info["config"]):
                 session.info["error_stage"] = "模型请求"
-                raise ValueError(f"缺少模型密钥环境变量 {key_env}，请设置后再创建新会话。")
+                raise CompletionRuntimeError(f"缺少模型密钥环境变量 {key_env}，请设置后再创建新会话。")
             if message:
                 # Only completed turns accept follow-up messages. Interrupted turns must resume first.
                 state = session.flow.graph_state

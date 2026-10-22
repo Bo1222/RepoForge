@@ -142,10 +142,8 @@ class GitRepository(FileRepository):
         self.commit(file_path)
 
     def save_file(self, file_path: str, updated_content: Optional[str] = None):
-        if updated_content:
-            file = super().save_file(file_path, updated_content)
-
-        return file
+        if updated_content is not None:
+            return super().save_file(file_path, updated_content)
 
     def commit(self, file_path: str):
         commit_message = self.commit_message(file_path)

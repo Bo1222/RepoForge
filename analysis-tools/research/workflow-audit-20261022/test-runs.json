@@ -1,0 +1,59 @@
+[
+  {
+    "name": "verification-tool-tests",
+    "command": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-o",
+      "log_cli=false",
+      "--tb=short",
+      "tests/evaluation/test_verification.py",
+      "tests/actions/test_run_tests.py"
+    ],
+    "return_code": 0,
+    "log": "verification-tool-tests.log",
+    "exit_evidence": "exec session 82942 completed with exit 0; original command also used a 50s timeout and disabled tracing"
+  },
+  {
+    "name": "sync-policy-tests",
+    "command": [
+      "/mnt/data2/home/geqb/LLM/moatless-tools/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-o",
+      "log_cli=false",
+      "--tb=short",
+      "tests/policy/test_action_policy.py::test_finish_correction_is_bounded_and_disabled_is_passthrough",
+      "tests/policy/test_action_policy.py::test_repeat_and_stagnation_ablation_and_budget_reserve",
+      "tests/policy/test_action_policy.py::test_feedback_and_cost_control_have_distinct_edit_thresholds",
+      "tests/policy/test_action_policy.py::test_loop_cannot_silently_ignore_enabled_policy",
+      "tests/policy/test_action_policy.py::test_no_progress_requires_verification_before_stop",
+      "tests/policy/test_action_policy.py::test_failed_verification_requests_repair_not_repeat",
+      "tests/policy/test_action_policy.py::test_target_found_without_target_does_not_stop",
+      "tests/policy/test_action_policy.py::test_a5_uses_the_same_verification_first_contract",
+      "tests/policy/test_action_policy.py::test_exact_repeated_action_after_failure_is_replanned"
+    ],
+    "return_code": 0,
+    "seconds": 5.135,
+    "log": "sync-policy-tests.log"
+  },
+  {
+    "name": "single-graph-test",
+    "command": [
+      "/mnt/data2/home/geqb/LLM/moatless-tools/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-o",
+      "log_cli=false",
+      "--tb=short",
+      "tests/policy/test_action_policy.py::test_ordered_edit_then_finish_inserts_public_test_and_keeps_proposals"
+    ],
+    "return_code": 1,
+    "seconds": 15.954,
+    "log": "single-graph-test.log"
+  }
+]

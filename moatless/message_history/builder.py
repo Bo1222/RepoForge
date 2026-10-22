@@ -54,8 +54,11 @@ class ContextBuilder:
                     result["content"] = self.estimator.shorten(result["content"], 128, marker)
                     if source not in shortened:
                         shortened.append(source)
-            if cost(selected) > self.budget:
-                raise ContextBudgetExceeded("context_budget_exceeded: recent complete interactions cannot fit")
+            # Recent interactions are preferred optional units. Drop complete
+            # groups if compressed bodies still cannot fit; required units were
+            # checked above, and assistant/tool pairings must remain intact.
+            while cost(selected) > self.budget and recent:
+                selected.discard(recent.pop(0))
         for i in range(len(units) - 1, -1, -1):
             if i not in selected and cost(selected | {i}) <= self.budget:
                 selected.add(i)

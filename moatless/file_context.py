@@ -215,7 +215,7 @@ class ContextFile(BaseModel):
 
         return self._cached_content
 
-    def apply_changes(self, updated_content: str) -> set[str]:
+    def apply_changes(self, updated_content: str, expected_source_version: str | None = None) -> set[str]:
         """
         Applies new content to the ContextFile by generating a patch between the base content and the new content.
 
@@ -225,14 +225,16 @@ class ContextFile(BaseModel):
         Returns:
             set[str]: Set of new span IDs added to context
         """
+        if expected_source_version is not None:
+            from moatless.edit_guard import EditConflict, source_version
+            if source_version(self._repo, self.file_path, self) != expected_source_version:
+                raise EditConflict("Source changed during edit validation; candidate was not committed")
         # Cache base content before first edit if not already cached
         if self._cached_base_content is None and not self.was_edited:
             self.get_base_content()  # This will cache the base content
 
-        self.was_edited = True
-
         base_content = self.get_base_content()
-        self.patch = self.generate_patch(base_content, updated_content)
+        candidate_patch = self.generate_patch(base_content, updated_content)
 
         if not self.shadow_mode:
             logger.info(f"Saving file {self.file_path} to disk")
@@ -244,11 +246,15 @@ class ContextFile(BaseModel):
                 # Update patch with the actual git diff if available
                 git_patch = self._repo.file_diff(self.file_path)
                 if git_patch:
-                    self.patch = git_patch
+                    candidate_patch = git_patch
         else:
             logger.info(f"Updating cached content for {self.file_path}")
             # In shadow mode, update cached content to the new content
             self._cached_content = updated_content
+
+        # Publish context state only after the atomic disk commit succeeds.
+        self.was_edited = True
+        self.patch = candidate_patch
 
         new_span_ids = set()
 

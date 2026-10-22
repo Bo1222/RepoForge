@@ -26,6 +26,7 @@ async def main():
     parser.add_argument("--directory", required=True)
     parser.add_argument("--run-id", default="default")
     parser.add_argument("--shadow", action="store_true")
+    parser.add_argument("--swe-bundle", type=Path, help="Public pytest bundle in a provisioned container; real SWE runtime/conda, no model API")
     parser.add_argument("--fault", choices=["after_generation", "before_tool", "after_effect", "after_commit"])
     args = parser.parse_args()
     directory = Path(args.directory)
@@ -34,6 +35,38 @@ async def main():
     source = repo_path / "calc.py"
     if not source.exists():
         source.write_text(SOURCE)
+    runtime = None
+    actions = [ReadFile(), StringReplace(), Respond()]
+    scripted_actions = [ReadFileArgs(file_path="calc.py"),
+                        StringReplaceArgs(path="calc.py", old_str="return a - b", new_str="return a + b")]
+    if args.swe_bundle:
+        from moatless.evaluation.generation import environment_identity, load_bundle
+        from moatless.evaluation.experiment import read_json, write_json
+        from moatless.runtime.local import SweBenchLocalEnvironment
+        from moatless.actions.run_tests import RunTests, RunTestsArgs
+        from scripts.migration_smoke import TEST
+        bundle = load_bundle(args.swe_bundle)
+        if bundle["instance"]["repo"] != "pytest-dev/pytest":
+            raise ValueError("Arithmetic recovery probe uses the real pytest testbed environment")
+        test = repo_path / "test_calc.py"
+        if not test.exists():
+            test.write_text(TEST)
+        identity = environment_identity(os.environ["GENERATION_IMAGE_ID"])
+        ready = directory / "runtime-ready.json"
+        if ready.exists() and read_json(ready) != identity:
+            raise RecoveryConflict("Real runtime environment identity changed")
+        runtime = SweBenchLocalEnvironment(repo_path, bundle["instance"], None, generation_only=True,
+                                          recovery_identity=identity, resume_ready=ready.exists())
+        await runtime._wait_for_install()
+        write_json(ready, identity)
+        if not args.shadow:
+            original_tests = runtime.run_tests
+            async def actual_file_tests(patch=None, **kwargs):
+                return await original_tests(patch=None, **kwargs)
+            runtime.run_tests = actual_file_tests
+        actions.insert(2, RunTests())
+        scripted_actions.append(RunTestsArgs(test_files=["test_calc.py"]))
+    scripted_actions.append(RespondArgs(message="done"))
 
     def count(kind):
         with (directory / "calls.jsonl").open("a") as stream:
@@ -43,11 +76,7 @@ async def main():
 
     model = ScriptedCompletion(
         [
-            response(
-                ReadFileArgs(file_path="calc.py"),
-                StringReplaceArgs(path="calc.py", old_str="return a - b", new_str="return a + b"),
-                RespondArgs(message="done"),
-            )
+            response(*scripted_actions)
         ]
     )
     original_model = ScriptedCompletion.create_completion
@@ -68,7 +97,7 @@ async def main():
         original_save(self, state, operation)
         if args.fault == "after_generation" and state["phase"] == "policy":
             os._exit(88)
-        if args.fault == "after_commit" and state["phase"] == "record" and state["action_cursor"] == 1:
+        if args.fault == "after_commit" and state["phase"] == "record" and state["action_cursor"] == (2 if args.swe_bundle else 1):
             os._exit(88)
 
     def begin(self, state, kind):
@@ -83,7 +112,7 @@ async def main():
     agent = ActionAgent(
         completion_model=model,
         system_prompt="fixed",
-        actions=[ReadFile(), StringReplace(), Respond()],
+        actions=actions,
         shadow_mode=args.shadow,
     )
     flow = LangGraphFlow.create(
@@ -94,7 +123,8 @@ async def main():
         checkpoint_path=str(directory / "checkpoint.sqlite"),
         checkpoint_run_id=args.run_id,
     )
-    workspace = Workspace(repository=FileRepository(repo_path=str(repo_path), shadow_mode=args.shadow))
+    workspace = Workspace(repository=FileRepository(repo_path=str(repo_path), shadow_mode=args.shadow),
+                          runtime=runtime, environment=runtime)
     try:
         await flow.run(workspace=workspace)
     except RecoveryConflict as exc:
@@ -107,4 +137,19 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    async def run():
+        # Test-only timer for sandboxes suppressing cross-thread socketpair
+        # wakeups. Real graph/SQLite operations and crash faults are unchanged.
+        timer = None
+        if os.environ.get("MOATLESS_TEST_SELECTOR_TICK") == "1":
+            loop = asyncio.get_running_loop()
+            def tick():
+                nonlocal timer
+                timer = loop.call_later(0.01, tick)
+            tick()
+        try:
+            await main()
+        finally:
+            if timer:
+                timer.cancel()
+    asyncio.run(run())

@@ -243,3 +243,10 @@ CONTEXT_MEMORY_OPTIMIZATION_PLAN.md
 CONTEXT_MEMORY_REVIEW.md
 CONTEXT_MEMORY_USAGE.md
 context_memory_evidence/
+# local dataset caches (public instances, large; kept on disk, not committed)
+moatless/evaluation/datasets/dataset_index.json
+moatless/evaluation/swebench_lite_all_evaluations.json
+moatless/evaluation/swebench_verified_all_evaluations.json
+
+# final architecture document (docs/ is otherwise ignored)
+!docs/2026-10-21_批量Agent_验证驱动修复优化方案.md

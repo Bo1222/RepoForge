@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from moatless.actions.action import CompletionModelMixin
 from moatless.actions.schema import ActionArguments
@@ -64,6 +64,22 @@ class Identify(ResponseSchema):
 
 class IdentifyMixin(CompletionModelMixin):
     """Mixin that provides identify flow functionality for large code sections."""
+    _identifying_context: FileContext | None = PrivateAttr(default=None)
+
+    def _selection_context(self, outputs, source=None):
+        selected = FileContext(repo=self._repository)
+        for output in outputs or []:
+            for span in output.identified_spans or []:
+                if source is not None:
+                    original = source._files.get(span.file_path)
+                    if original is None:
+                        raise CompletionRetryError("Select only files present in the supplied code view")
+                    current = selected.add_file(span.file_path, add_extra=False)
+                    current._cached_base_content = original.get_base_content()
+                    if original.patch:
+                        current.set_patch(original.patch)
+                selected.add_line_span_to_context(span.file_path, span.start_line, span.end_line, add_extra=True)
+        return selected
 
     max_identify_tokens: int = Field(
         8000,
@@ -83,20 +99,9 @@ class IdentifyMixin(CompletionModelMixin):
             structured_outputs: list[ResponseSchema],
             text_response: Optional[str],
         ) -> tuple[list[ResponseSchema], Optional[str]]:
-            identified_context = FileContext(repo=self._repository)
-
             if not structured_outputs:
                 return structured_outputs, text_response
-
-            for identified_code in structured_outputs:
-                if identified_code.identified_spans:
-                    for identified_spans in identified_code.identified_spans:
-                        identified_context.add_line_span_to_context(
-                            identified_spans.file_path,
-                            identified_spans.start_line,
-                            identified_spans.end_line,
-                            add_extra=True,
-                        )
+            identified_context = self._selection_context(structured_outputs, self._identifying_context)
 
             tokens = identified_context.context_size()
             if tokens > self.max_identify_tokens:
@@ -144,18 +149,11 @@ class IdentifyMixin(CompletionModelMixin):
         identify_message = ChatCompletionUserMessage(role="user", content=content)
 
         messages = [identify_message]
-        completion_response = await self.completion_model.create_completion(messages=messages)
-
-        identified_context = FileContext(repo=self._repository)
-        if completion_response.structured_outputs:
-            for identified_code in completion_response.structured_outputs:
-                if identified_code.identified_spans:
-                    for identified_spans in identified_code.identified_spans:
-                        identified_context.add_line_span_to_context(
-                            identified_spans.file_path,
-                            identified_spans.start_line,
-                            identified_spans.end_line,
-                            add_extra=True,
-                        )
+        self._identifying_context = view_context
+        try:
+            completion_response = await self.completion_model.create_completion(messages=messages)
+            identified_context = self._selection_context(completion_response.structured_outputs, view_context)
+        finally:
+            self._identifying_context = None
 
         return identified_context, completion_response.completion_invocation

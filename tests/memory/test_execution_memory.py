@@ -63,8 +63,11 @@ async def test_unknown_and_missing_tests_do_not_pass_even_if_cached_result_passe
 class ResultsRuntime(RuntimeEnvironment):
     def __init__(self, results):
         self.results = results
+        self.return_code = 1 if any(result.status in {Status.FAILED, Status.ERROR} for result in results) else 0
 
     async def run_tests(self, patch=None, test_files=None):
+        self.last_test_execution = [{"command": "fixture-test", "target": path, "return_code": self.return_code}
+                                    for path in test_files or []]
         return self.results
 
 
@@ -77,9 +80,11 @@ async def test_batch_result_statuses_are_not_inferred_from_legacy_summary(tmp_pa
     (tmp_path / "test_code.py").write_text("def test_code(): pass\n")
     agent, root, workspace = await setup(tmp_path, actions=[RunTests(), Finish()],
         runtime=ResultsRuntime([Result(status=result_status, name="test_code", file_path="test_code.py")]))
+    (tmp_path / "code.py").write_text("value = 1\n")
+    root.file_context.add_file("code.py").apply_changes("value = 2\n")
     node = await execute(agent, root, RunTestsArgs(test_files=["test_code.py"]), FinishArgs(finish_reason="Claim success"))
     assert node.completion_status["status"] == expected
-    assert node.action_steps[0].observation.properties["test_run"]["return_code"] is None
+    assert node.action_steps[0].observation.properties["test_run"]["return_code"] == agent.workspace.runtime.return_code
     if result_status in {Status.UNKNOWN, Status.SKIPPED}:
         assert node.action_steps[0].observation.properties["test_run"]["status"] == "unknown"
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from opentelemetry import trace
-from pydantic import ConfigDict, Field, PrivateAttr
+from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
 from moatless.agent.agent import ActionAgent
 from moatless.completion.stats import Usage
@@ -31,6 +31,17 @@ tracer = trace.get_tracer("moatless.flow")
 
 class AgenticFlow(MoatlessComponent):
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_action_policy_backend(cls, data):
+        if isinstance(data, dict) and "action_policy" in data and "action_policy" not in cls.model_fields:
+            from moatless.policy import ActionPolicyConfig
+            config = data["action_policy"]
+            config = config if isinstance(config, ActionPolicyConfig) else ActionPolicyConfig(**(config or {}))
+            if config.variant != "off":
+                raise ValueError("ActionPolicy requires LangGraphFlow")
+        return data
 
     id: Optional[str] = Field(default=None, description="The flow ID.")
     description: Optional[str] = Field(default=None, description="The flow description.")

@@ -78,6 +78,9 @@ class AppendString(Action, CodeActionValueMixin, CodeModificationMixin):
                 properties={"fail_reason": "context_error"},
             )
 
+        token, conflict = self.edit_token(file_context, path)
+        if conflict:
+            return conflict
         file_text = context_file.content.expandtabs()
         new_str = args.new_str.expandtabs()
 
@@ -102,8 +105,14 @@ class AppendString(Action, CodeActionValueMixin, CodeModificationMixin):
 
         new_file_text = file_text + new_str
 
+        syntax_error, syntax_check = await self.validate_candidate(str(path), file_text, new_file_text)
+        if syntax_error is not None:
+            return syntax_error
+
         diff = do_diff(str(path), file_text, new_file_text)
-        context_file.apply_changes(new_file_text)
+        conflict = self.commit_candidate(context_file, new_file_text, token)
+        if conflict:
+            return conflict
 
         message = (
             f"The file {path} has been edited. "
@@ -114,5 +123,5 @@ class AppendString(Action, CodeActionValueMixin, CodeModificationMixin):
         return Observation.create(
             message=message,
             summary=message,
-            properties={"diff": diff, "success": True},
+            properties={"diff": diff, "success": True, "syntax_checks": [syntax_check], "syntax_checked": syntax_check["status"] == "valid"},
         )

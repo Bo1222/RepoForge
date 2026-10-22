@@ -1,4 +1,5 @@
 import logging
+from hashlib import sha256
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -119,11 +120,13 @@ class ViewCode(Action, IdentifyMixin):
 
         properties = {"files": {}}
 
-        # Group files by filepath and combine span_ids
+        # Keep every requested range; a file can occur more than once.
         grouped_files = {}
+        ranges = {}
         for file_with_spans in args.files:
+            ranges.setdefault(file_with_spans.file_path, []).append(file_with_spans)
             if file_with_spans.file_path not in grouped_files:
-                grouped_files[file_with_spans.file_path] = file_with_spans
+                grouped_files[file_with_spans.file_path] = file_with_spans.model_copy(deep=True)
             else:
                 grouped_files[file_with_spans.file_path].span_ids.extend(file_with_spans.span_ids)
 
@@ -147,6 +150,12 @@ class ViewCode(Action, IdentifyMixin):
 
         for file_path, file_span in grouped_files.items():
             file = file_context.get_file(file_path)
+            # Resolve spans against the edited version, not the repository base.
+            view_file = view_context.add_file(file_path, add_extra=False)
+            if file and view_file:
+                view_file._cached_base_content = file.get_base_content()
+                if file.patch:
+                    view_file.set_patch(file.patch)
 
             if file_span.span_ids:
                 missing_span_ids = set()
@@ -191,28 +200,38 @@ class ViewCode(Action, IdentifyMixin):
                     else:
                         view_context.add_span_to_context(file_path, block_span.span_id, add_extra=False)
 
-            if file_span.start_line is not None:
+            for requested in ranges[file_path]:
+                if requested.start_line is None:
+                    continue
                 # count lines of file.content
                 lines = file.content.split("\n")
-                if file_span.start_line > len(lines):
-                    message = f"The requested start line {file_span.start_line} is greater than the number of lines in the file {len(lines)}."
+                if requested.start_line > len(lines):
+                    message = f"The requested start line {requested.start_line} is greater than the number of lines in the file {len(lines)}."
                     properties = {"fail_reason": "start_line_greater_than_file_length"}
                     return Observation.create(message=message, properties=properties)
 
                 view_context.add_line_span_to_context(
-                    file_path, file_span.start_line, file_span.end_line, add_extra=False
+                    file_path, requested.start_line, requested.end_line, add_extra=False
                 )
 
-            if not file_span.start_line and not file_span.span_ids:
-                view_context.add_file(file_path, show_all_spans=True)
-
-            if file and file.patch:
-                view_file = view_context.get_file(file_path)
-                if view_file:
-                    view_file.set_patch(file.patch)
+            if any(not request.start_line and not request.span_ids for request in ranges[file_path]):
+                view_context.get_file(file_path).show_all_spans = True
 
         if view_context.context_size() > self.max_tokens:
             view_context, completion = await self._identify_code(args, view_context, self.max_tokens)
+
+        for viewed in view_context.files:
+            selected = [[span.start_line, span.end_line] for span in viewed.get_spans()]
+            requested = [[r.start_line, r.end_line] for r in ranges.get(viewed.file_path, [])]
+            windows = [pair for pair in requested if pair[0] is not None] if completion is None else []
+            if not windows:
+                windows = sorted(selected, key=lambda pair: ((pair[1] or pair[0]) - pair[0], pair[0]))
+            properties["files"][viewed.file_path] = {
+                "content_hash": sha256(viewed.content.encode()).hexdigest(),
+                "requested_ranges": requested, "selected_ranges": selected,
+                "display_ranges": windows or [[1, len(viewed.content.splitlines())]],
+                "span_ids": sorted(viewed.span_ids),
+            }
 
         added_new_spans = file_context.add_file_context(view_context)
 

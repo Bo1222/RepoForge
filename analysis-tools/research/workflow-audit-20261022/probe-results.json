@@ -1,0 +1,197 @@
+{
+  "python": "3.10.9",
+  "provider_calls": 0,
+  "hidden_benchmark_inputs": false,
+  "seconds": 13.668,
+  "source_sha256": {
+    "moatless/policy/action.py": "d211e3918fee7a0d25fd5bffb1a261138c04bac56602e1ded3a20464e350711a",
+    "moatless/evaluation/verification.py": "3f3d09c5b174401847120ee239e531e7985fbd0048447510fe27b5ab2e28c7cb",
+    "moatless/evaluation/generation.py": "1a4f00aad87ec8a080311e7bd2c5b3597ed8d59bdb61c3c476347ef10eb24cd6",
+    "moatless/actions/run_tests.py": "a6cd35a2c2f9392af2094ff747f1b504fca7339929c3869937e016e80b1ae76b",
+    "moatless/actions/test_targets.py": "777f40dbc4de712b0b6e44d9d6617580347465f9e396beac273f63c73a0141bd",
+    "moatless/policy/failures.py": "11e481dacc65d447e2f964a17a3244b6c5b79e09c88e4a20cc39c61c4649af99",
+    "moatless/execution_memory.py": "3c5eae9891249a01f634cf2651c213f557413c5935802ee38c6d106f82129cf5",
+    "moatless/flow/langgraph_flow.py": "b148a6429c134d28e43318c40dacddea52be4445c982af820f8513e772441f1b",
+    "moatless/completion/base.py": "5275003a21ff864a149bd00186e8642b53cc8b7ff62bb7185b6139e9b7f33837",
+    "moatless/actions/search_base.py": "da26bc800027063c7d907fde30449dbcce76005540619165ac3f7859b6bcbac2",
+    "moatless/actions/find_code_snippet.py": "199ae1bf2590dfcde9cf12c3c0f279175161703535b6da98ff483e127b08256e",
+    "moatless/message_history/managed.py": "5582124c669552b9af0f9db2b088bb1bf78f6252f9406b056cdcf6d860c16572",
+    "moatless/repository_context.py": "b9b2cb6d85da247457f24a3a0ac43d9651d1773502be4c8616877a4176031c13"
+  },
+  "cases": [
+    {
+      "case": "verification_admission",
+      "empty_patch_hash_state": "PUBLIC_VERIFIED",
+      "missing_binding_state": "PUBLIC_VERIFIED",
+      "known_regression_state": "PUBLIC_VERIFIED"
+    },
+    {
+      "case": "submission_ignores_later_failure",
+      "selected": "known_bad_candidate",
+      "old_pass_superseded": true,
+      "same_candidate_later_status": "failed"
+    },
+    {
+      "case": "test_discovery_disk_vs_memory",
+      "real_file_repository": [],
+      "in_memory_repository": [
+        "tests/test_code.py"
+      ]
+    },
+    {
+      "case": "ranked_targets_reordered_alphabetically",
+      "discovery_order": [
+        "tests/alpha.py",
+        "tests/a_noise.py"
+      ],
+      "actual_policy_target": "tests/a_noise.py"
+    },
+    {
+      "case": "timeout_reuses_cached_pass",
+      "actual_timeout": true,
+      "recorded_status": "passed",
+      "effective_status": "passed",
+      "verification_state": "PUBLIC_VERIFIED"
+    },
+    {
+      "case": "modified_tests_not_executed",
+      "requested_source": "workspace",
+      "executed_source": "base_public",
+      "reported_status": "passed",
+      "actual_workspace_statuses": [
+        "FAILED"
+      ],
+      "classified_completion": "verified",
+      "scope": "real pytest on both actual diffs"
+    },
+    {
+      "case": "unrelated_public_pass_allows_finish",
+      "related_target": null,
+      "verification_state": "PUBLIC_VERIFIED",
+      "finish_decision": "allow",
+      "public_issue_test_status": "FAILED",
+      "scope": "real pytest; issue test is already public"
+    },
+    {
+      "case": "new_test_current_run_discarded_as_stale",
+      "execution_status": "passed",
+      "tests": [
+        "tests/test_new.py"
+      ],
+      "verification_state": "STALE",
+      "tested_equals_product_hash": false,
+      "scope": "real pytest on current product plus newly added regression test"
+    },
+    {
+      "case": "baseline_escapes_invocation_timeout",
+      "calls": 2,
+      "invocation_timeout": 1,
+      "outer_timeout": 1.2,
+      "finish_reason": "tool_timeout",
+      "observation_present": false
+    },
+    {
+      "case": "verification_attempt_consumes_repair_key",
+      "decisions": [
+        {
+          "version": 1,
+          "kind": "allow",
+          "reason": "eligible",
+          "target": null,
+          "correction_key": null
+        },
+        {
+          "version": 1,
+          "kind": "verify",
+          "reason": "verification_due",
+          "target": "tests/test_code.py",
+          "correction_key": "c645772ab45f613f7bcbcd9424e291800e296bea6bba2ec17702cd14a616175b"
+        },
+        {
+          "version": 1,
+          "kind": "stop",
+          "reason": "verification_unavailable_or_failed",
+          "target": null,
+          "correction_key": null
+        }
+      ],
+      "model_calls": 2,
+      "outcome": "policy_stop",
+      "scope": "actual business phases; LangGraph transport excluded"
+    },
+    {
+      "case": "failure_interpreter_passing_modified_tests",
+      "kind": "test_files_modified",
+      "suggested_action": "verify_base_public"
+    },
+    {
+      "case": "failure_interpreter_ordinary_search_miss",
+      "kind": "no_test_target",
+      "suggested_action": "discover_test_target"
+    },
+    {
+      "case": "failure_interpreter_actual_assertion_in_modified_test",
+      "kind": "test_files_modified",
+      "suggested_action": "verify_base_public"
+    },
+    {
+      "case": "ast_parse_accepts_compile_error",
+      "edit_validation_rejected": false,
+      "real_compile_error": "'return' outside function (code.py, line 1)"
+    },
+    {
+      "case": "shadow_search_old_content_marked_current",
+      "actual_patch_content": "def calculate():\n    return 2\n",
+      "search_output": "\nFound 1 matches in 1 files.\n\nFile: calc.py\nLine: 2 - 2 : return 1\n",
+      "labeled_with_current_hash": true,
+      "marked_stale": false,
+      "prompt_contains_old_code": true,
+      "scope": "real grep; synchronous subprocess transport; actual rendering/versioning"
+    },
+    {
+      "case": "retry_breaks_call_pairing_and_json",
+      "dangling_call_ids": [
+        "call_b"
+      ],
+      "truncated_arguments_valid_json": false,
+      "provider_calls": 0
+    },
+    {
+      "case": "fresh_read_dedup_source_id_mismatch",
+      "interaction_source": "node:2",
+      "code_view_source": "2:0",
+      "current_code_still_included": true,
+      "code_occurrences": 2
+    },
+    {
+      "case": "omitted_catalog_references_not_readable",
+      "input_budget": 1600,
+      "catalog_source_ids": [
+        "node:3",
+        "node:4",
+        "node:5",
+        "node:6",
+        "node:7",
+        "node:8",
+        "node:9",
+        "node:10",
+        "node:11",
+        "node:12",
+        "node:13"
+      ],
+      "rejected_by_read_observation": [
+        "node:3",
+        "node:4",
+        "node:5",
+        "node:6",
+        "node:7",
+        "node:8",
+        "node:9",
+        "node:10",
+        "node:11",
+        "node:12",
+        "node:13"
+      ]
+    }
+  ]
+}

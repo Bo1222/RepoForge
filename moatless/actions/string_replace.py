@@ -257,7 +257,7 @@ class StringReplace(Action, CodeActionValueMixin, CodeModificationMixin):
             raise ValueError("File context is required")
 
         path_str = self.normalize_path(args.path)
-        path, error = self.validate_file_access(path_str, file_context)
+        path, error = self.validate_file_access(path_str, file_context, focus_text=args.old_str)
         if error:
             logger.warning(f"Error validating file access: {error}")
             return error
@@ -266,6 +266,9 @@ class StringReplace(Action, CodeActionValueMixin, CodeModificationMixin):
         if not context_file:
             raise ValueError(f"File {path} not found in file context")
 
+        token, conflict = self.edit_token(file_context, path)
+        if conflict:
+            return conflict
         file_content = context_file.content.expandtabs()
         old_str = args.old_str.expandtabs()
         new_str = args.new_str.expandtabs()
@@ -438,7 +441,16 @@ class StringReplace(Action, CodeActionValueMixin, CodeModificationMixin):
 
         diff = context_file.generate_patch(file_content, new_file_content)
 
-        context_file.apply_changes(new_file_content)
+        if str(path).endswith(".py"):
+            syntax_error, syntax_check = await self.validate_candidate(str(path), file_content, new_file_content)
+            if syntax_error is not None:
+                return syntax_error
+            properties["syntax_checked"] = syntax_check["status"] == "valid"
+            properties["syntax_checks"] = [syntax_check]
+
+        conflict = self.commit_candidate(context_file, new_file_content, token)
+        if conflict:
+            return conflict
 
         # Create a snippet of the edited section
         snippet_start_line = max(0, start_line - SNIPPET_LINES - 1)

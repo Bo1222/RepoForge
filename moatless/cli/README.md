@@ -59,10 +59,10 @@ python -m moatless.cli
 source .venv/bin/activate
 
 # 普通聊天，无需 Git 仓库
-python -m moatless.cli chat --model deepseek/deepseek-chat
+python -m moatless.cli chat --config moatless/evaluation/profiles/flash_nonthinking_a0.json
 
 # 代码任务；目标仓库需已提交且干净
-python -m moatless.cli chat --repo /实际目标仓库路径 --model deepseek/deepseek-chat
+python -m moatless.cli chat --repo /实际目标仓库路径 --config moatless/evaluation/profiles/flash_nonthinking_a0.json
 
 # 一次性任务，不打开交互界面
 python -m moatless.cli run --repo /实际目标仓库路径 '读取代码、修复问题并运行测试'
@@ -78,3 +78,11 @@ python -m moatless.cli resume SESSION_ID
 完整配置、恢复机制与使用限制见 [CLI 使用文档](../../docs/interactive_cli.md)。
 
 真实 SWE-bench issue 的运行方法和完成判定见 [演示指南](../../docs/swebench_demo.md)，实际结果见 [pytest-7490 报告](../../experiments/reports/swebench_demo.md)。
+
+## Flash 非思考与 T4/T5
+
+新建会话默认 `openai/deepseek-flash`、DeepSeek API、`DEEPSEEK_API_KEY` 和显式非思考。`openai/` 是兼容协议路由，不表示 OpenAI 模型。已保存会话保留原配置；其他模型覆盖不会附带 DeepSeek 的 URL 或密钥。temperature/reasoning_effort/params 经配置转发；当前实验不启用原生 thinking。
+
+上面的配置文件同时启用 Managed facts（TaskState=false、仓库指令=false）；普通默认会话仍保持 Legacy Memory。历史 README 的 Thoughts 列只代表动作格式，不能关闭原生 thinking。原生 thinking 工具调用的 reasoning_content 回传尚未补齐，不把 high 思考纳入本轮基线。
+
+阶段记录见 [T4/T5 计划](../../docs/T4_T5_execution_plan.md)。

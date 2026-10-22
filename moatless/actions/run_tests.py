@@ -1,5 +1,5 @@
 import logging
-import time
+from typing import Literal
 
 from pydantic import ConfigDict, Field
 
@@ -32,8 +32,36 @@ class RunTestsArgs(ActionArguments):
     test_files: list[str] = Field(
         ..., description="The list of explicit test file paths to run (must be file paths, not directories or patterns)"
     )
+    test_source: Literal["workspace", "base_public"] = Field(
+        default="workspace", description="Use current tests, or unchanged public repository tests with only the product patch."
+    )
+
+    product_source: Literal["current", "base"] = Field(default="current", description="Product version: current patch or unmodified base for a separate comparison.")
+    check_id: str | None = Field(default=None, description="Registered acceptance check ID, when applicable.")
 
     model_config = ConfigDict(title="RunTests")
+
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        if self.test_source == "workspace":
+            data.pop("test_source", None)  # legacy action arguments remain readable and stable
+        if self.product_source == "current":
+            data.pop("product_source", None)
+        if self.check_id is None:
+            data.pop("check_id", None)
+        return data
+
+    def model_dump_json(self, **kwargs):
+        exclude = kwargs.get("exclude") or set()
+        defaults = set()
+        if self.test_source == "workspace":
+            defaults.add("test_source")
+        if self.product_source == "current":
+            defaults.add("product_source")
+        if self.check_id is None:
+            defaults.add("check_id")
+        kwargs["exclude"] = {**exclude, **dict.fromkeys(defaults, True)} if isinstance(exclude, dict) else set(exclude) | defaults
+        return super().model_dump_json(**kwargs)
 
     @property
     def log_name(self):
@@ -79,6 +107,12 @@ class RunTests(Action):
         2000,
         description="The maximum number of tokens in the test result output message",
     )
+    timeout: float = Field(
+        120,
+        description="Per-invocation wall-clock timeout in seconds; the job continues with a tool_timeout observation",
+    )
+
+    cleanup_grace: float = Field(default=10, gt=0)
 
     async def initialize(self, workspace: Workspace):
         await super().initialize(workspace)
@@ -90,100 +124,116 @@ class RunTests(Action):
         args: RunTestsArgs,
         file_context: FileContext | None = None,
     ) -> Observation:
-        """
-        Run all tests found in file context or provided in args.
-        """
+        """Run one explicit recipe. No implicit source switching or baseline run."""
         if file_context is None:
-            raise ValueError("File context must be provided to execute the run tests action.")
+            raise ValueError("File context must be provided")
+        from moatless.actions.test_targets import discover_test_targets, is_verifiable_test_module, is_related_test
+        from moatless.message_history.policy import content_hash
+        from moatless.repository_context import file_content
+        from moatless.verification_inputs import capture_recipe, verification_patch, verification_input, declared_inputs
+        from moatless.runtime.deadline import invoke
+        from datetime import datetime, timezone
+        import time
+        from subprocess import SubprocessError
 
-        # Ensure workspace is set on file_context if needed
-        if not hasattr(file_context, "workspace") or file_context.workspace is None:
-            if self._workspace:
-                file_context.workspace = self._workspace
-
-        non_existent_files = []
-        directories = []
-        test_files = []
-
-        for test_file in args.test_files:
-            test_file = test_file.split("::")[0]
-            if not self._repository.file_exists(test_file) and not file_context.file_exists(test_file):
-                logger.warning(f"File {test_file} does not exist in repository")
-                non_existent_files.append(test_file)
-            elif self._repository.is_directory(test_file):
-                logger.warning(
-                    f"Directory {test_file} provided instead of file, please use ListFiles to get the list of files in the directory and specify which files to run tests on"
-                )
-                directories.append(test_file)
-            else:
-                test_files.append(test_file)
-
-        error_details = []
-        if non_existent_files:
-            error_details.append(f"Files not found: {', '.join(non_existent_files)}")
-        if directories:
-            error_details.append(f"Directories provided instead of files: {', '.join(directories)}")
-
-        if not test_files:
-            return Observation.create(
-                message="Unable to run tests: " + "; ".join(error_details),
-                properties={"test_results": [], "fail_reason": "no_test_files"},
-            )
-
-        patch = file_context.generate_git_patch()
-        start_time = time.time()
-        test_results = await self._workspace.runtime.run_tests(test_files=test_files, patch=patch)
-
-        end_time = time.time()
-        test_duration = end_time - start_time
-        logger.info(f"Tests completed in {test_duration:.2f} seconds")
-
-        test_file_objects = self.create_test_files(test_file_paths=test_files, test_results=test_results)
-
-        file_context.add_test_files(test_file_objects)
-
-        response_msg = ""
-
-        failure_details = TestFile.get_test_failure_details(test_file_objects)
-        if failure_details:
-            response_msg += f"\n{failure_details}"
-
-        summary = f"\n{TestFile.get_test_summary(test_file_objects)}"
-        response_msg += summary
-
-        artifact_changes = []
-
-        logger.info(f"Running tests for {len(args.test_files)} files")
-        for test_file in test_file_objects:
-            if test_file.file_path not in args.test_files:
-                continue
-
-            # Calculate test counts for this file
-            passed_count = sum(1 for r in test_file.test_results if r.status == TestStatus.PASSED)
-            failed_count = sum(1 for r in test_file.test_results if r.status == TestStatus.FAILED)
-            error_count = sum(1 for r in test_file.test_results if r.status == TestStatus.ERROR)
-            skipped_count = sum(1 for r in test_file.test_results if r.status == TestStatus.SKIPPED)
-
-            artifact_changes.append(
-                ArtifactChange(
-                    artifact_id=test_file.file_path,
-                    artifact_type="test",
-                    change_type="updated",
-                    properties={
-                        "passed": passed_count,
-                        "failed": failed_count,
-                        "errors": error_count,
-                        "skipped": skipped_count,
-                        "total": len(test_file.test_results),
-                    },
-                    actor="assistant",
-                )
-            )
-
-        if error_details:
-            response_msg += f"\n{error_details}"
-
-        return Observation(message=response_msg, summary=summary, artifact_changes=artifact_changes)  # type: ignore
+        targets = list(dict.fromkeys(args.test_files))
+        invalid = [path for path in targets if "::" in path or not is_verifiable_test_module(
+            _TestSource(self._repository, file_context, args.test_source), path)]
+        if not targets or invalid:
+            return Observation.create(message="Specify existing Python test modules; invalid targets: " + str(invalid),
+                properties={"fail_reason": "no_test_files", "execution_status": "invalid_args",
+                            "test_results": [], "candidates": discover_test_targets(self._repository, [])[:5]})
+        product = file_context.generate_git_patch(ignore_tests=True)
+        full = file_context.generate_git_patch()
+        try:
+            declared = declared_inputs(self._workspace, targets)
+            recipe = capture_recipe(self._workspace, file_context, targets, args.test_source, args.product_source)
+        except (OSError, ValueError, SubprocessError) as exc:
+            return Observation.create("Verification inputs unavailable: " + str(exc)[:500],
+                properties={"fail_reason": "environment_error", "execution_status": "environment_error", "complete": False})
+        origins = {}
+        for path in targets:
+            file = file_context._files.get(path)
+            base = file.get_base_content() if file else self._repository.get_file_content(path)
+            current = file_content(self._workspace, file_context, path)
+            origins[path] = "new" if not base else ("modified" if current != base else "original")
+            if args.test_source == "base_public" and not base:
+                return Observation.create(message="base_public requires original public tests.",
+                    properties={"fail_reason": "no_test_files", "execution_status": "invalid_args"})
+        # The runtime starts from base. A baseline with a workspace repro retains
+        # exactly the same test changes, but excludes the product changes.
+        if args.product_source == "base":
+            patch = "" if args.test_source == "base_public" else verification_patch(file_context, declared)
+        else:
+            patch = ("\n".join(f.patch for f in file_context.files if f.patch and not verification_input(f.file_path, declared))
+                     if args.test_source == "base_public" else full)
+        tested_product = "" if args.product_source == "base" else product
+        props = {**recipe, "product_patch_hash": content_hash(tested_product), "input_identity": content_hash(recipe),
+                 "tested_patch_hash": content_hash(patch), "check_id": args.check_id, "test_origins": origins,
+                 "introduced_failures": None, "public_baseline": {"status": "unknown", "reason": "baseline_not_run"},
+                 "test_files": targets, "runner": type(self._workspace.runtime).__qualname__,
+                 "product_files": [f.file_path for f in file_context.files if f.patch and not verification_input(f.file_path, declared)]}
+        props["related_targets"] = {path: is_related_test(_TestSource(self._repository, file_context, args.test_source),
+                                                       path, props["product_files"]) for path in targets} if props["product_files"] else {}
+        runtime = self._workspace.runtime
+        # Clear invocation buffers before starting, never reuse previous results.
+        for attr in ("last_test_execution", "last_test_results"):
+            if hasattr(runtime, attr):
+                setattr(runtime, attr, [])
+        timed_out = False
+        started_at, started = datetime.now(timezone.utc).isoformat(), time.monotonic()
+        try:
+            kwargs = {"test_files": targets, "patch": patch}
+            if getattr(runtime, "supports_managed_deadline", False) is True:
+                kwargs["managed_deadline"] = True
+            results, timed_out = await invoke(runtime.run_tests(**kwargs), timeout=self.timeout, cleanup_grace=self.cleanup_grace)
+            if timed_out:
+                results = list(getattr(runtime, "last_test_results", []) or [])
+        except (OSError, RuntimeError) as exc:
+            return Observation.create(message=f"Test environment error: {type(exc).__name__}: {str(exc)[:800]}",
+                properties={**props, "fail_reason": "environment_error", "execution_status": "environment_error",
+                            "complete": False, "result_statuses": [], "result_counts": {}})
+        executions = list(getattr(runtime, "last_test_execution", []) or [])
+        statuses = [result.status.value.lower() for result in results]
+        codes = [entry.get("return_code") for entry in executions]
+        code = next((value for value in codes if value != 0), 0) if codes else None
+        timed_out = timed_out or any(r.timed_out for r in results)
+        complete = not timed_out and set(targets) <= {r.file_path for r in results}
+        counts = {value: statuses.count(value) for value in set(statuses)}
+        binding_error = None
+        try:
+            after_recipe = capture_recipe(self._workspace, file_context, targets, args.test_source, args.product_source)
+        except (OSError, ValueError, SubprocessError) as exc:
+            after_recipe, binding_error = None, str(exc)[:500]
+        props.update(result_statuses=statuses, result_counts=counts, result_count=len(results),
+            test_results=[r.model_dump(mode="json") for r in results], test_execution=executions,
+            return_code=code, timed_out=timed_out, complete=complete,
+            patch_stale=(recipe != after_recipe),
+            execution_status="timeout" if timed_out else "ok")
+        props.update(started_at=started_at, duration=time.monotonic() - started,
+                     commands=[entry.get("command") for entry in executions], partial=not complete,
+                     uncompleted_targets=sorted(set(targets) - {r.file_path for r in results if not r.timed_out}))
+        props["input_identity_after"] = content_hash(after_recipe) if after_recipe is not None else None
+        if binding_error:
+            props.update(fail_reason="environment_error", execution_status="environment_error", complete=False,
+                         input_binding_error=binding_error)
+        props["continuation_safe"] = getattr(runtime, "last_test_cleanup_confirmed", None) if timed_out else True
+        if timed_out:
+            props["fail_reason"] = "tool_timeout"
+        if any(value in {"new", "modified"} for value in origins.values()) and args.test_source == "workspace":
+            props["requires_base_public"] = True
+        files = self.create_test_files(targets, results)
+        file_context.add_test_files(files)
+        summary = "\n" + TestFile.get_test_summary(files)
+        details = TestFile.get_test_failure_details(files)
+        message = ("Test invocation timed out; results are partial. " if timed_out else "") + ("\n" + details if details else "") + summary
+        artifacts = [ArtifactChange(artifact_id=file.file_path, artifact_type="test", change_type="updated",
+            properties={"passed": sum(r.status == TestStatus.PASSED for r in file.test_results),
+                        "failed": sum(r.status == TestStatus.FAILED for r in file.test_results),
+                        "errors": sum(r.status == TestStatus.ERROR for r in file.test_results),
+                        "skipped": sum(r.status == TestStatus.SKIPPED for r in file.test_results),
+                        "total": len(file.test_results)}, actor="assistant") for file in files]
+        return Observation(message=message, summary=summary, properties=props, artifact_changes=artifacts)
 
     def create_test_files(self, test_file_paths: list[str], test_results: list[TestResult]) -> list[TestFile]:
         results_by_file: dict[str | None, list[TestResult]] = {}
@@ -285,3 +335,14 @@ class RunTests(Action):
                 description="The action is counterproductive, demonstrating misunderstanding or causing setbacks, test failures are severe and could have been anticipated.",
             ),
         ]
+
+
+class _TestSource:
+    def __init__(self, repository, context, source):
+        self.repository, self.context, self.source = repository, context, source
+
+    def get_file_content(self, path):
+        file = self.context._files.get(path)
+        if file:
+            return file.get_base_content() if self.source == "base_public" else file.content
+        return self.repository.get_file_content(path)

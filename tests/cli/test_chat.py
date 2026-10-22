@@ -18,7 +18,7 @@ from moatless.flow.durable import RecoveryConflict
 
 def text_response(text):
     return ModelResponse(
-        model="deepseek/deepseek-chat",
+        model="deepseek-flash",
         choices=[{"message": {"role": "assistant", "content": text}, "index": 0, "finish_reason": "stop"}],
         usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
     )
@@ -47,7 +47,7 @@ async def test_chat_roundtrip_and_recovery_without_git(tmp_path, monkeypatch, sd
 
     monkeypatch.setattr(worktree, "git", forbid_git)
     replies, calls = sdk
-    replies.extend([text_response("当前配置为 deepseek/deepseek-chat。"), text_response("列表可变，元组不可变。")])
+    replies.extend([text_response("当前配置为 openai/deepseek-flash。"), text_response("列表可变，元组不可变。")])
     service = SessionService(tmp_path / "sessions")
     s = await service.create(None, "你是什么模型？")
     await service.start(s)
@@ -57,7 +57,9 @@ async def test_chat_roundtrip_and_recovery_without_git(tmp_path, monkeypatch, sd
     assert [a.name for a in s.flow.agent.actions] == ["Finish"]
     assert s.info["status"] == "terminal"
     assert len(calls) == 1
-    assert "deepseek/deepseek-chat" in calls[0]["messages"][0]["content"]
+    assert "openai/deepseek-flash" in calls[0]["messages"][0]["content"]
+    assert calls[0]["api_base"] == "https://api.deepseek.com"
+    assert calls[0]["extra_body"]["thinking"]["type"] == "disabled"
     assert [tool["function"]["name"] for tool in calls[0]["tools"]] == ["Finish"]
     invocation = s.flow.root.get_last_node().completions["build_action"]
     assert len(invocation.attempts) == 1
@@ -87,7 +89,7 @@ async def test_chat_roundtrip_and_recovery_without_git(tmp_path, monkeypatch, sd
     assert resumed_service.usage(restored)["completion_cost"] == cost
     await resumed_service.start(restored, "列表和元组有什么区别？")
     assert len(calls) == 2
-    assert "当前配置为 deepseek/deepseek-chat" in json.dumps(calls[1]["messages"], ensure_ascii=False)
+    assert "当前配置为 openai/deepseek-flash" in json.dumps(calls[1]["messages"], ensure_ascii=False)
     assert resumed_service.usage(restored)["prompt_tokens"] == 20
     assert resumed_service.usage(restored)["completion_cost"] == pytest.approx(cost * 2)
 
