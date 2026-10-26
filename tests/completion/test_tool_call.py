@@ -4,10 +4,10 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 import tenacity
 from litellm.types.utils import ModelResponse, Usage, Message, Function, ChatCompletionMessageToolCall
-from moatless.actions.schema import ActionArguments
-from moatless.completion.base import CompletionRetryError
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.exceptions import CompletionRejectError, CompletionRuntimeError
+from repoforge.actions.schema import ActionArguments
+from repoforge.completion.base import CompletionRetryError
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.exceptions import CompletionRejectError, CompletionRuntimeError
 from pydantic import Field
 
 

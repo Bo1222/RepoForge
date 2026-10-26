@@ -1,0 +1,320 @@
+[
+ {
+  "instance_id": "pytest-dev__pytest-7490",
+  "resolved": false,
+  "grading": "completed",
+  "finish_reason": "policy_stop",
+  "generation_status": "completed",
+  "final_policy": {
+   "kind": "stop",
+   "reason": "repeated_assertion_failure",
+   "verification_state": "TESTED_FAIL",
+   "introduced_failures": [],
+   "target": "testing/test_skipping.py"
+  },
+  "product_files": [
+   "src/_pytest/skipping.py"
+  ],
+  "test_files": [],
+  "failed_actions": [],
+  "test_runs": [
+   {
+    "node": 7,
+    "source": "base_public",
+    "targets": [
+     "testing/test_skipping.py"
+    ],
+    "status": "error",
+    "origins": {
+     "testing/test_skipping.py": "modified"
+    },
+    "return_code": 1
+   },
+   {
+    "node": 9,
+    "source": "base_public",
+    "targets": [
+     "testing/test_skipping.py"
+    ],
+    "status": "error",
+    "origins": {
+     "testing/test_skipping.py": "modified"
+    },
+    "return_code": 1
+   }
+  ],
+  "repeated_actions": {},
+  "verify_targets": [],
+  "unrelated_verify_targets": [],
+  "grading_failures": {
+   "PASS_TO_PASS": [
+    "testing/test_skipping.py::test_errors_in_xfail_skip_expressions"
+   ]
+  },
+  "flags": [
+   "stopped_without_public_verification",
+   "p2p_regression"
+  ]
+ },
+ {
+  "instance_id": "django__django-10914",
+  "resolved": null,
+  "grading": "environment_error",
+  "finish_reason": "policy_stop",
+  "generation_status": "completed",
+  "final_policy": {
+   "kind": "stop",
+   "reason": "test_files_modified",
+   "verification_state": "TESTED_FAIL",
+   "introduced_failures": [],
+   "target": "tests/file_storage/tests.py"
+  },
+  "product_files": [
+   "django/conf/global_settings.py"
+  ],
+  "test_files": [],
+  "failed_actions": [
+   {
+    "node": 8,
+    "action": "StringReplace",
+    "reason": "no_changes",
+    "message": "The old_str and new_str are the same. No changes were made."
+   }
+  ],
+  "test_runs": [
+   {
+    "node": 12,
+    "source": "base_public",
+    "targets": [
+     "tests/file_storage/tests.py"
+    ],
+    "status": "error",
+    "origins": {
+     "tests/file_storage/tests.py": "modified"
+    },
+    "return_code": 1
+   }
+  ],
+  "repeated_actions": {},
+  "verify_targets": [
+   "tests/file_storage/tests.py"
+  ],
+  "unrelated_verify_targets": [
+   "tests/file_storage/tests.py"
+  ],
+  "grading_failures": {},
+  "flags": [
+   "environment_error",
+   "stopped_without_public_verification",
+   "unrelated_verify_target"
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-12481",
+  "resolved": true,
+  "grading": "completed",
+  "finish_reason": "policy_stop",
+  "generation_status": "completed",
+  "final_policy": {
+   "kind": "stop",
+   "reason": "repeated_test_files_modified",
+   "verification_state": "TESTED_FAIL",
+   "introduced_failures": [
+    "test_args"
+   ],
+   "target": "sympy/combinatorics/tests/test_permutations.py"
+  },
+  "product_files": [
+   "sympy/combinatorics/permutations.py"
+  ],
+  "test_files": [],
+  "failed_actions": [],
+  "test_runs": [
+   {
+    "node": 11,
+    "source": "base_public",
+    "targets": [
+     "sympy/combinatorics/tests/test_permutations.py"
+    ],
+    "status": "failed",
+    "origins": {
+     "sympy/combinatorics/tests/test_permutations.py": "modified"
+    },
+    "return_code": 1
+   },
+   {
+    "node": 14,
+    "source": "base_public",
+    "targets": [
+     "sympy/combinatorics/tests/test_permutations.py"
+    ],
+    "status": "failed",
+    "origins": {
+     "sympy/combinatorics/tests/test_permutations.py": "modified"
+    },
+    "return_code": 1
+   }
+  ],
+  "repeated_actions": {},
+  "verify_targets": [],
+  "unrelated_verify_targets": [],
+  "grading_failures": {},
+  "flags": [
+   "stopped_without_public_verification"
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14053",
+  "resolved": true,
+  "grading": "completed",
+  "finish_reason": "policy_stop",
+  "generation_status": "completed",
+  "final_policy": {
+   "kind": "stop",
+   "reason": "verification_unavailable_or_failed",
+   "verification_state": "TESTED_PASS",
+   "introduced_failures": [],
+   "target": "sklearn/tree/tests/test_export.py"
+  },
+  "product_files": [
+   "sklearn/tree/export.py"
+  ],
+  "test_files": [],
+  "failed_actions": [],
+  "test_runs": [
+   {
+    "node": 9,
+    "source": "base_public",
+    "targets": [
+     "sklearn/tree/tests/test_export.py"
+    ],
+    "status": "passed",
+    "origins": {
+     "sklearn/tree/tests/test_export.py": "modified"
+    },
+    "return_code": 0
+   },
+   {
+    "node": 12,
+    "source": "base_public",
+    "targets": [
+     "sklearn/tree/tests/test_export.py"
+    ],
+    "status": "passed",
+    "origins": {
+     "sklearn/tree/tests/test_export.py": "modified"
+    },
+    "return_code": 0
+   }
+  ],
+  "repeated_actions": {},
+  "verify_targets": [
+   "sklearn/tree/tests/test_export.py"
+  ],
+  "unrelated_verify_targets": [
+   "sklearn/tree/tests/test_export.py"
+  ],
+  "grading_failures": {},
+  "flags": [
+   "stopped_without_public_verification",
+   "unrelated_verify_target"
+  ]
+ },
+ {
+  "instance_id": "astropy__astropy-8872",
+  "resolved": true,
+  "grading": "completed",
+  "finish_reason": "policy_stop",
+  "generation_status": "completed",
+  "final_policy": {
+   "kind": "stop",
+   "reason": "assertion_failure",
+   "verification_state": "TESTED_FAIL",
+   "introduced_failures": [],
+   "target": "astropy/units/tests/test_quantity_array_methods.py"
+  },
+  "product_files": [
+   "astropy/units/quantity.py"
+  ],
+  "test_files": [],
+  "failed_actions": [
+   {
+    "node": 1,
+    "action": "FindCodeSnippet",
+    "reason": "no_search_hits",
+    "message": "No search results found"
+   }
+  ],
+  "test_runs": [
+   {
+    "node": 10,
+    "source": "base_public",
+    "targets": [
+     "astropy/units/tests/test_quantity.py"
+    ],
+    "status": "error",
+    "origins": {
+     "astropy/units/tests/test_quantity.py": "modified"
+    },
+    "return_code": 1
+   },
+   {
+    "node": 14,
+    "source": "base_public",
+    "targets": [
+     "astropy/units/tests/test_quantity.py"
+    ],
+    "status": "error",
+    "origins": {
+     "astropy/units/tests/test_quantity.py": "modified"
+    },
+    "return_code": 1
+   },
+   {
+    "node": 17,
+    "source": "base_public",
+    "targets": [
+     "astropy/units/tests/test_quantity.py"
+    ],
+    "status": "error",
+    "origins": {
+     "astropy/units/tests/test_quantity.py": "modified"
+    },
+    "return_code": 1
+   },
+   {
+    "node": 20,
+    "source": "base_public",
+    "targets": [
+     "astropy/units/tests/test_quantity.py"
+    ],
+    "status": "error",
+    "origins": {
+     "astropy/units/tests/test_quantity.py": "modified"
+    },
+    "return_code": 1
+   },
+   {
+    "node": 21,
+    "source": "workspace",
+    "targets": [
+     "astropy/units/tests/test_quantity_array_methods.py",
+     "astropy/units/tests/test_quantity_ufuncs.py"
+    ],
+    "status": "error",
+    "origins": {
+     "astropy/units/tests/test_quantity_array_methods.py": "original",
+     "astropy/units/tests/test_quantity_ufuncs.py": "original"
+    },
+    "return_code": 1
+   }
+  ],
+  "repeated_actions": {},
+  "verify_targets": [],
+  "unrelated_verify_targets": [],
+  "grading_failures": {},
+  "flags": [
+   "stopped_without_public_verification"
+  ]
+ }
+]

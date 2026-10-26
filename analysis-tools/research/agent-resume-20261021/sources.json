@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "objective": "搜集不少于10份小红书博主公开提供的Agent实习参考简历，并提取项目介绍，供moatless-tools个人项目表达参考。",
+  "status": "blocked",
+  "checked_on": "2026-10-21",
+  "required_resume_count": 10,
+  "verified_resume_count": 0,
+  "counting_rule": "须能核实发布来源、独立简历样本、Agent实习相关性，并读取其项目栏；项目教程、招聘JD、营销模板、工具项目和仅有标题的线索不计数。",
+  "records": [
+    {
+      "id": "C01",
+      "creator": "确实👍",
+      "title": "干中学：3天肝出LangGraph简历Agent",
+      "platform": "小红书（原帖待核验）",
+      "source_url": "https://www.xiaohongshu.com/explore/695533c3000000002103cef4",
+      "readable_source_url": "https://post.smzdm.com/p/adog635d/",
+      "evidence_type": "AI生成的二次整理",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "是制作简历的Agent项目分享，未取得求职简历项目栏；原帖当前无法浏览。",
+      "project_summary": "据二次整理，该项目以岗位描述与个人资料为输入，用LangGraph组织流程、RAG读取JSON资料，再以RenderCV将YAML输出为PDF。MVP已跑通，但有虚构技能、夸大工龄问题；审核Agent与PDF/代码库接入为后续计划。",
+      "verification": "仅可核验二次整理的表述，不能当作作者简历原文或独立性能验证。"
+    },
+    {
+      "id": "C02",
+      "creator": "确实👍",
+      "title": "全栈转大模型开发的第65天",
+      "platform": "小红书（原帖待核验）",
+      "source_url": "https://www.xiaohongshu.com/explore/699b5e6a00000000150398d4",
+      "readable_source_url": "https://post.smzdm.com/p/aggkne0m/",
+      "evidence_type": "搜索索引中的二次整理",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "是项目开发记录，未取得求职简历；且与C01为同一作者，不能当作两份独立简历。",
+      "project_summary": "据二次整理，场景为医疗合规审计，处理长文档、跨页表格与决策树图，采用父页面索引和模型重排。作者选择Skill批处理而非Agent，审计规则支持非技术人员维护。",
+      "verification": "原帖正文与简历截图未核验，不能改写成已落地多Agent系统。"
+    },
+    {
+      "id": "C03",
+      "creator": "哦耶大师（转载署名） / GitHub WufeiHalf",
+      "title": "我做了个开源简历优化skills",
+      "platform": "小红书（署名来自转载） + 作者关联开源仓库",
+      "source_url": "https://www.xiaohongshu.com/explore/699fe5600000000015033347",
+      "readable_source_url": "https://post.smzdm.com/p/a7090mz5/",
+      "primary_project_url": "https://github.com/WufeiHalf/cn-resume-optimizer",
+      "evidence_type": "二次整理 + 可读GitHub README",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "是简历优化工具项目，未取得面向Agent实习的简历样本；账号关联依据转载，未独立认证。",
+      "project_summary": "仓库描述以PDF提取、简历和JD结构化、Rubric评估为核心流程，输出Markdown优化稿与报告，并可导出PDF。重点是规则模板、可审计工具链与本地处理。",
+      "verification": "README可核验项目定位；未运行代码，未验证效果指标。"
+    },
+    {
+      "id": "C04",
+      "creator": "淮南 / GitHub HuaiNan54321",
+      "title": "Ecom-Service-Agent",
+      "platform": "自述运营小红书的作者公开GitHub项目",
+      "source_url": "https://github.com/HuaiNan54321/ecom-service-agent",
+      "evidence_type": "作者仓库README",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "是用于学习与求职展示的项目，未取得作者公开的简历项目栏。",
+      "project_summary": "围绕订单、物流、推荐与退换货构建电商客服Agent。README描述ReAct工具调用、MCP、政策FAQ检索、售前售后分流、短长期记忆、按需加载Skill，以及沙箱重跑和过程/结果双层评估。",
+      "verification": "技术点来自README的现有功能说明；规划中的生产能力不视为已实现，未运行测试，不引用粉丝或上岸数据作为项目效果。"
+    },
+    {
+      "id": "C05",
+      "creator": "一只小阿鱼🐟",
+      "title": "AI Agent 转行路径：从学习误区到就业标准",
+      "platform": "小红书（原帖待核验）",
+      "source_url": "https://www.xiaohongshu.com/explore/69be8d73000000021a02907c",
+      "readable_source_url": "https://post.smzdm.com/p/arz4ede7/",
+      "evidence_type": "二次整理",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "学习与求职建议，未展示具体求职简历或可提取项目栏。",
+      "project_summary": null,
+      "verification": "不能将文中的xx项目/xx提升占位示例当作真实经历或指标。"
+    },
+    {
+      "id": "C06",
+      "creator": "sxhmzl",
+      "title": "非科班0经验转llm找到第一份大厂大模型实习",
+      "platform": "小红书（原帖待核验）",
+      "source_url": "https://www.xiaohongshu.com/explore/697312df000000001a02a85a",
+      "readable_source_url": "https://post.smzdm.com/p/akovx69e/",
+      "evidence_type": "二次整理",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "学习与面试路线，尚无可读取的具体项目介绍。",
+      "project_summary": null,
+      "verification": "不能凭标题推断简历项目、技术栈或真实录用结果。"
+    },
+    {
+      "id": "C07",
+      "creator": "firmamento73",
+      "title": "README中出现“保姆级零基础找Agent开发实习怎么优化简历项目”",
+      "platform": "GitHub工具说明中的目录示例",
+      "source_url": "https://github.com/firmamento73/xhs-note-archiver",
+      "evidence_type": "仅笔记标题线索",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "仓库树没有该笔记原文或截图，标题没有作者和完整原帖链接。",
+      "project_summary": null,
+      "verification": "不足以列入已搜集简历，也不能根据标题补造内容。"
+    },
+    {
+      "id": "C08",
+      "creator": "阿东玩AI / adongwanai",
+      "title": "Agent / LLM 高信号匿名示例",
+      "source_url": "https://github.com/adongwanai/LLM-Resume-Template/blob/42e52b93087fc77b93dfeb32a23302a89782d1c0/resume-agent.tex",
+      "local_copy": "supplemental/adong-resume-agent.tex",
+      "source_blob_sha1": "9c09f385ae019b05ce97f8ac774e2f184b737199",
+      "project_titles": [
+        "Long-Horizon Agent Harness",
+        "Agent Trajectory Pipeline for SFT / RL",
+        "业务数据分析 Agent"
+      ],
+      "platform": "关联小红书博主的公开 GitHub 模板；发布帖未核实",
+      "evidence_type": "完整可读LaTeX模板，固定版本，Git blob一致",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "尚未核实对应小红书发布帖；匿名或占位符模板不能当作真实求职者经历。",
+      "extraction_file": "supplemental/README.md",
+      "license": "CC BY 4.0"
+    },
+    {
+      "id": "C09",
+      "creator": "阿东玩AI / adongwanai",
+      "title": "大模型算法占位符简历模板",
+      "source_url": "https://github.com/adongwanai/LLM-Resume-Template/blob/42e52b93087fc77b93dfeb32a23302a89782d1c0/resume-model.tex",
+      "local_copy": "supplemental/adong-resume-model.tex",
+      "source_blob_sha1": "1d9bcaa80a16d81252968069c51cb79fba0d8a8c",
+      "project_titles": [
+        "基于自我纠错机制的智能 RAG 检索系统",
+        "基于分层记忆架构的长程对话 Agent 系统"
+      ],
+      "platform": "关联小红书博主的公开 GitHub 模板；发布帖未核实",
+      "evidence_type": "完整可读LaTeX模板，固定版本，Git blob一致",
+      "counts_toward_required_resumes": false,
+      "exclusion_reason": "尚未核实对应小红书发布帖；匿名或占位符模板不能当作真实求职者经历。",
+      "extraction_file": "supplemental/README.md",
+      "license": "CC BY 4.0"
+    }
+  ],
+  "supplemental_template_count": 2,
+  "supplemental_template_project_count": 5,
+  "blocking_condition": "No readable Xiaohongshu resume sources: public search returns no feed items; discovered original URLs have no readable note data; no Xiaohongshu connector or user-provided readable seed material.",
+  "blocker_evidence": [
+    "access-probes.json",
+    "followup-probes.json",
+    "third-turn-access-check.json",
+    "blocked-audit.json"
+  ]
+}

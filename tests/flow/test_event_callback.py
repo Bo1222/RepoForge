@@ -4,13 +4,13 @@ import pytest
 from typing import List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from moatless.actions.schema import Observation
-from moatless.agent.agent import ActionAgent
-from moatless.events import BaseEvent, FlowStartedEvent, FlowCompletedEvent, FlowErrorEvent
-from moatless.flow.flow import AgenticFlow
-from moatless.flow.loop import AgenticLoop
-from moatless.node import Node
-from moatless.workspace import Workspace
+from repoforge.actions.schema import Observation
+from repoforge.agent.agent import ActionAgent
+from repoforge.events import BaseEvent, FlowStartedEvent, FlowCompletedEvent, FlowErrorEvent
+from repoforge.flow.flow import AgenticFlow
+from repoforge.flow.loop import AgenticLoop
+from repoforge.node import Node
+from repoforge.workspace import Workspace
 
 
 class TestFlowEventCallback:
@@ -122,11 +122,11 @@ class TestFlowEventCallback:
         await flow.run()
 
     @pytest.mark.asyncio
-    @patch("moatless.settings.get_storage")
+    @patch("repoforge.settings.get_storage")
     async def test_run_flow_persistence(self, mock_get_storage, mock_agent):
         """Test the persistence of flow data when running with the event callback"""
         # Setup
-        from moatless.flow.run_flow import handle_flow_event
+        from repoforge.flow.run_flow import handle_flow_event
 
         # Create mock storage
         mock_storage = AsyncMock()
@@ -151,7 +151,7 @@ class TestFlowEventCallback:
 
             # Extract and run the process_event_task function directly
             # instead of patching asyncio.create_task
-            from moatless.flow.run_flow import _flow_lock
+            from repoforge.flow.run_flow import _flow_lock
 
             async def direct_process_event_task():
                 async with _flow_lock:
@@ -175,10 +175,10 @@ class TestFlowEventCallback:
             assert call_args[3] == "test-trajectory"
 
     @pytest.mark.asyncio
-    @patch("moatless.settings.get_event_bus")
+    @patch("repoforge.settings.get_event_bus")
     async def test_handle_flow_event_publishes_to_bus(self, mock_get_event_bus, mock_agent):
         """Test that handle_flow_event publishes to the event bus"""
-        from moatless.flow.run_flow import handle_flow_event
+        from repoforge.flow.run_flow import handle_flow_event
 
         # Create mock event bus
         mock_event_bus = AsyncMock()
@@ -186,7 +186,7 @@ class TestFlowEventCallback:
         mock_event_bus.publish = AsyncMock()
 
         # Create a mock storage
-        with patch("moatless.settings.get_storage") as mock_get_storage:
+        with patch("repoforge.settings.get_storage") as mock_get_storage:
             mock_storage = AsyncMock()
             mock_get_storage.return_value = mock_storage
             mock_storage.write_to_trajectory = AsyncMock()
@@ -207,7 +207,7 @@ class TestFlowEventCallback:
                 event = FlowStartedEvent(project_id="test-project", trajectory_id="test-trajectory")
 
                 # Extract and run the process_event_task function directly
-                from moatless.flow.run_flow import _flow_lock
+                from repoforge.flow.run_flow import _flow_lock
 
                 async def direct_process_event_task():
                     async with _flow_lock:

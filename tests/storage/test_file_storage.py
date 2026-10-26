@@ -7,8 +7,8 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
-from moatless.storage.base import BaseStorage
-from moatless.storage.file_storage import FileStorage
+from repoforge.storage.base import BaseStorage
+from repoforge.storage.file_storage import FileStorage
 
 
 @pytest.fixture

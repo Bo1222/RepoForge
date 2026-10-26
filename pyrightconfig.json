@@ -1,6 +1,6 @@
 {
     "include": [
-        "moatless",
+        "repoforge",
         "tests"
     ],
     "reportCallIssue": "none",

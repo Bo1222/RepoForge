@@ -13,12 +13,12 @@ from llama_index.core import SimpleDirectoryReader
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core.vector_stores import VectorStoreQuery
 
-from moatless.benchmark.swebench import setup_swebench_repo, get_repo_dir_name
-from moatless.benchmark.swebench.utils import create_repository
-from moatless.evaluation.utils import calculate_estimated_context_window, get_moatless_instance, get_moatless_instances
-from moatless.index import IndexSettings, CodeIndex
-from moatless.index.simple_faiss import SimpleFaissVectorStore
-from moatless.index.epic_split import EpicSplitter
+from repoforge.benchmark.swebench import setup_swebench_repo, get_repo_dir_name
+from repoforge.benchmark.swebench.utils import create_repository
+from repoforge.evaluation.utils import calculate_estimated_context_window, get_repoforge_instance, get_repoforge_instances
+from repoforge.index import IndexSettings, CodeIndex
+from repoforge.index.simple_faiss import SimpleFaissVectorStore
+from repoforge.index.epic_split import EpicSplitter
 
 # Add args as a module-level variable
 args = None
@@ -29,7 +29,7 @@ def get_persist_dir(instance):
 
 
 def create_index(instance_id: str, index_settings: IndexSettings, num_workers: int):
-    instance = get_moatless_instance(instance_id)
+    instance = get_repoforge_instance(instance_id)
     repository = create_repository(instance)
 
     code_index = CodeIndex(file_repo=repository, settings=index_settings)
@@ -83,7 +83,7 @@ def evaluate_index(code_index: CodeIndex, instance: dict):
 
 
 def evaluate_instance(instance_id: str) -> dict:
-    instance = get_moatless_instance(instance_id)
+    instance = get_repoforge_instance(instance_id)
 
     code_index = CodeIndex.from_persist_dir(get_persist_dir(instance))
 
@@ -128,7 +128,7 @@ def evaluate_instances(instance_ids: list[str]) -> list[dict]:
 
 
 def split_and_store(instance_id):
-    instance = get_moatless_instance(instance_id, split="verified")
+    instance = get_repoforge_instance(instance_id, split="verified")
     repo_path = setup_swebench_repo(instance)
 
     def file_metadata_func(file_path: str) -> dict:
@@ -334,7 +334,7 @@ def main():
     instance_ids = []
     if args.prefix:
         # Get all instances from dataset
-        all_instances = get_moatless_instances()
+        all_instances = get_repoforge_instances()
         # Filter by prefix and sort
         matching_instances = sorted(
             [inst for inst in all_instances.values() if inst["instance_id"].startswith(args.prefix)],

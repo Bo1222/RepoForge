@@ -3,9 +3,9 @@ import json
 import pytest
 from textual.widgets import Collapsible
 
-from moatless.cli.app import CodingApp, TaskInput, DetailScreen, SessionPicker
-from moatless.cli.service import SessionService
-from moatless.cli.main import parser, read_task
+from repoforge.cli.app import CodingApp, TaskInput, DetailScreen, SessionPicker
+from repoforge.cli.service import SessionService
+from repoforge.cli.main import parser, read_task
 
 
 @pytest.mark.asyncio
@@ -58,12 +58,12 @@ def test_task_file_and_arguments(tmp_path):
 
 @pytest.mark.asyncio
 async def test_tools_followup_cancel_and_apply_ui(repo, tmp_path, scripted):
-    from moatless.actions.read_file import ReadFileArgs
-    from moatless.actions.bash import BashArgs
-    from moatless.actions.string_replace import StringReplaceArgs
-    from moatless.actions.finish import FinishArgs
-    from moatless.actions.local_coding import LocalTestArgs
-    from moatless.cli.app import ApplyConfirmation
+    from repoforge.actions.read_file import ReadFileArgs
+    from repoforge.actions.bash import BashArgs
+    from repoforge.actions.string_replace import StringReplaceArgs
+    from repoforge.actions.finish import FinishArgs
+    from repoforge.actions.local_coding import LocalTestArgs
+    from repoforge.cli.app import ApplyConfirmation
 
     outputs, _ = scripted
     outputs.extend(
@@ -134,7 +134,7 @@ async def test_tools_followup_cancel_and_apply_ui(repo, tmp_path, scripted):
 
 @pytest.mark.asyncio
 async def test_busy_draft_and_ctrl_c_cancel(repo, tmp_path, scripted):
-    from moatless.actions.bash import BashArgs
+    from repoforge.actions.bash import BashArgs
 
     scripted[0].append([BashArgs(command="sleep 120")])
     service = SessionService(tmp_path / "sessions")
@@ -212,8 +212,8 @@ async def test_command_palette_layout_and_architecture(tmp_path, size):
 
 @pytest.mark.asyncio
 async def test_live_tool_identity_failure_and_history(repo, tmp_path, scripted):
-    from moatless.actions.local_coding import LocalTestArgs
-    from moatless.actions.finish import FinishArgs
+    from repoforge.actions.local_coding import LocalTestArgs
+    from repoforge.actions.finish import FinishArgs
 
     scripted[0].append([LocalTestArgs(command="python -m pytest -q"), FinishArgs(finish_reason="测试失败")])
     service = SessionService(tmp_path / "sessions")

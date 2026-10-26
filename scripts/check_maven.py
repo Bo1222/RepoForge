@@ -14,8 +14,8 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
-from moatless.testing.java.maven_parser import MavenParser
-from moatless.testing.schema import TestStatus
+from repoforge.testing.java.maven_parser import MavenParser
+from repoforge.testing.schema import TestStatus
 
 
 def check_maven_installed():

@@ -42,7 +42,7 @@ def main():
             {"model": args.model, "max_iterations": 15, "max_cost": 0.1, "model_timeout": 90, "tool_timeout": 30}
         )
     )
-    cli = [sys.executable, "-m", "moatless.cli", "--session-dir", str(root / "sessions")]
+    cli = [sys.executable, "-m", "repoforge.cli", "--session-dir", str(root / "sessions")]
     task = "读取 calc.py 和 test_calc.py。先用 RunTests 执行 python -m pytest -q 确认失败；修复 add 函数，再用 RunTests 测试通过。不要提交。"
     r = command([*cli, "run", "--repo", str(repo), "--config", str(config), task, "--export", str(root / "first-turn")])
     (root / "first-command.txt").write_text(r.stdout + r.stderr)
@@ -96,7 +96,7 @@ def main():
     resumed = command([*cli, "resume", interrupted["id"], "--headless"])
     (root / "interrupt-resume.txt").write_text(resumed.stdout + resumed.stderr)
     assert resumed.returncode == 1 and "RecoveryConflict" in resumed.stdout
-    from moatless.cli.service import SessionService
+    from repoforge.cli.service import SessionService
 
     interrupted_service = SessionService(root / "sessions")
     interrupted_service.export(interrupted_service.load(interrupted["id"]), str(root / "interrupted"))

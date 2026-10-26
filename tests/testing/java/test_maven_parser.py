@@ -3,8 +3,8 @@ import unittest
 from pathlib import Path
 from typing import Optional
 
-from moatless.testing.java.maven_parser import MavenParser
-from moatless.testing.schema import TestResult, TestStatus
+from repoforge.testing.java.maven_parser import MavenParser
+from repoforge.testing.schema import TestResult, TestStatus
 
 
 class TestMavenParser(unittest.TestCase):

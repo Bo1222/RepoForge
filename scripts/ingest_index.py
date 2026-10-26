@@ -6,14 +6,14 @@ import shutil
 from typing import Optional, Dict, List
 
 from dotenv import load_dotenv
-from moatless.benchmark.swebench import (
+from repoforge.benchmark.swebench import (
     get_repo_dir_name,
 )
-from moatless.benchmark.swebench.utils import create_repository
-from moatless.evaluation.utils import get_moatless_instances
-from moatless.index.settings import IndexSettings
-from moatless.index.code_index import CodeIndex
-from moatless.repository.git import GitRepository
+from repoforge.benchmark.swebench.utils import create_repository
+from repoforge.evaluation.utils import get_repoforge_instances
+from repoforge.index.settings import IndexSettings
+from repoforge.index.code_index import CodeIndex
+from repoforge.repository.git import GitRepository
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def ingest_repo(repo_dir: str, index_settings: IndexSettings) -> None:
     code_index = CodeIndex(file_repo=repository, settings=index_settings)
     vectors, indexed_tokens = code_index.run_ingestion(repo_path=repo_dir, num_workers=1)
     print(f"Indexed {indexed_tokens} tokens and created {vectors} vectors")
-    persist_dir = os.path.join(repo_dir, ".moatless", "index")
+    persist_dir = os.path.join(repo_dir, ".repoforge", "index")
     code_index.persist(persist_dir=persist_dir)
 
 

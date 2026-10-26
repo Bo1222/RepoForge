@@ -19,9 +19,9 @@ from kubernetes.client import (
     V1ContainerStateTerminated,
     V1ContainerStatus,
 )
-from moatless.runner.kubernetes_runner import KubernetesRunner
-from moatless.runner.runner import JobInfo, JobStatus, RunnerStatus
-from moatless.runner.label_utils import create_resource_id
+from repoforge.runner.kubernetes_runner import KubernetesRunner
+from repoforge.runner.runner import JobInfo, JobStatus, RunnerStatus
+from repoforge.runner.label_utils import create_resource_id
 
 
 class TestKubernetesRunner(KubernetesRunner):
@@ -58,10 +58,10 @@ class TestKubernetesRunner(KubernetesRunner):
 
         # Fallback to annotations
         elif job.metadata.annotations:
-            if "moatless.ai/project-id" in job.metadata.annotations:
-                job_project_id = job.metadata.annotations["moatless.ai/project-id"]
-            if "moatless.ai/trajectory-id" in job.metadata.annotations:
-                job_trajectory_id = job.metadata.annotations["moatless.ai/trajectory-id"]
+            if "repoforge.ai/project-id" in job.metadata.annotations:
+                job_project_id = job.metadata.annotations["repoforge.ai/project-id"]
+            if "repoforge.ai/trajectory-id" in job.metadata.annotations:
+                job_trajectory_id = job.metadata.annotations["repoforge.ai/trajectory-id"]
 
             # If project_id is specified and doesn't match, skip this job
             if project_id and job_project_id != project_id:
@@ -133,16 +133,16 @@ class TestKubernetesRunner(KubernetesRunner):
         job.metadata.labels = {
             "project_id": self._get_project_label(project_id),
             "trajectory_id": self._get_trajectory_label(trajectory_id),
-            "app": "moatless-worker",
+            "app": "repoforge-worker",
         }
         job.metadata.annotations = {
-            "moatless.ai/project-id": project_id,
-            "moatless.ai/trajectory-id": trajectory_id,
+            "repoforge.ai/project-id": project_id,
+            "repoforge.ai/trajectory-id": trajectory_id,
         }
 
         # Add node_id annotation if specified
         if node_id is not None:
-            job.metadata.annotations["moatless.ai/node-id"] = str(node_id)
+            job.metadata.annotations["repoforge.ai/node-id"] = str(node_id)
 
         # Mock status
         job.status = MagicMock()
@@ -168,7 +168,7 @@ class TestKubernetesRunner(KubernetesRunner):
         """Test implementation for getting node selector."""
         selector = dict(self.node_selector) if self.node_selector else {}
         if node_id is not None:
-            selector["moatless.ai/node-id"] = str(node_id)
+            selector["repoforge.ai/node-id"] = str(node_id)
         return selector
 
     def _job_id(self, project_id: str, trajectory_id: str) -> str:
@@ -240,10 +240,10 @@ def create_mock_job(name, status="Running", succeeded=0, failed=0, active=1, nam
     job.metadata.namespace = namespace or "test-namespace"
     job.metadata.creation_timestamp = datetime.now()
 
-    job.metadata.labels = {"app": "moatless-worker", "project_id": project_id, "trajectory_id": trajectory_id}
+    job.metadata.labels = {"app": "repoforge-worker", "project_id": project_id, "trajectory_id": trajectory_id}
     job.metadata.annotations = {
-        "moatless.ai/project-id": project_id,
-        "moatless.ai/trajectory-id": trajectory_id,
+        "repoforge.ai/project-id": project_id,
+        "repoforge.ai/trajectory-id": trajectory_id,
     }
     job.metadata.deletion_timestamp = None
 
@@ -316,7 +316,7 @@ async def test_start_job(kubernetes_runner, mock_k8s_api):
 
         # Verify job body has correct labels and environment variables
         job_body = call_args[1]["body"]
-        assert job_body.metadata.labels["app"] == "moatless-worker"
+        assert job_body.metadata.labels["app"] == "repoforge-worker"
         assert job_body.metadata.labels["project_id"] == project_id
         assert job_body.metadata.labels["trajectory_id"] == trajectory_id
 
@@ -342,8 +342,8 @@ async def test_start_job(kubernetes_runner, mock_k8s_api):
         # Check that node_id was passed to _create_job_object
         job_body = batch_api.create_namespaced_job.call_args[1]["body"]
         if hasattr(job_body.metadata, "annotations") and job_body.metadata.annotations:
-            assert "moatless.ai/node-id" in job_body.metadata.annotations
-            assert job_body.metadata.annotations["moatless.ai/node-id"] == str(node_id)
+            assert "repoforge.ai/node-id" in job_body.metadata.annotations
+            assert job_body.metadata.annotations["repoforge.ai/node-id"] == str(node_id)
 
 
 @pytest.mark.asyncio
@@ -379,7 +379,7 @@ async def test_get_jobs(kubernetes_runner, mock_k8s_api):
     all_jobs = await kubernetes_runner.get_jobs()
     batch_api.list_namespaced_job.assert_called_with(
         namespace=kubernetes_runner.namespace,
-        label_selector="app=moatless-worker",
+        label_selector="app=repoforge-worker",
     )
     assert len(all_jobs) == 3
 
@@ -398,7 +398,7 @@ async def test_get_jobs(kubernetes_runner, mock_k8s_api):
     project1_jobs = await kubernetes_runner.get_jobs(project_id)
     batch_api.list_namespaced_job.assert_called_with(
         namespace=kubernetes_runner.namespace,
-        label_selector=f"app=moatless-worker,project_id={project_id}",
+        label_selector=f"app=repoforge-worker,project_id={project_id}",
     )
     assert len(project1_jobs) == 2
 
@@ -446,7 +446,7 @@ async def test_cancel_all_project_jobs(kubernetes_runner, mock_k8s_api):
     # Verify list_namespaced_job was called with correct selector
     batch_api.list_namespaced_job.assert_called_once_with(
         namespace=expected_namespace,
-        label_selector="app=moatless-worker,project_id=test-project",
+        label_selector="app=repoforge-worker,project_id=test-project",
     )
 
     # Verify delete was called for each job
@@ -687,11 +687,11 @@ async def test_create_job_object(kubernetes_runner):
 
     # Verify basic job object structure
     assert job_obj.metadata.name == job_id
-    assert job_obj.metadata.labels["app"] == "moatless-worker"
+    assert job_obj.metadata.labels["app"] == "repoforge-worker"
     assert job_obj.metadata.labels["project_id"] == project_id
     assert job_obj.metadata.labels["trajectory_id"] == trajectory_id
-    assert job_obj.metadata.annotations["moatless.ai/project-id"] == project_id
-    assert job_obj.metadata.annotations["moatless.ai/trajectory-id"] == trajectory_id
+    assert job_obj.metadata.annotations["repoforge.ai/project-id"] == project_id
+    assert job_obj.metadata.annotations["repoforge.ai/trajectory-id"] == trajectory_id
 
     # Verify the namespace is set correctly
     assert job_obj.metadata.namespace == expected_namespace
@@ -707,7 +707,7 @@ async def test_create_job_object(kubernetes_runner):
     )
 
     # Verify node_id is included in annotations
-    assert job_obj_with_node.metadata.annotations["moatless.ai/node-id"] == str(node_id)
+    assert job_obj_with_node.metadata.annotations["repoforge.ai/node-id"] == str(node_id)
 
     # Test with OpenTelemetry context
     otel_context = {"trace_id": "1234567890abcdef", "span_id": "fedcba0987654321"}
@@ -757,7 +757,7 @@ async def test_get_job_status_summary(kubernetes_runner, mock_k8s_api):
     for job in job_list.items:
         # Extract trajectory_id from the end of the name "run-{project_id}-{trajectory_id}"
         trajectory_id = job.metadata.name.split("-")[-1]
-        job.metadata.annotations = {"moatless.ai/project-id": project_id, "moatless.ai/trajectory-id": trajectory_id}
+        job.metadata.annotations = {"repoforge.ai/project-id": project_id, "repoforge.ai/trajectory-id": trajectory_id}
 
     batch_api.list_namespaced_job.return_value = job_list
 

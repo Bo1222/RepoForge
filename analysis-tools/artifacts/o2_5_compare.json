@@ -1,0 +1,227 @@
+{
+ "o2": "/mnt/data2/home/geqb/LLM/moatless-tools/experiments/results/O2_dev30_sanity_20261021T161545Z",
+ "reference": "/mnt/data2/home/geqb/LLM/moatless-tools/experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z",
+ "rows": [
+  {
+   "instance_id": "pytest-dev__pytest-7490",
+   "o2": {
+    "resolved": false,
+    "grading": "completed",
+    "finish_reason": "policy_stop",
+    "generation_status": "completed",
+    "cost": 0.03294137999999999,
+    "prompt_tokens": 233468,
+    "completion_tokens": 2332,
+    "steps": 13,
+    "decisions": 15,
+    "verification_state": "TESTED_FAIL",
+    "introduced_failures": [],
+    "tool_failures": {},
+    "grading_failures": {
+     "PASS_TO_PASS": [
+      "testing/test_skipping.py::test_errors_in_xfail_skip_expressions"
+     ]
+    },
+    "patch_applicable": true,
+    "submit_product_only": true,
+    "submitted_verified_patch": false
+   },
+   "a0": {
+    "resolved": false,
+    "cost": 0.10909633199999999,
+    "prompt_tokens": 959637,
+    "completion_tokens": 3069,
+    "steps": 40,
+    "finish_reason": "max_iterations"
+   },
+   "a3": {
+    "resolved": false,
+    "cost": 0.028426128000000002,
+    "prompt_tokens": 246716,
+    "completion_tokens": 3436,
+    "steps": 16,
+    "finish_reason": "policy_stop"
+   }
+  },
+  {
+   "instance_id": "django__django-10914",
+   "o2": {
+    "resolved": null,
+    "grading": "environment_error",
+    "finish_reason": "policy_stop",
+    "generation_status": "completed",
+    "cost": 0.032969304,
+    "prompt_tokens": 178416,
+    "completion_tokens": 2568,
+    "steps": 16,
+    "decisions": 18,
+    "verification_state": "TESTED_FAIL",
+    "introduced_failures": [],
+    "tool_failures": {
+     "no_changes": 1
+    },
+    "grading_failures": {},
+    "patch_applicable": true,
+    "submit_product_only": true,
+    "submitted_verified_patch": false
+   },
+   "a0": {
+    "resolved": true,
+    "cost": 0.175456164,
+    "prompt_tokens": 843811,
+    "completion_tokens": 4974,
+    "steps": 41,
+    "finish_reason": "max_iterations"
+   },
+   "a3": {
+    "resolved": true,
+    "cost": 0.06510772799999999,
+    "prompt_tokens": 320276,
+    "completion_tokens": 3070,
+    "steps": 17,
+    "finish_reason": "policy_stop"
+   }
+  },
+  {
+   "instance_id": "sympy__sympy-12481",
+   "o2": {
+    "resolved": true,
+    "grading": "completed",
+    "finish_reason": "policy_stop",
+    "generation_status": "completed",
+    "cost": 0.031908156,
+    "prompt_tokens": 206646,
+    "completion_tokens": 3690,
+    "steps": 16,
+    "decisions": 18,
+    "verification_state": "TESTED_FAIL",
+    "introduced_failures": [
+     "test_args"
+    ],
+    "tool_failures": {},
+    "grading_failures": {},
+    "patch_applicable": true,
+    "submit_product_only": true,
+    "submitted_verified_patch": false
+   },
+   "a0": {
+    "resolved": true,
+    "cost": 0.025545227999999996,
+    "prompt_tokens": 203097,
+    "completion_tokens": 3316,
+    "steps": 15,
+    "finish_reason": "terminal"
+   },
+   "a3": {
+    "resolved": true,
+    "cost": 0.1136451,
+    "prompt_tokens": 542957,
+    "completion_tokens": 6005,
+    "steps": 25,
+    "finish_reason": "policy_stop"
+   }
+  },
+  {
+   "instance_id": "scikit-learn__scikit-learn-14053",
+   "o2": {
+    "resolved": true,
+    "grading": "completed",
+    "finish_reason": "policy_stop",
+    "generation_status": "completed",
+    "cost": 0.040166916,
+    "prompt_tokens": 231458,
+    "completion_tokens": 2922,
+    "steps": 12,
+    "decisions": 13,
+    "verification_state": "TESTED_PASS",
+    "introduced_failures": [],
+    "tool_failures": {},
+    "grading_failures": {},
+    "patch_applicable": true,
+    "submit_product_only": true,
+    "submitted_verified_patch": true
+   },
+   "a0": {
+    "resolved": true,
+    "cost": 0.008162003999999999,
+    "prompt_tokens": 77187,
+    "completion_tokens": 1711,
+    "steps": 10,
+    "finish_reason": "terminal"
+   },
+   "a3": {
+    "resolved": true,
+    "cost": 0.013173888,
+    "prompt_tokens": 114812,
+    "completion_tokens": 2377,
+    "steps": 13,
+    "finish_reason": "terminal"
+   }
+  },
+  {
+   "instance_id": "astropy__astropy-8872",
+   "o2": {
+    "resolved": true,
+    "grading": "completed",
+    "finish_reason": "policy_stop",
+    "generation_status": "completed",
+    "cost": 0.16214593200000002,
+    "prompt_tokens": 714196,
+    "completion_tokens": 7852,
+    "steps": 29,
+    "decisions": 32,
+    "verification_state": "TESTED_FAIL",
+    "introduced_failures": [],
+    "tool_failures": {
+     "no_search_hits": 1
+    },
+    "grading_failures": {},
+    "patch_applicable": true,
+    "submit_product_only": true,
+    "submitted_verified_patch": false
+   },
+   "a0": {
+    "resolved": false,
+    "cost": 0.036054143999999996,
+    "prompt_tokens": 209640,
+    "completion_tokens": 2974,
+    "steps": 15,
+    "finish_reason": "terminal"
+   },
+   "a3": {
+    "resolved": false,
+    "cost": 0.028334759999999997,
+    "prompt_tokens": 162194,
+    "completion_tokens": 3291,
+    "steps": 13,
+    "finish_reason": "policy_stop"
+   }
+  }
+ ],
+ "totals": {
+  "o2": {
+   "resolved": 3,
+   "attempted": 5,
+   "cost": 0.300132,
+   "prompt_tokens": 1564184,
+   "completion_tokens": 19364,
+   "steps": 86
+  },
+  "a0": {
+   "resolved": 3,
+   "attempted": 5,
+   "cost": 0.354314,
+   "prompt_tokens": 2293372,
+   "completion_tokens": 16044,
+   "steps": 121
+  },
+  "a3": {
+   "resolved": 3,
+   "attempted": 5,
+   "cost": 0.248688,
+   "prompt_tokens": 1386955,
+   "completion_tokens": 18179,
+   "steps": 84
+  }
+ }
+}

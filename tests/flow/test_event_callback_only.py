@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from moatless.events import BaseEvent, FlowStartedEvent
-from moatless.flow.flow import AgenticFlow
-from moatless.node import Node
+from repoforge.events import BaseEvent, FlowStartedEvent
+from repoforge.flow.flow import AgenticFlow
+from repoforge.node import Node
 
 
 class TestBasicEventCallback:
@@ -65,11 +65,11 @@ class TestBasicEventCallback:
         await emit_event(mock_flow, test_event)
 
     @pytest.mark.asyncio
-    @patch("moatless.settings.get_storage")
-    @patch("moatless.settings.get_event_bus")
+    @patch("repoforge.settings.get_storage")
+    @patch("repoforge.settings.get_event_bus")
     async def test_run_flow_callback(self, mock_get_event_bus, mock_get_storage):
         """Test that event callback works properly in run_flow"""
-        from moatless.flow.run_flow import _flow_lock
+        from repoforge.flow.run_flow import _flow_lock
 
         # Create mock storage and event bus
         mock_storage = AsyncMock()

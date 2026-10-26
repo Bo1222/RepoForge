@@ -4,12 +4,12 @@ import pytest
 import subprocess
 from unittest.mock import patch, MagicMock
 
-from moatless.actions.grep_tool import GrepTool, GrepToolArgs
-from moatless.file_context import FileContext
-from moatless.actions.schema import Observation
-from moatless.repository.file import FileRepository
-from moatless.workspace import Workspace
-from moatless.environment.local import LocalBashEnvironment, EnvironmentExecutionError
+from repoforge.actions.grep_tool import GrepTool, GrepToolArgs
+from repoforge.file_context import FileContext
+from repoforge.actions.schema import Observation
+from repoforge.repository.file import FileRepository
+from repoforge.workspace import Workspace
+from repoforge.environment.local import LocalBashEnvironment, EnvironmentExecutionError
 
 
 def init_git_repo(repo_path):

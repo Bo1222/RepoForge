@@ -1,9 +1,9 @@
 from unittest.mock import Mock
 
 import pytest
-from moatless.actions.insert_line import InsertLine, InsertLinesArgs
-from moatless.file_context import FileContext
-from moatless.repository.repository import InMemRepository
+from repoforge.actions.insert_line import InsertLine, InsertLinesArgs
+from repoforge.file_context import FileContext
+from repoforge.repository.repository import InMemRepository
 
 
 @pytest.fixture
@@ -86,7 +86,7 @@ async def test_insert_multiline(repository, file_context):
     action = InsertLine(repository=repository)
     args = InsertLinesArgs(
         path="test.py",
-        insert_line=1,
+        insert_line=0,
         new_str="""def setup():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ async def test_insert_line_with_indentation(repository, file_context):
     action = InsertLine(repository=repository)
     args = InsertLinesArgs(
         path="test2.py",
-        insert_line=2,
+        insert_line=3,
         new_str='    def new_method(self):\n        return "test"',
         thoughts="Adding new method",
     )

@@ -4,10 +4,10 @@ import os
 
 import pytest
 
-from moatless.actions.run_python_code import RunPythonCode, RunPythonCodeArgs
-from moatless.environment.local import LocalBashEnvironment
-from moatless.file_context import FileContext
-from moatless.workspace import Workspace
+from repoforge.actions.run_python_code import RunPythonCode, RunPythonCodeArgs
+from repoforge.environment.local import LocalBashEnvironment
+from repoforge.file_context import FileContext
+from repoforge.workspace import Workspace
 
 
 class TestRunPythonCodeIntegration:
@@ -140,12 +140,12 @@ print(undefined_variable)
         # Give a moment for cleanup to complete
         await asyncio.sleep(0.1)
         
-        # Check that no new moatless_temp files remain in the working directory
+        # Check that no new repoforge_temp files remain in the working directory
         files_after = set(os.listdir(temp_dir))
         new_files = files_after - files_before
-        moatless_temp_files = [f for f in new_files if f.startswith('moatless_temp_')]
+        repoforge_temp_files = [f for f in new_files if f.startswith('repoforge_temp_')]
         
-        assert len(moatless_temp_files) == 0, f"Temporary files not cleaned up: {moatless_temp_files}"
+        assert len(repoforge_temp_files) == 0, f"Temporary files not cleaned up: {repoforge_temp_files}"
 
     @pytest.mark.asyncio
     async def test_execute_with_data_processing(self, workspace_and_temp_dir):

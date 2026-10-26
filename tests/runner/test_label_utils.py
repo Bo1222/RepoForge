@@ -1,5 +1,5 @@
 import pytest
-from moatless.runner.label_utils import create_resource_id, create_job_args
+from repoforge.runner.label_utils import create_resource_id, create_job_args
 import asyncio
 
 
@@ -12,8 +12,8 @@ def test_create_resource_id_basic():
     assert len(resource_id.split("-")[-1]) == 8
 
     # With different prefix
-    resource_id = create_resource_id("test-project", "test-trajectory", "moatless")
-    assert resource_id.startswith("moatless-test-project-test-trajectory-")
+    resource_id = create_resource_id("test-project", "test-trajectory", "repoforge")
+    assert resource_id.startswith("repoforge-test-project-test-trajectory-")
     assert len(resource_id.split("-")[-1]) == 8
 
 

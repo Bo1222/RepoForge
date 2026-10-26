@@ -3,10 +3,10 @@ import argparse
 import os
 
 from dotenv import load_dotenv
-from moatless.actions import Respond
-from moatless.agent import ActionAgent
-from moatless.completion import ToolCallCompletionModel
-from moatless.flow import AgenticLoop, LangGraphFlow
+from repoforge.actions import Respond
+from repoforge.agent import ActionAgent
+from repoforge.completion import ToolCallCompletionModel
+from repoforge.flow import AgenticLoop, LangGraphFlow
 
 load_dotenv()
 

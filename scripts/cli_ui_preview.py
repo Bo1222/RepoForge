@@ -14,13 +14,13 @@ from pathlib import Path
 import tempfile
 from unittest.mock import patch
 
-from moatless.actions.finish import FinishArgs
-from moatless.actions.local_coding import LocalTestArgs
-from moatless.actions.read_file import ReadFileArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.cli.app import CodingApp, TaskInput
-from moatless.cli.service import SessionService
-from moatless.cli.worktree import git
+from repoforge.actions.finish import FinishArgs
+from repoforge.actions.local_coding import LocalTestArgs
+from repoforge.actions.read_file import ReadFileArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.cli.app import CodingApp, TaskInput
+from repoforge.cli.service import SessionService
+from repoforge.cli.worktree import git
 from litellm.types.utils import ModelResponse
 
 
@@ -50,7 +50,7 @@ async def capture(output):
     # Render the color design even when the invoking automation sets NO_COLOR.
     os.environ.pop("NO_COLOR", None)
     output.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="moatless-ui-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="repoforge-ui-") as temporary:
         root = Path(temporary)
         repo = root / "demo"
         repo.mkdir()

@@ -3,8 +3,8 @@ import os
 import pytest
 import tempfile
 
-from moatless.environment.local import LocalBashEnvironment
-from moatless.environment.base import EnvironmentExecutionError
+from repoforge.environment.local import LocalBashEnvironment
+from repoforge.environment.base import EnvironmentExecutionError
 
 
 @pytest.mark.asyncio

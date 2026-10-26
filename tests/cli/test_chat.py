@@ -6,19 +6,19 @@ from pathlib import Path
 import pytest
 from litellm.types.utils import ModelResponse
 
-from moatless.actions.finish import FinishArgs
-from moatless.cli import worktree
-from moatless.cli.app import CodingApp, DetailScreen, TaskInput
-from moatless.cli.main import parser, main
-from moatless.cli.service import SessionService
-from moatless.completion.base import CompletionRetryError
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.flow.durable import RecoveryConflict
+from repoforge.actions.finish import FinishArgs
+from repoforge.cli import worktree
+from repoforge.cli.app import CodingApp, DetailScreen, TaskInput
+from repoforge.cli.main import parser, main
+from repoforge.cli.service import SessionService
+from repoforge.completion.base import CompletionRetryError
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.flow.durable import RecoveryConflict
 
 
 def text_response(text):
     return ModelResponse(
-        model="deepseek/deepseek-chat",
+        model="deepseek-flash",
         choices=[{"message": {"role": "assistant", "content": text}, "index": 0, "finish_reason": "stop"}],
         usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
     )
@@ -47,7 +47,7 @@ async def test_chat_roundtrip_and_recovery_without_git(tmp_path, monkeypatch, sd
 
     monkeypatch.setattr(worktree, "git", forbid_git)
     replies, calls = sdk
-    replies.extend([text_response("当前配置为 deepseek/deepseek-chat。"), text_response("列表可变，元组不可变。")])
+    replies.extend([text_response("当前配置为 openai/deepseek-flash。"), text_response("列表可变，元组不可变。")])
     service = SessionService(tmp_path / "sessions")
     s = await service.create(None, "你是什么模型？")
     await service.start(s)
@@ -57,7 +57,9 @@ async def test_chat_roundtrip_and_recovery_without_git(tmp_path, monkeypatch, sd
     assert [a.name for a in s.flow.agent.actions] == ["Finish"]
     assert s.info["status"] == "terminal"
     assert len(calls) == 1
-    assert "deepseek/deepseek-chat" in calls[0]["messages"][0]["content"]
+    assert "openai/deepseek-flash" in calls[0]["messages"][0]["content"]
+    assert calls[0]["api_base"] == "https://api.deepseek.com"
+    assert calls[0]["extra_body"]["thinking"]["type"] == "disabled"
     assert [tool["function"]["name"] for tool in calls[0]["tools"]] == ["Finish"]
     invocation = s.flow.root.get_last_node().completions["build_action"]
     assert len(invocation.attempts) == 1
@@ -87,7 +89,7 @@ async def test_chat_roundtrip_and_recovery_without_git(tmp_path, monkeypatch, sd
     assert resumed_service.usage(restored)["completion_cost"] == cost
     await resumed_service.start(restored, "列表和元组有什么区别？")
     assert len(calls) == 2
-    assert "当前配置为 deepseek/deepseek-chat" in json.dumps(calls[1]["messages"], ensure_ascii=False)
+    assert "当前配置为 openai/deepseek-flash" in json.dumps(calls[1]["messages"], ensure_ascii=False)
     assert resumed_service.usage(restored)["prompt_tokens"] == 20
     assert resumed_service.usage(restored)["completion_cost"] == pytest.approx(cost * 2)
 
@@ -189,7 +191,7 @@ async def test_chat_unknown_model_outcome_is_not_replayed(tmp_path, sdk):
 
 @pytest.mark.asyncio
 async def test_missing_key_and_redacted_api_error(tmp_path, monkeypatch, sdk):
-    from moatless.exceptions import CompletionRuntimeError
+    from repoforge.exceptions import CompletionRuntimeError
 
     replies, calls = sdk
     monkeypatch.delenv("DEEPSEEK_API_KEY")

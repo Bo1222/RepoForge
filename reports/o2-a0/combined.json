@@ -1,0 +1,1550 @@
+{
+  "scope": "dev30 + holdout50: descriptive combined evaluation on 80 distinct tasks",
+  "manifest_hash": "818ef229e5fff6c78bef2a1998a97f714be918612fef40840cf5b817bdb29d6e",
+  "source_report_sha256": {
+    "dev": "3d3841071685bdc4a3c695f58b5f660bdfd90e8bd9c91e8dddf6fb0cef93e10e",
+    "holdout": "a6a9b5be09b14b3242918fb21ae9fa6f1a7da358f034b468fddaec6a36de9722"
+  },
+  "groups": {
+    "a0": {
+      "selected": 80,
+      "graded": 80,
+      "resolved": 44,
+      "resolved_rate": 0.55,
+      "reference_generation_cost": 4.432738691999999,
+      "cost_per_resolved": 0.10074406118181817
+    },
+    "a5": {
+      "selected": 80,
+      "graded": 80,
+      "resolved": 46,
+      "resolved_rate": 0.575,
+      "reference_generation_cost": 4.407704921999999,
+      "cost_per_resolved": 0.09581967221739128
+    }
+  },
+  "paired": {
+    "pairs": 80,
+    "both_resolved": 40,
+    "a0_only": 4,
+    "a5_only": 6,
+    "a0_resolved": 44,
+    "a5_resolved": 46,
+    "neither": 30,
+    "delta": 0.025,
+    "exact_mcnemar_two_sided_p": 0.75390625,
+    "bootstrap_95_ci": [
+      -0.05,
+      0.1
+    ],
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 20261023,
+    "bootstrap_scope": "resample the 80 pooled task pairs; not a held-out or stratified estimate"
+  },
+  "sensitivity_without_django_10097": {
+    "pairs": 79,
+    "both_resolved": 40,
+    "a0_only": 4,
+    "a5_only": 5,
+    "a0_resolved": 44,
+    "a5_resolved": 45,
+    "neither": 30,
+    "delta": 0.012658227848101266,
+    "exact_mcnemar_two_sided_p": 1.0,
+    "bootstrap_95_ci": [
+      -0.06329113924050633,
+      0.08860759493670886
+    ],
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 20261023,
+    "bootstrap_scope": "resample the 79 pooled task pairs; not a held-out or stratified estimate",
+    "excluded": "django__django-10097"
+  },
+  "component_performance": {
+    "a0": {
+      "instances": 80,
+      "context_budget_compliance": 1.0,
+      "budget_violations": [],
+      "counts": {
+        "context_builds": 2007,
+        "search_any_first_5": 58,
+        "search_any_first_10": 62,
+        "search_and_observed_view_any_first_5": 72,
+        "search_and_observed_view_any_first_10": 76
+      },
+      "rates": {
+        "search_any_first_5": 0.725,
+        "search_any_first_10": 0.775,
+        "search_and_observed_view_any_first_5": 0.9,
+        "search_and_observed_view_any_first_10": 0.95
+      },
+      "cases": [
+        {
+          "instance_id": "astropy__astropy-8707",
+          "phase": "dev",
+          "trajectory_sha256": "df46121c39cc7dd93c7a1f7d3a0c5f13fd859bd5eac9b7885298a7bd40803edf",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14752",
+          "phase": "dev",
+          "trajectory_sha256": "0e884ae44dfec7240cc96463265634c0a55b882558c6149bb4479adda6bf4d1f",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13964",
+          "phase": "dev",
+          "trajectory_sha256": "66eabd2caaae32743574cf3b2f3b189b08cad5bbce0479752537081ad146a97c",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13023",
+          "phase": "dev",
+          "trajectory_sha256": "8b2cad5d3180389fe48a1c4b107a0143ae9fe64afaf76bbe572945a81a92adc7",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "django__django-11333",
+          "phase": "dev",
+          "trajectory_sha256": "ad1f3a54760867bd7ebe6425bfd07de3ec643eb3b6900a2a5ea96865b82d81d5",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13551",
+          "phase": "dev",
+          "trajectory_sha256": "e03d54eef225057f16df8e258747dd234d59a67df05ac02fb55ec6f21db1bd5b",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13449",
+          "phase": "dev",
+          "trajectory_sha256": "2cb169faedaa7a2366511b25bc524dac38caded14e25d49b4ec634f6f4b2b706",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13516",
+          "phase": "dev",
+          "trajectory_sha256": "96169f9b0b4dbd328a288f26f997500f6c22e37ad43d4027b06594a0e9a50cd5",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-10554",
+          "phase": "dev",
+          "trajectory_sha256": "d49ac7b9aa12403a2491cc881c8b0ec82235764a9124b02a4f29bb62456e1447",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16527",
+          "phase": "dev",
+          "trajectory_sha256": "d25f82ddef036d29df1f03d8b18d44a6c52ee9d5c279dee2a38d74e7c0d92673",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-12273",
+          "phase": "dev",
+          "trajectory_sha256": "35ac4e8784fb611bc28bd08af1e741a677abef32668fa3c27dfb7470768712b0",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11532",
+          "phase": "dev",
+          "trajectory_sha256": "22aa0d41ce3dc284943c38d651719ebc531740fe894f0170f2f43a31272514f7",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13297",
+          "phase": "dev",
+          "trajectory_sha256": "0df8fe05cdec58ce6ea6179447642c414f20c5c60826351d6aa1fdf561b1ac1a",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13212",
+          "phase": "dev",
+          "trajectory_sha256": "4958ef03b2e770bedb360a67ea69f33f3236d2c135f8d4be3d4ea3eeef6d5d59",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14122",
+          "phase": "dev",
+          "trajectory_sha256": "c6c15dc65968a50afbdfa0770acaebe5b6bd20fe35f79188f16de049e137a40c",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-25775",
+          "phase": "dev",
+          "trajectory_sha256": "5024b874de8bda6092f15eda616248174368ce00fe83e3f5c689cea2199cfd3e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-26342",
+          "phase": "dev",
+          "trajectory_sha256": "863ab100a97523ca5457d0d0eb8cc6c31f63226ddcc8e6ef38e5b0a079df5137",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3187",
+          "phase": "dev",
+          "trajectory_sha256": "33d853f7c98dc8a205efddfedca79f9cb8d19636554a72c12dc0644287bfdf46",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "psf__requests-1921",
+          "phase": "dev",
+          "trajectory_sha256": "2f7df76ab6a741d7d0e7bb46a104015e8532bbe6a4c83278f6a188578b518aa6",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "phase": "dev",
+          "trajectory_sha256": "acdc352a711394c05b3012c6fe81fb1c76adfd962001fd567f602d4c2989608d",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pylint-dev__pylint-7277",
+          "phase": "dev",
+          "trajectory_sha256": "0a70ce1977f7f4db4cc7b6a0f29131547178da957eaa5385b3f1df94bc5cb2ab",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pytest-dev__pytest-10356",
+          "phase": "dev",
+          "trajectory_sha256": "c48a3407f389a58fe25dd2fa143f3c97522e67c9f36da82626153d27013e4f27",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12973",
+          "phase": "dev",
+          "trajectory_sha256": "6ec2eed3963c51979f3e449f874bd947f9c733a45413fd65befc3779f581c08a",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-25747",
+          "phase": "dev",
+          "trajectory_sha256": "b123ecc9d60452b361614b56ae60f34582aff1bc446e7008e8ef5d88fe1dc9b8",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8265",
+          "phase": "dev",
+          "trajectory_sha256": "0c373f684867ee36c788b3395ff11d4fcafeb412dbfbef5b0cf5f652c65da342",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10435",
+          "phase": "dev",
+          "trajectory_sha256": "aecc7e2281d26cace1b5910b2addd1dc1f96865978ab919df3888146c2398973",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-21379",
+          "phase": "dev",
+          "trajectory_sha256": "e1dd14f8fc24bf8822ca3d292e1987419ac4d2b324f5e12ae4e79f4414733c19",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "sympy__sympy-13757",
+          "phase": "dev",
+          "trajectory_sha256": "4b5a9c30e6061a852ff97ff4d75ab68db4595fc9e9de670ccc6d9164e607902c",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-17318",
+          "phase": "dev",
+          "trajectory_sha256": "c524cb22428cd176f0249e3c675681562f13a8a179572c3f41df1f441cd58c7d",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13852",
+          "phase": "dev",
+          "trajectory_sha256": "511c6aaa23eadcbb62aca7d749ae2efdb2f955523ae4a02b8a1d0882b43398f0",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "astropy__astropy-7166",
+          "phase": "holdout",
+          "trajectory_sha256": "3d31dcdc94876217b3ae3ac67e6e32592685649c3733ffdac1a8588ed7a8404e",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "astropy__astropy-14539",
+          "phase": "holdout",
+          "trajectory_sha256": "8f0cf0db547ec8a323a0e227e25fd7f5cdafc57010c5caf5e2061da21f32844e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16136",
+          "phase": "holdout",
+          "trajectory_sha256": "c07f5ed7c28883d0db6580d6a7c13eb64015fcacf58ae0795bd4ee0f95782e20",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-10880",
+          "phase": "holdout",
+          "trajectory_sha256": "07cbcd5380c91a4f227e551490cda131383c509a37047a2ed0a64f73a412e3f1",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14376",
+          "phase": "holdout",
+          "trajectory_sha256": "e16f2ddfcb227a988fadf9a93dc65fd8dfbda10cce5a9e3a1c486f19826c7ce3",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14631",
+          "phase": "holdout",
+          "trajectory_sha256": "c9fe60f6b99cb472c6a6763c73843c069153206ee8e07f3f65d88a40232a6800",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13810",
+          "phase": "holdout",
+          "trajectory_sha256": "a1b67a440d0c14a72cd818beef9a7a3d3b9eb1da25ee333066433a9eebd137e7",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16631",
+          "phase": "holdout",
+          "trajectory_sha256": "be423e422edd8562514b212cf5a9a88f6ffcb575089551591ad935c56739a2fa",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16662",
+          "phase": "holdout",
+          "trajectory_sha256": "d90275fe6a78181acdfba316549f7f6e7a8e929717c940b91f05816463ac0a07",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13279",
+          "phase": "holdout",
+          "trajectory_sha256": "89af46a607f9ca7c61cb09396ae13ad217a7fe30bd94f4e79c0d44f004fc2505",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-15315",
+          "phase": "holdout",
+          "trajectory_sha256": "5e9561ef78fb67b1dc8d5f282378e658ea6ad9eb0267bfbb5ba7de752911c744",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14608",
+          "phase": "holdout",
+          "trajectory_sha256": "593d7cc268de20ace924d71d1908c2685d2c5c75cc9d553329ba7b12aa1f3179",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16877",
+          "phase": "holdout",
+          "trajectory_sha256": "7e5c0ca7ca198bd89b2824953a6ce8e8306a6d353de7211eb20a32a5a01ac19d",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-10097",
+          "phase": "holdout",
+          "trajectory_sha256": "558e897b4927b830be0f17f2ac062724fed95a25b087048bd2c0af2c2ac42fea",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13121",
+          "phase": "holdout",
+          "trajectory_sha256": "3c01bec30745494d875bcef6db9b27e926aeaf4b12be9d99206a4c271f4ed00d",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11087",
+          "phase": "holdout",
+          "trajectory_sha256": "f00c9a73b9e3b9eae230c398a852b05d3ab52b18082b3c66c328ad6cb146b397",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11239",
+          "phase": "holdout",
+          "trajectory_sha256": "3dfd5366538ba4532a09360fbca3288056153b349830b0fb045dc013402beb00",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16145",
+          "phase": "holdout",
+          "trajectory_sha256": "2979ce6aa3383afbf1e7c355c8c4f5748785e370878fba22bc7518412e1af620",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11292",
+          "phase": "holdout",
+          "trajectory_sha256": "f02f444226e8fe62a19559a07eb9312c3500844d36f43b06b929a56b67b15b85",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11820",
+          "phase": "holdout",
+          "trajectory_sha256": "b03294a7b8be0248f0c085295f8412ceadb0354309822864152ae50a431005c4",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-15161",
+          "phase": "holdout",
+          "trajectory_sha256": "a24afdcd70793bfe25bdb108d8a0e121c1b29a50b84e7985a643dd4184607cc6",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14672",
+          "phase": "holdout",
+          "trajectory_sha256": "a1d5da5c638c46a2f82ff54bba96e5b3e6d3eddb58783f824d8cb92dce1b292c",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11603",
+          "phase": "holdout",
+          "trajectory_sha256": "150f79be2d7135432340d4140adb7c842dc46b864290037d4e39cd82f8262bb0",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11749",
+          "phase": "holdout",
+          "trajectory_sha256": "d01492ab9d53954d7cb7c6b1f5517546b174067f41a84ba74e0ffa28fa8705db",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13807",
+          "phase": "holdout",
+          "trajectory_sha256": "c05f92697875fe9d9ce545be51a55b9a17a740a9dce17e62cf2dffbaa54fa197",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-26291",
+          "phase": "holdout",
+          "trajectory_sha256": "a5b2a1c14cb7ab08add15cadc0f2954d5b5263cf9693443df1062bce0b62b321",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-25479",
+          "phase": "holdout",
+          "trajectory_sha256": "f7a4577bbdd4c50bd042065d7c192ec633a46ae99bd48faabc69c09e2995d769",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-23412",
+          "phase": "holdout",
+          "trajectory_sha256": "80ae3c7a113e1816219ed6eeea56e596bc7ca68f2dc6795ab4561538062bdc30",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "phase": "holdout",
+          "trajectory_sha256": "a096e0cc29bb4f59951899f49018ef1737fd81b80207fa9afe01f6b5fae8d6a5",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pallets__flask-5014",
+          "phase": "holdout",
+          "trajectory_sha256": "3f6280de78fb66c5cd731fec63169beda04b29dac02bc25b55d802d2cea9f167",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "psf__requests-1724",
+          "phase": "holdout",
+          "trajectory_sha256": "423c9315c414953dda097d36f9b1440c70cb3591e900d4f07418cd678696e479",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pydata__xarray-3305",
+          "phase": "holdout",
+          "trajectory_sha256": "e050efccab9b6ad3f925412e06b0eded3298891537c4299b256f2051e8d52d8e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pydata__xarray-3095",
+          "phase": "holdout",
+          "trajectory_sha256": "2b801de2727da531cd31bc85e41b9b842993b9d863dc57404cf3041b3f488311",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "pylint-dev__pylint-4551",
+          "phase": "holdout",
+          "trajectory_sha256": "596c407185084de3f190b799a39c5147b3fa67ccec5f3c1cd4f94497c64733ab",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7432",
+          "phase": "holdout",
+          "trajectory_sha256": "220a8a494f4c37c0041fcac49a736081b100a6f3c9e5631b1cb2a1e3a0fbefbd",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pytest-dev__pytest-10051",
+          "phase": "holdout",
+          "trajectory_sha256": "43b477d8df78a4ab5daa3cbe28b38eb0980f2dda6476df0248a69440c22e80f8",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-9288",
+          "phase": "holdout",
+          "trajectory_sha256": "0182a3a340adec9b1a38b611a46378b7a163facc32254d000599b065e1dace8e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13124",
+          "phase": "holdout",
+          "trajectory_sha256": "86d0a3aea4f9ff78499f59e7b6f3b40cdeded9f6b3817c9de8f56d172f3fb03d",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12585",
+          "phase": "holdout",
+          "trajectory_sha256": "73a20dc1f5e12f6f634f9ecddbd15f2a1c5cc705b3c7af8286f9a28f8ce8b213",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "phase": "holdout",
+          "trajectory_sha256": "479c6efbdf68905b37142cb17a33cf35f11334128a77bfa83e77cc5b824f24c0",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10323",
+          "phase": "holdout",
+          "trajectory_sha256": "3752ef6ee3998dc6e6b802878e19c1981c24e2c8a6e8ec5bae9809bc8a9729cf",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8721",
+          "phase": "holdout",
+          "trajectory_sha256": "785f53b050eb9b021aee81d145cc9215ad7d4b103ed4451ffb48381c21539174",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8459",
+          "phase": "holdout",
+          "trajectory_sha256": "425fadbd4edd105547b3c5a0db17968a38e656fdc82ae90da724232d9a626c08",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-19495",
+          "phase": "holdout",
+          "trajectory_sha256": "f3a6ea2d4b314d40fec0710a696697f16b12cdcaf10e6c2a8745e4d7c5100ee8",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13372",
+          "phase": "holdout",
+          "trajectory_sha256": "430b636e07532c12d548a86a29479cc6b4b88ab658dd984634458b77240a7037",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13647",
+          "phase": "holdout",
+          "trajectory_sha256": "9ab96cd9379ac74bda0430bf1ba788981033c6140aedc93c21e8fe3e0e271ce9",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-24213",
+          "phase": "holdout",
+          "trajectory_sha256": "bfa6876f6d42810db48bcf8d3ac69d933a31c79744ecab9a08ccffc4c1ae83a5",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-15349",
+          "phase": "holdout",
+          "trajectory_sha256": "3e15165ae3c0535a20ff2917eca79b70af6f6aff0704eee7fb13ae355a432feb",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-18199",
+          "phase": "holdout",
+          "trajectory_sha256": "42bd67cbca8338243fd3538997243b197c7e01bd8aa32fa8aaed66c2310bf7e0",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13091",
+          "phase": "holdout",
+          "trajectory_sha256": "36a1984a844aaf2a89202862d6fabe8640b85c0d0e6ae7a56adb405885ce8e08",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        }
+      ]
+    },
+    "a5": {
+      "instances": 80,
+      "context_budget_compliance": 1.0,
+      "budget_violations": [],
+      "counts": {
+        "context_builds": 1945,
+        "search_any_first_5": 58,
+        "search_any_first_10": 63,
+        "search_and_observed_view_any_first_5": 71,
+        "search_and_observed_view_any_first_10": 77
+      },
+      "rates": {
+        "search_any_first_5": 0.725,
+        "search_any_first_10": 0.7875,
+        "search_and_observed_view_any_first_5": 0.8875,
+        "search_and_observed_view_any_first_10": 0.9625
+      },
+      "cases": [
+        {
+          "instance_id": "astropy__astropy-8707",
+          "phase": "dev",
+          "trajectory_sha256": "ba42464a364120fe9f663339811bf5c0a1346404b1bdac2e667edcd4b51d68b5",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14752",
+          "phase": "dev",
+          "trajectory_sha256": "20cefb8c733e08cb84b74931bb8168ebaddf030347238124ffb33847be41d492",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13964",
+          "phase": "dev",
+          "trajectory_sha256": "7d670bd85cf2b970c60e56e43ae68d553196ab7116b4ff4c45882baca063a172",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "django__django-13023",
+          "phase": "dev",
+          "trajectory_sha256": "45c48704dfb052d2011a3ed0ce7d00e89c8646ca05f71273c2884b704c04b329",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "django__django-11333",
+          "phase": "dev",
+          "trajectory_sha256": "061a25fd7deef8b08b0b761e6f429cebca8a791da31fe8ebc86c9ccb35a965f1",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13551",
+          "phase": "dev",
+          "trajectory_sha256": "de3ac68f9a439741ad134138a39c725e632dc24fd18a5b65aab3fc3d11fff822",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13449",
+          "phase": "dev",
+          "trajectory_sha256": "aac61f313bae467e7bf2ee15ce818fc82288314b87486ab13d32bd7f8948e7e9",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13516",
+          "phase": "dev",
+          "trajectory_sha256": "60ff278605bdb025f319106a5ac456404369f65a3f1c48de7e04d560883f9cf9",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-10554",
+          "phase": "dev",
+          "trajectory_sha256": "d6ef675cc286ee5bd86e87812206abfbc08ab7a3240e49e78431779e4d96d32f",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16527",
+          "phase": "dev",
+          "trajectory_sha256": "65acea99dbe6bd2717eed1be732ecbe1dd5ac0bdba91296b14c48fe8691ec315",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-12273",
+          "phase": "dev",
+          "trajectory_sha256": "93aaa69757d1f1a67cfa949675b9cc45a4437b5cd5e3e78962f483df57d3ddf9",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11532",
+          "phase": "dev",
+          "trajectory_sha256": "fc1a7dc40325e6ed12243727b97624d687d1993dc284001e968b1644ad9e1c1b",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13297",
+          "phase": "dev",
+          "trajectory_sha256": "d0d8dd2e2d401ea91c1b0f8592f1cb02dfe5a1fdca2ac6d9926144cd11827bd5",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13212",
+          "phase": "dev",
+          "trajectory_sha256": "f8b957800bd55a76eb5e72e6fdfa3a30bac98a71fb13f0be294128eff77e01a3",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14122",
+          "phase": "dev",
+          "trajectory_sha256": "dcbed152f066f558b18d200b7074bcf16e58e87e57752f96d186d9ac13119ef7",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-25775",
+          "phase": "dev",
+          "trajectory_sha256": "21774591aa3814f15793088691aaff15476c231d871eea47597aae9905751501",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-26342",
+          "phase": "dev",
+          "trajectory_sha256": "2c19a36d2191cebb8e2706bcd2d45b87e4e51974f010dc9f3bf9a92a97e264cd",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3187",
+          "phase": "dev",
+          "trajectory_sha256": "97c9c89f3d50f2e26280117634676a70b2f116c77c82cc534c51d0d77e1090b1",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "psf__requests-1921",
+          "phase": "dev",
+          "trajectory_sha256": "173e9db330c07c93729a51a9ee804ec75236dd934bb218f5dae4f516cd747818",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "phase": "dev",
+          "trajectory_sha256": "9b10248183f4885013c11a5fe03bbba6bfabcd6022504d6091f601cdf43fb89b",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pylint-dev__pylint-7277",
+          "phase": "dev",
+          "trajectory_sha256": "20cd31a406b17ac983f4c96c5520b7c224ec56bf57949ad37f4eb3f61b20ea14",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pytest-dev__pytest-10356",
+          "phase": "dev",
+          "trajectory_sha256": "d28243f4b43fc61cc67e2035a8d5e41c714689fa368d3030b7b93bbb3de59e2c",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12973",
+          "phase": "dev",
+          "trajectory_sha256": "8bcddee576bf1873d9ad2d1c500b0633be2aed497851e0cbc0073c77f9b928cd",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-25747",
+          "phase": "dev",
+          "trajectory_sha256": "fc406b07a1ec05cc8d80436727b469f30f324f74467372b9284b3e0bbdaee7b1",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8265",
+          "phase": "dev",
+          "trajectory_sha256": "a611fec874f0c8e038ddb6b7d258d0162aba56e68daf1d85e0a4dbef5bca0110",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10435",
+          "phase": "dev",
+          "trajectory_sha256": "c1e5c531ba1e432fd597ea6115f4b0edb418e258c2078e0e1a133cd1dbaad81d",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-21379",
+          "phase": "dev",
+          "trajectory_sha256": "73a98710ee9ca0e0142dea61485aff51842c711ca4e754c31aeb50c665ce7daf",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": false
+        },
+        {
+          "instance_id": "sympy__sympy-13757",
+          "phase": "dev",
+          "trajectory_sha256": "8a9796edc70fabbbfba7eade3fe1783365d92b2a315d601901a202d0463d2a13",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-17318",
+          "phase": "dev",
+          "trajectory_sha256": "21a0c16cdcd53e8ef41a27ec882963cb4257cd47595f9e1ae4763eb2c9c11b03",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13852",
+          "phase": "dev",
+          "trajectory_sha256": "6de0704df928bcc28fadcb63b60f7d3f099f95e96f3e894a0037ddb4a0c05b51",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "astropy__astropy-7166",
+          "phase": "holdout",
+          "trajectory_sha256": "20d46d60e2c6a94ca76b591dc6650e330202c9f64548bf2dc212627526aeb960",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "astropy__astropy-14539",
+          "phase": "holdout",
+          "trajectory_sha256": "08dafbfac998925606f445cda76ca990d77e85f2b0b41e0cbe24d6994394df15",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16136",
+          "phase": "holdout",
+          "trajectory_sha256": "9ea88b8401855f35127819ef72691326d0319f5ce01e29ceb0c45306c7f3932a",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-10880",
+          "phase": "holdout",
+          "trajectory_sha256": "1436bf41bdd531f3fc301d0b49ad9dfecdf96cd351cc29eb3dc5257d90041de9",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14376",
+          "phase": "holdout",
+          "trajectory_sha256": "3524ba87b7f35bdf107f4a5ba01fbe83b9e6015772f03c096f5e993af313f0d7",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14631",
+          "phase": "holdout",
+          "trajectory_sha256": "e09c67e5d23107a43a989eaf4a938b6ebe423ad120675baeef75aab206306bb1",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13810",
+          "phase": "holdout",
+          "trajectory_sha256": "6dc03ca40643b0a1e5070648394ac2c383815d798d3cd14a6ea9eceb62c0aa60",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16631",
+          "phase": "holdout",
+          "trajectory_sha256": "9c37e94179dcb210a66260a8a94042b4b533b75e914fa8405154356cab006b00",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16662",
+          "phase": "holdout",
+          "trajectory_sha256": "86a9e08568d457ca790bd78a88c6acd307c8964c1e56704154a78a02815f48b1",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13279",
+          "phase": "holdout",
+          "trajectory_sha256": "89c6e3d13ec0c85fd93486d82abfbfee110a91e51b52c24596c3bc26cb9fbdaf",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-15315",
+          "phase": "holdout",
+          "trajectory_sha256": "51ee76e8d8c37f304f0dff2bf7bf0c3517cff2130c02e3c3011619f5a9ee35af",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14608",
+          "phase": "holdout",
+          "trajectory_sha256": "ea0d9fb72a1c73fdbee40599291ebd0ff5d4d885df93860995c780d82519b1df",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16877",
+          "phase": "holdout",
+          "trajectory_sha256": "05ac10b7527dcd65c16a09822fc0d80a44a97e7b61fec7ce463ccafde19fb676",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-10097",
+          "phase": "holdout",
+          "trajectory_sha256": "4ccd9c63973c5c371c5b6a1efbf7dcb0f8bf14d40f4eaaf19f837c1e6c0b3b59",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13121",
+          "phase": "holdout",
+          "trajectory_sha256": "4902393afe88339cf18eab18fc30be95948c13c911218d3478280bbcdc21669f",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11087",
+          "phase": "holdout",
+          "trajectory_sha256": "6245a4503a8130345e6a04e421c3d0bbf7cf57963ee4e016c0f2b38b414b06e2",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11239",
+          "phase": "holdout",
+          "trajectory_sha256": "6e1ca7c7699411add4eb7cf91d5038fe51e65387c779adc8ed54c2f9b1e3f13d",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-16145",
+          "phase": "holdout",
+          "trajectory_sha256": "2532abfbb5babf582aa8b3e830bb917783cfe67b6a4519af79ec4c9da3e681f8",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11292",
+          "phase": "holdout",
+          "trajectory_sha256": "0a3cea02abe6153b7fd2299b2562cad4be11ce53b5d12f5ff69fdc85ac4f9fdc",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11820",
+          "phase": "holdout",
+          "trajectory_sha256": "47608330bc4965325d2d13f7d9bd5268979fd55f93f7453c19bdc9a512460f6e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-15161",
+          "phase": "holdout",
+          "trajectory_sha256": "41ae1ddf3989d88271b20139a1ce7c78a04f0103f21b259b3bd69dafa2fec7a9",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-14672",
+          "phase": "holdout",
+          "trajectory_sha256": "7e1ffa758e3e2b3432c29e9bf25ed4d3c77397cf90cd76145904aaca2906776b",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11603",
+          "phase": "holdout",
+          "trajectory_sha256": "834531ed1a9f0d8ec63941e07e798d6eecb4beb187b0dba3839b6c7d737ce4db",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-11749",
+          "phase": "holdout",
+          "trajectory_sha256": "3b96d68f7d77391e4dfbee38a780e8c3e0a741ae9103b182b4b70da53305dd08",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "django__django-13807",
+          "phase": "holdout",
+          "trajectory_sha256": "8d7b765fa37b71b0cdf2e75b2e8c21f01cd6f7d8f8cda9d29e3fd4e6b0533374",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-26291",
+          "phase": "holdout",
+          "trajectory_sha256": "8011497cb52aa77a67b99265f60597323eaccc1d746ae860f3229b5d2318491e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-25479",
+          "phase": "holdout",
+          "trajectory_sha256": "8851eb5cfb116537c03b8694fcdb713531f4cb4810937bb869d8c2bf641edafa",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-23412",
+          "phase": "holdout",
+          "trajectory_sha256": "9c49471dac1e6a32951f7ccccd0c25b3fca172fb588b11c0f49f4d764b23b141",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "phase": "holdout",
+          "trajectory_sha256": "fb8118072f96ae44b9132bc8fbe94c350fc2e995a0c0a77703f04cc6822e9105",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pallets__flask-5014",
+          "phase": "holdout",
+          "trajectory_sha256": "928147ca632de2c5099bd6615de674611c2769b7b63959d1fb3454f714cdc313",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "psf__requests-1724",
+          "phase": "holdout",
+          "trajectory_sha256": "e9352b00fe620816388f1dc776b6333ce5f8d6bd8b8dc9200c74c6146a9193da",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pydata__xarray-3305",
+          "phase": "holdout",
+          "trajectory_sha256": "f590ad3bea29a049f12172cae2860f1a015a2e758e129f2d75ab6a25edfa7c10",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pydata__xarray-3095",
+          "phase": "holdout",
+          "trajectory_sha256": "d8c55570fccfd3e2194805baede7747fe324736a93432ecdcfa571a9f7f9c732",
+          "search_any_first_5": false,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pylint-dev__pylint-4551",
+          "phase": "holdout",
+          "trajectory_sha256": "6847748dcc5d0e04dcc2ba2cfe38b7082f2442eeffd75b47ff546cc5f01f69d1",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7432",
+          "phase": "holdout",
+          "trajectory_sha256": "9e7c656252f3c105e262ccad9eb1cdc0f641324180e66a5d7aee7a506a9c6083",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "pytest-dev__pytest-10051",
+          "phase": "holdout",
+          "trajectory_sha256": "1c158a368825ee2367e9d578d593ad2ca123a7c7efdbe390adeb99129877af9e",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-9288",
+          "phase": "holdout",
+          "trajectory_sha256": "ac9d5b2bfaeb803b8a85eff7755765073a09f64a4636eb9b448cfbc0199e1258",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13124",
+          "phase": "holdout",
+          "trajectory_sha256": "8b805fa172811f451c4b15d1c591931753d13404c1325f4261ab06c240769ed6",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": false,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12585",
+          "phase": "holdout",
+          "trajectory_sha256": "5e8b2f680fa62a0a3ddf5013494dfd2455e5f09cba36973ec58e4365eea141fb",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "phase": "holdout",
+          "trajectory_sha256": "138a5de7192cc65528dc72e00ce209337327e578ac0132fa229cf498b4ed4ce3",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10323",
+          "phase": "holdout",
+          "trajectory_sha256": "74c45537fba4a9a5e04f0f4b5bbd2dd44bf791b0539a140ee272787a0b9999a9",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8721",
+          "phase": "holdout",
+          "trajectory_sha256": "63d09041af8f6988578ba64d0d467ba145d0346afe0d685f30fb1b76ad2e4c58",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8459",
+          "phase": "holdout",
+          "trajectory_sha256": "db314dccdc38cd5c4ccc652090bc21e3f33e0633b95217cb12f17f11ee8280b7",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-19495",
+          "phase": "holdout",
+          "trajectory_sha256": "76ed881ddf365fcddb3ae1a668bcebcf496db1dbd78ae0649af1bb71a20b4462",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13372",
+          "phase": "holdout",
+          "trajectory_sha256": "e1c9be3152b4e37390354eeb70368bf0f38fef4769f5a5ff7631297f6510601e",
+          "search_any_first_5": false,
+          "search_any_first_10": false,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13647",
+          "phase": "holdout",
+          "trajectory_sha256": "7dcaab4079014764fa7878df8bd738a8bf50a1a643662f4c2fb04e8623f76779",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-24213",
+          "phase": "holdout",
+          "trajectory_sha256": "2c9e9f167fd1280998107d5c5950faaae7a86fbc8267147550c9453de47a6d2c",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-15349",
+          "phase": "holdout",
+          "trajectory_sha256": "3bb6e0606b1d5b3d28a017918f382cde39b8999861d58a0b9aa90aa2923ff4e8",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-18199",
+          "phase": "holdout",
+          "trajectory_sha256": "23f08db2bf1224db073ffb6b81d200fc483de997c3f026a550a71fa1dc56a127",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        },
+        {
+          "instance_id": "sympy__sympy-13091",
+          "phase": "holdout",
+          "trajectory_sha256": "4f58aa09a05da33b123d59237148a5e8c121b2a37a5a303ccc3ae5d3c6680631",
+          "search_any_first_5": true,
+          "search_any_first_10": true,
+          "search_and_observed_view_any_first_5": true,
+          "search_and_observed_view_any_first_10": true
+        }
+      ]
+    }
+  },
+  "original_splits_preserved": true,
+  "reference_use": "post-run filenames only",
+  "model_calls": 0,
+  "benchmark_reruns": 0,
+  "official_harness": "not_run"
+}

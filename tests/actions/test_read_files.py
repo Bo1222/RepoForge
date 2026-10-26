@@ -4,12 +4,12 @@ import pytest
 from unittest.mock import patch, PropertyMock, MagicMock, AsyncMock
 import time
 
-from moatless.actions.read_files import ReadFiles, ReadFilesArgs
-from moatless.file_context import FileContext
-from moatless.actions.schema import Observation
-from moatless.repository.file import FileRepository
-from moatless.workspace import Workspace
-from moatless.environment.local import LocalBashEnvironment, EnvironmentExecutionError
+from repoforge.actions.read_files import ReadFiles, ReadFilesArgs
+from repoforge.file_context import FileContext
+from repoforge.actions.schema import Observation
+from repoforge.repository.file import FileRepository
+from repoforge.workspace import Workspace
+from repoforge.environment.local import LocalBashEnvironment, EnvironmentExecutionError
 
 
 @pytest.fixture

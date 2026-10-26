@@ -5,16 +5,16 @@ import os
 import sys
 from pathlib import Path
 
-from moatless.workspace import Workspace
+from repoforge.workspace import Workspace
 
-# Add moatless-tools to the Python path
+# Add repoforge to the Python path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from moatless.actions.read_files import ReadFiles, ReadFilesArgs
-from moatless.environment.local import LocalBashEnvironment
-from moatless.file_context import FileContext
-from moatless.repository.file import FileRepository
-from moatless.utils.tokenizer import count_tokens
+from repoforge.actions.read_files import ReadFiles, ReadFilesArgs
+from repoforge.environment.local import LocalBashEnvironment
+from repoforge.file_context import FileContext
+from repoforge.repository.file import FileRepository
+from repoforge.utils.tokenizer import count_tokens
 
 # Configure logging
 logging.basicConfig(

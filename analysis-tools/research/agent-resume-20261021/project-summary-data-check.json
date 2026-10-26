@@ -1,0 +1,806 @@
+{
+  "checked_at_utc": "2026-10-21T07:53:02.184930+00:00",
+  "scope": "Documentation-only analysis; no LLM calls or benchmark execution",
+  "workspace": "/mnt/data2/home/geqb/LLM/moatless-tools",
+  "head": "2268485edb612a54e74f9c64cccdf72c84b4c4ea",
+  "environment": {
+    "python": "3.10.9"
+  },
+  "comparison_baseline": "Pre-existing working copies backed up before this documentation edit; not clean HEAD",
+  "original_document_sha256": {
+    "project-summary.md": "c74786c8c4899c8c26625c9f53b1455c5c578c1315cddd25fb1512c2437f2aaf",
+    "project-evidence.md": "205483e4dcb7e3c087aab881f570affb6bfea9dd984eb0c117423369b20b2980"
+  },
+  "updated_document_sha256": {
+    "analysis-tools/research/agent-resume-20261021/project-summary.md": "dbc65d31b2f23e0a616dd1c00de686fec7168f368dbf675006451e6ff77ebe05",
+    "analysis-tools/research/agent-resume-20261021/project-evidence.md": "e85ab9149d711156ee2e54de9535ea67500d461f9c34141d59f213a2c0b21906",
+    "CHANGELOG.md": "e7f1607208e2f7f0ac198cc766aae8c77acf6d603f1ce72db04bff066eef4cd2"
+  },
+  "source_files_sha256": {
+    "experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/manifest.json": "868231413030839a1a0efe39632b7e8dd079bcc34869999169f612e8ef6cfe8b",
+    "experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-dev.json": "beb456bc10fb56782accb90660fd6b62df31bc8624b386e0231bc2840e80fb9c",
+    "experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/t7-lock.json": "83dc77551cb11e9390db11336f059caf35211a1a99790584494d0115fe6de06a",
+    "experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/holdout-preliminary-comparison.json": "aaa844cab1d825162515ae328bf84081af3683506d3c55347115e32bae425a0e",
+    "context_memory_evidence/e1/manifest.json": "906836d760635ec1d13b8e77c5de0ece57cb0280011955728d77f4f4a1c73087",
+    "moatless/evaluation/profiles/flash_nonthinking_a0.json": "5bf0924c2cbb02205d5b7f09ccbf02ea64cddbb527d83c8dd287c9ab692c8171",
+    "experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-holdout.json": "1d0e088b579552775fd0c2c21697ca14c7216711d92cdc1d2c57f9d6bf86ff25"
+  },
+  "dev": {
+    "a0": {
+      "selected": 30,
+      "attempted": 30,
+      "generated": 30,
+      "host_errors": 0,
+      "graded": 29,
+      "resolved": 15,
+      "resolved_over_selected": 0.5,
+      "known_reference_cost": 2.2801661280000003,
+      "cost_complete": true,
+      "cost_per_resolved": 0.1520110752,
+      "by_repeat": {
+        "0": {
+          "selected": 30,
+          "resolved": 15
+        }
+      },
+      "local_resolved": 15,
+      "local_resolved_over_selected": 0.5,
+      "official_resolved": null,
+      "official_resolved_over_selected": null,
+      "grading_backend": "native",
+      "evaluation_protocol": "native-swebench-compatible-v1",
+      "local_grading_status_counts": {
+        "completed": 29,
+        "environment_error": 1
+      },
+      "actual_tool_steps": 902
+    },
+    "a1": {
+      "selected": 30,
+      "attempted": 30,
+      "generated": 30,
+      "host_errors": 0,
+      "graded": 29,
+      "resolved": 16,
+      "resolved_over_selected": 0.5333333333333333,
+      "known_reference_cost": 2.7374278259999993,
+      "cost_complete": true,
+      "cost_per_resolved": 0.17108923912499996,
+      "by_repeat": {
+        "0": {
+          "selected": 30,
+          "resolved": 16
+        }
+      },
+      "local_resolved": 16,
+      "local_resolved_over_selected": 0.5333333333333333,
+      "official_resolved": null,
+      "official_resolved_over_selected": null,
+      "grading_backend": "native",
+      "evaluation_protocol": "native-swebench-compatible-v1",
+      "local_grading_status_counts": {
+        "completed": 29,
+        "environment_error": 1
+      },
+      "actual_tool_steps": 982
+    },
+    "a2": {
+      "selected": 30,
+      "attempted": 30,
+      "generated": 30,
+      "host_errors": 0,
+      "graded": 29,
+      "resolved": 14,
+      "resolved_over_selected": 0.4666666666666667,
+      "known_reference_cost": 1.2097240920000003,
+      "cost_complete": true,
+      "cost_per_resolved": 0.08640886371428573,
+      "by_repeat": {
+        "0": {
+          "selected": 30,
+          "resolved": 14
+        }
+      },
+      "local_resolved": 14,
+      "local_resolved_over_selected": 0.4666666666666667,
+      "official_resolved": null,
+      "official_resolved_over_selected": null,
+      "grading_backend": "native",
+      "evaluation_protocol": "native-swebench-compatible-v1",
+      "local_grading_status_counts": {
+        "completed": 29,
+        "environment_error": 1
+      },
+      "actual_tool_steps": 467
+    },
+    "a3": {
+      "selected": 30,
+      "attempted": 30,
+      "generated": 30,
+      "host_errors": 0,
+      "graded": 29,
+      "resolved": 17,
+      "resolved_over_selected": 0.5666666666666667,
+      "known_reference_cost": 1.378250178,
+      "cost_complete": true,
+      "cost_per_resolved": 0.08107353988235294,
+      "by_repeat": {
+        "0": {
+          "selected": 30,
+          "resolved": 17
+        }
+      },
+      "local_resolved": 17,
+      "local_resolved_over_selected": 0.5666666666666667,
+      "official_resolved": null,
+      "official_resolved_over_selected": null,
+      "grading_backend": "native",
+      "evaluation_protocol": "native-swebench-compatible-v1",
+      "local_grading_status_counts": {
+        "completed": 29,
+        "environment_error": 1
+      },
+      "actual_tool_steps": 492
+    },
+    "a4": {
+      "selected": 30,
+      "attempted": 30,
+      "generated": 30,
+      "host_errors": 0,
+      "graded": 29,
+      "resolved": 15,
+      "resolved_over_selected": 0.5,
+      "known_reference_cost": 2.5511034419999996,
+      "cost_complete": true,
+      "cost_per_resolved": 0.17007356279999997,
+      "by_repeat": {
+        "0": {
+          "selected": 30,
+          "resolved": 15
+        }
+      },
+      "local_resolved": 15,
+      "local_resolved_over_selected": 0.5,
+      "official_resolved": null,
+      "official_resolved_over_selected": null,
+      "grading_backend": "native",
+      "evaluation_protocol": "native-swebench-compatible-v1",
+      "local_grading_status_counts": {
+        "completed": 29,
+        "environment_error": 1
+      },
+      "actual_tool_steps": 863
+    }
+  },
+  "derived_percentages_from_unrounded_values": {
+    "dev_a3_vs_a0_resolved_delta": 2,
+    "dev_cost_per_resolved_reduction_percent": 46.6660308956535,
+    "dev_total_reference_cost_reduction_percent": 39.55483501507396,
+    "dev_actual_tool_steps_reduction_percent": 45.45454545454546,
+    "holdout_snapshot_avg_cost_per_executed_reduction_percent": 29.151907082598427
+  },
+  "holdout_snapshot": {
+    "timestamp": "2026-10-21T06:19:44.506788+00:00",
+    "manifest_hash": "9b640217ff155912a70ea7ebd3cb0d5384b2819d1dfa820f21cc14f299dbe6d4",
+    "lock_hash": "2a0cf8d1d84693b117c2d08fa4e40ed50b15e71f0cba0d99483fa2968358e10f",
+    "status": "preliminary_not_final",
+    "clean_instances": 81,
+    "arms": [
+      "a3",
+      "a0"
+    ],
+    "summary": {
+      "a3": {
+        "selected": 81,
+        "accepted_ledger": 74,
+        "executed": 75,
+        "resolved": 42,
+        "resolved_over_selected": 0.5185185185185185,
+        "resolved_over_executed": 0.56,
+        "cost": 4.264532327999998,
+        "avg_cost": 0.05686043103999997,
+        "policy_stop": 37,
+        "adjudicated": 1
+      },
+      "a0": {
+        "selected": 81,
+        "accepted_ledger": 72,
+        "executed": 74,
+        "resolved": 40,
+        "resolved_over_selected": 0.49382716049382713,
+        "resolved_over_executed": 0.5405405405405406,
+        "cost": 5.939005164,
+        "avg_cost": 0.08025682654054055,
+        "policy_stop": 0,
+        "adjudicated": 2
+      }
+    },
+    "paired_both_executed": 74,
+    "paired_counts": {
+      "False,False": 30,
+      "True,True": 38,
+      "True,False": 4,
+      "False,True": 2
+    },
+    "a3_only": [
+      "django__django-12754",
+      "django__django-16612",
+      "sphinx-doc__sphinx-10673",
+      "sympy__sympy-15976"
+    ],
+    "a0_only": [
+      "django__django-14007",
+      "matplotlib__matplotlib-20859"
+    ],
+    "discordant": 6,
+    "sign_test_p_two_sided": 0.6875,
+    "missing_or_not_executed": {
+      "a3": [
+        "sympy__sympy-22714",
+        "sympy__sympy-22914",
+        "sympy__sympy-23262",
+        "sympy__sympy-23413",
+        "sympy__sympy-24443",
+        "sympy__sympy-24562"
+      ],
+      "a0": [
+        "sympy__sympy-18698",
+        "sympy__sympy-22714",
+        "sympy__sympy-22914",
+        "sympy__sympy-23262",
+        "sympy__sympy-23413",
+        "sympy__sympy-24443",
+        "sympy__sympy-24562"
+      ]
+    },
+    "note": "Preliminary only: holdout is still running; local_resolved only; official_harness=not_run; non-clean 19 are not executed and remain in the 100 denominator. Some jobs are manual adjudications (see grading-adjudication.json)."
+  },
+  "final_holdout_report_found": true,
+  "context_experiment_status": "prepared_only",
+  "synthetic_context_observations": {
+    "provenance": "Previous analysis turn tool output; not rerun during this documentation edit",
+    "standalone_probe_artifact": "not_archived",
+    "scope": "Mechanism observations only; not SWE-bench success/failure rates"
+  },
+  "verification": {
+    "checked_at_utc": "2026-10-21T07:53:02.184930+00:00",
+    "baseline_directory": "/tmp/moatless-resume-wording-20261021",
+    "baseline_sha256": {
+      "project-summary.md": "30299f194c4e6b65dd9c9ae4aafcbb45a39a40f1bdfbbab272f44cf8031aa69a",
+      "project-evidence.md": "e2a538e0d383f7c7106cee481c4c167e89c7e9801c284ab71d25402b00a72574",
+      "CHANGELOG.md": "6dd59aaaf94d0404d02a68da0a84c72f0ae77ffa5702ea1ba41b88bfb49b414f"
+    },
+    "changes": [
+      "Project-first resume wording; attribution retained in technical section",
+      "Holdout100 complete-scope result marked to be continued; existing clean81 results preserved"
+    ],
+    "checks": [
+      "Relative link targets and heading anchors",
+      "Markdown fences and trailing whitespace",
+      "Resume section wording and holdout placeholder",
+      "Existing clean81 report retained"
+    ],
+    "local_link_count": 58,
+    "status": "passed",
+    "exit_code": 0,
+    "not_run": [
+      "LLM calls",
+      "benchmark execution",
+      "unit tests"
+    ],
+    "local_links": [
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "project-evidence.md"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/node.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/task_state.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/repository_context.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/execution_memory.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/agent/agent.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/message_history/managed.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/message_history/builder.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/message_history/policy.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/actions/read_observation.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/cli/service.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/profiles/flash_nonthinking_a0.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/flow/langgraph_flow.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/generation.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/experiment.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/native_grading.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/flow/durable.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/flow/graph_state.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/flow/pruning_checkpointer.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/policy/action.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/experiment.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/t7.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/native_provision.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/native_execution.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/runtime/native_tools.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/index/repository_store.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/experiment.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/native_grading.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../moatless/evaluation/experiment_usage.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../export_official.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../report_official.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "project-evidence.md"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/manifest.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-dev.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/t7-lock.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-holdout.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/analysis/t7/holdout/"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-holdout.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/analysis/t7/holdout/stats.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/analysis/t7/holdout/paired.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "project-evidence.md#4-人工裁定与失败处理"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "../../../context_memory_evidence/e1/manifest.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+        "target": "project-summary-data-check.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "project-summary.md"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-dev.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-holdout.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/analysis/t7/holdout/stats.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/analysis/t7/holdout/paired.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../moatless/evaluation/native_execution.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../moatless/runtime/native_tools.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../moatless/index/repository_store.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../moatless/flow/durable.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../moatless/flow/graph_state.py"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "project-summary.md#32-日志快照与外部副作用"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../CHANGELOG.md"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "../../../context_memory_evidence/e1/manifest.json"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "project-summary.md#24-已识别的边界与优先改进"
+      },
+      {
+        "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+        "target": "project-summary-data-check.json"
+      }
+    ]
+  },
+  "not_run": [
+    "LLM calls",
+    "unit/regression tests",
+    "SWE-bench task execution",
+    "official Harness"
+  ],
+  "attempt_notes": [
+    "Initial ad-hoc arithmetic probe had a Python syntax error; corrected before using derived values.",
+    "Initial delete-and-add replacement patch was rejected; retried as an update with no intermediate content deletion.",
+    "Broad temporary-directory artifact search was unhelpful and stopped; it supplies no evidence for conclusions.",
+    "Initial link scan found the then-uncreated data-check JSON; this run creates it after successful checks."
+  ],
+  "review_diff": "/tmp/moatless-project-summary-review-20261021/project-docs.diff",
+  "document_revision_history": [
+    {
+      "prior_checked_at_utc": "2026-10-21T07:40:06.903088+00:00",
+      "prior_updated_document_sha256": {
+        "analysis-tools/research/agent-resume-20261021/project-summary.md": "50644b768fa4a85d5af1efbdfcee251e28402aeec328579c6af98dfb3371d15f",
+        "analysis-tools/research/agent-resume-20261021/project-evidence.md": "6e9b9504c046d9d132e4e7ff9143d9d55256c994208d55bf28cfefc3adacd168",
+        "CHANGELOG.md": "3ac8fbc8a08ab31c0b32df957622c725d0b4b46c1d0aa26455e419dffb23ed70"
+      },
+      "prior_final_holdout_report_found": false,
+      "prior_verification": {
+        "command": "python /tmp/moatless-project-summary-review-20261021/validate_project_docs.py",
+        "cwd": "/mnt/data2/home/geqb/LLM/moatless-tools",
+        "checks": [
+          "dev rows vs aggregate counts",
+          "grading error retained in selected denominator",
+          "cost arithmetic from unrounded report values",
+          "lock and report hash consistency",
+          "holdout coverage/acceptance/paired exact-sign-test arithmetic",
+          "relative link targets and heading anchors",
+          "Markdown fences and trailing whitespace",
+          "document order and displayed costs",
+          "source hashes unchanged"
+        ],
+        "local_link_count": 52,
+        "local_links": [
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "project-evidence.md"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/node.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/task_state.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/repository_context.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/execution_memory.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/agent/agent.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/message_history/managed.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/message_history/builder.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/message_history/policy.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/actions/read_observation.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/cli/service.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/profiles/flash_nonthinking_a0.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/flow/langgraph_flow.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/generation.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/experiment.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/native_grading.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/flow/durable.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/flow/graph_state.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/flow/pruning_checkpointer.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/policy/action.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/experiment.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/t7.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/native_provision.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/native_execution.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/runtime/native_tools.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/index/repository_store.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/experiment.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/native_grading.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../moatless/evaluation/experiment_usage.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../export_official.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../report_official.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "project-evidence.md"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/manifest.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-dev.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/t7-lock.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/holdout-preliminary-comparison.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "project-evidence.md#4-人工裁定与失败处理"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "../../../context_memory_evidence/e1/manifest.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-summary.md",
+            "target": "project-summary-data-check.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "project-summary.md"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/report-dev.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../experiments/results/T7_policy_ablation_40iter_1usd_20261017T170912Z/holdout-preliminary-comparison.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../moatless/evaluation/native_execution.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../moatless/runtime/native_tools.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../moatless/index/repository_store.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../moatless/flow/durable.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../moatless/flow/graph_state.py"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "project-summary.md#32-日志快照与外部副作用"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../CHANGELOG.md"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "../../../context_memory_evidence/e1/manifest.json"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "project-summary.md#24-已识别的边界与优先改进"
+          },
+          {
+            "document": "analysis-tools/research/agent-resume-20261021/project-evidence.md",
+            "target": "project-summary-data-check.json"
+          }
+        ],
+        "status": "passed",
+        "exit_code": 0
+      },
+      "revision": {
+        "checked_at_utc": "2026-10-21T07:53:02.184930+00:00",
+        "baseline_directory": "/tmp/moatless-resume-wording-20261021",
+        "baseline_sha256": {
+          "project-summary.md": "30299f194c4e6b65dd9c9ae4aafcbb45a39a40f1bdfbbab272f44cf8031aa69a",
+          "project-evidence.md": "e2a538e0d383f7c7106cee481c4c167e89c7e9801c284ab71d25402b00a72574",
+          "CHANGELOG.md": "6dd59aaaf94d0404d02a68da0a84c72f0ae77ffa5702ea1ba41b88bfb49b414f"
+        },
+        "changes": [
+          "Project-first resume wording; attribution retained in technical section",
+          "Holdout100 complete-scope result marked to be continued; existing clean81 results preserved"
+        ],
+        "checks": [
+          "Relative link targets and heading anchors",
+          "Markdown fences and trailing whitespace",
+          "Resume section wording and holdout placeholder",
+          "Existing clean81 report retained"
+        ],
+        "local_link_count": 58,
+        "status": "passed",
+        "exit_code": 0,
+        "not_run": [
+          "LLM calls",
+          "benchmark execution",
+          "unit tests"
+        ]
+      }
+    }
+  ],
+  "holdout_publication_status": "Resume full-holdout100 results to be continued; existing clean81 protocol report preserved"
+}

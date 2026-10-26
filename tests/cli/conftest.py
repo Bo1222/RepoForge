@@ -1,7 +1,7 @@
 import pytest
-from moatless.cli.worktree import git
-from moatless.completion.base import CompletionResponse
-from moatless.completion.tool_call import ToolCallCompletionModel
+from repoforge.cli.worktree import git
+from repoforge.completion.base import CompletionResponse
+from repoforge.completion.tool_call import ToolCallCompletionModel
 
 
 @pytest.fixture
@@ -44,9 +44,9 @@ def preserve_evidence(tmp_path, request):
     yield
     import os
     from pathlib import Path
-    from moatless.cli.service import SessionService
+    from repoforge.cli.service import SessionService
 
-    output = os.environ.get("MOATLESS_CLI_EVIDENCE")
+    output = os.environ.get("REPOFORGE_CLI_EVIDENCE")
     if not output:
         return
     test_directory = Path(output) / request.node.name.replace("[", "-").replace("]", "")

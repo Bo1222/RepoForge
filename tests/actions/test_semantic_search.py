@@ -4,13 +4,13 @@ import pytest_asyncio
 from typing import Any, Dict, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from moatless.actions.schema import Observation
-from moatless.actions.semantic_search import SemanticSearch, SemanticSearchArgs
-from moatless.file_context import FileContext
-from moatless.index.code_index import CodeIndex
-from moatless.index.types import SearchCodeHit, SearchCodeResponse, SpanHit
-from moatless.repository.repository import InMemRepository, Repository
-from moatless.workspace import Workspace
+from repoforge.actions.schema import Observation
+from repoforge.actions.semantic_search import SemanticSearch, SemanticSearchArgs
+from repoforge.file_context import FileContext
+from repoforge.index.code_index import CodeIndex
+from repoforge.index.types import SearchCodeHit, SearchCodeResponse, SpanHit
+from repoforge.repository.repository import InMemRepository, Repository
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture

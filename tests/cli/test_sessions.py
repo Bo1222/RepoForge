@@ -5,16 +5,16 @@ import subprocess
 
 import pytest
 
-from moatless.actions.bash import BashArgs
-from moatless.actions.finish import FinishArgs
-from moatless.actions.read_file import ReadFileArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.actions.create_file import CreateFileArgs
-from moatless.actions.local_coding import LocalTestArgs
-from moatless.cli.service import SessionService
-from moatless.cli.worktree import git, patch_hash
-from moatless.completion.base import CompletionResponse
-from moatless.flow.durable import RecoveryConflict
+from repoforge.actions.bash import BashArgs
+from repoforge.actions.finish import FinishArgs
+from repoforge.actions.read_file import ReadFileArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.actions.create_file import CreateFileArgs
+from repoforge.actions.local_coding import LocalTestArgs
+from repoforge.cli.service import SessionService
+from repoforge.cli.worktree import git, patch_hash
+from repoforge.completion.base import CompletionResponse
+from repoforge.flow.durable import RecoveryConflict
 
 
 @pytest.mark.asyncio
@@ -199,7 +199,7 @@ async def test_zero_cost_budget_does_not_call_model(repo, tmp_path, scripted):
 
 @pytest.mark.asyncio
 async def test_cost_usage_preserved_on_resume_and_followup(repo, tmp_path, scripted):
-    from moatless.completion.stats import Usage, CompletionAttempt, CompletionInvocation
+    from repoforge.completion.stats import Usage, CompletionAttempt, CompletionInvocation
 
     invocation = CompletionInvocation(
         model="deepseek/deepseek-chat",
@@ -282,7 +282,7 @@ async def test_clean_source_patch_conflict(repo, tmp_path, scripted):
 
 @pytest.mark.asyncio
 async def test_read_search_edit_bash_and_tests_share_disk(repo, tmp_path, scripted):
-    from moatless.actions.grep_tool import GrepToolArgs
+    from repoforge.actions.grep_tool import GrepToolArgs
 
     scripted[0].append(
         [

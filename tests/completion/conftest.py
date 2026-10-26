@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 import pytest
-from moatless.completion.schema import ResponseSchema
+from repoforge.completion.schema import ResponseSchema
 from pydantic import BaseModel, Field
 
 

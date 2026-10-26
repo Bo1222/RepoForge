@@ -7,9 +7,9 @@ import pytest
 from dotenv import load_dotenv
 
 # Import here to avoid circular imports
-from moatless import settings
-from moatless.storage.base import BaseStorage
-from moatless.storage.file_storage import FileStorage
+from repoforge import settings
+from repoforge.storage.base import BaseStorage
+from repoforge.storage.file_storage import FileStorage
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ TEST_MODELS = [
 @pytest.fixture
 def temp_dir():
     """Fixture that creates a temporary directory for testing."""
-    test_dir = tempfile.mkdtemp(prefix="moatless_test_")
+    test_dir = tempfile.mkdtemp(prefix="repoforge_test_")
     logger.debug(f"Created temporary test directory: {test_dir}")
     yield test_dir
     # Clean up after test
@@ -66,10 +66,10 @@ def pytest_addoption(parser):
         help="run tests that need vector store index files",
     )
     parser.addoption(
-        "--moatless-dir",
+        "--repoforge-dir",
         action="store",
         default=None,
-        help="Set a specific MOATLESS_DIR for testing; defaults to temporary directory",
+        help="Set a specific REPOFORGE_DIR for testing; defaults to temporary directory",
     )
 
 
@@ -77,11 +77,11 @@ def pytest_addoption(parser):
 def set_env_vars(monkeypatch, request, temp_dir):
     index_store_dir = request.config.getoption("--index-store-dir")
     repo_dir = request.config.getoption("--repo-dir")
-    moatless_dir = request.config.getoption("--moatless-dir")
+    repoforge_dir = request.config.getoption("--repoforge-dir")
 
     logger.debug(f"Setting INDEX_STORE_DIR={index_store_dir}")
     logger.debug(f"Setting REPO_DIR={repo_dir}")
-    logger.debug(f"Setting MOATLESS_DIR={temp_dir}")
+    logger.debug(f"Setting REPOFORGE_DIR={temp_dir}")
 
     if not os.path.exists(index_store_dir):
         os.makedirs(index_store_dir)
@@ -89,12 +89,12 @@ def set_env_vars(monkeypatch, request, temp_dir):
     if not os.path.exists(repo_dir):
         os.makedirs(repo_dir)
 
-    # Create MOATLESS_DIR if specified on command line, otherwise tempfile is used
-    if moatless_dir:
-        logger.debug(f"Setting MOATLESS_DIR={moatless_dir}")
-        if not os.path.exists(moatless_dir):
-            os.makedirs(moatless_dir)
-        monkeypatch.setenv("MOATLESS_DIR", moatless_dir)
+    # Create REPOFORGE_DIR if specified on command line, otherwise tempfile is used
+    if repoforge_dir:
+        logger.debug(f"Setting REPOFORGE_DIR={repoforge_dir}")
+        if not os.path.exists(repoforge_dir):
+            os.makedirs(repoforge_dir)
+        monkeypatch.setenv("REPOFORGE_DIR", repoforge_dir)
 
     monkeypatch.setenv("INDEX_STORE_DIR", index_store_dir)
     monkeypatch.setenv("REPO_DIR", repo_dir)
@@ -102,8 +102,8 @@ def set_env_vars(monkeypatch, request, temp_dir):
     yield
 
     # Clean up temp directories after tests
-    if moatless_dir and os.path.exists(moatless_dir) and "--keep-files" not in request.config.getoption:
-        shutil.rmtree(moatless_dir, ignore_errors=True)
+    if repoforge_dir and os.path.exists(repoforge_dir) and "--keep-files" not in request.config.getoption:
+        shutil.rmtree(repoforge_dir, ignore_errors=True)
 
 
 # Add the llm_integration marker

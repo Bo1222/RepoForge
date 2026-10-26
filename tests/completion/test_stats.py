@@ -3,7 +3,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from moatless.completion.stats import CompletionAttempt, CompletionInvocation, MODEL_COSTS, Usage
+from repoforge.completion.stats import CompletionAttempt, CompletionInvocation, MODEL_COSTS, Usage
 from pydantic import BaseModel
 
 

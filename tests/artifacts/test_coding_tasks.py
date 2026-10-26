@@ -4,13 +4,13 @@ from pathlib import Path
 from unittest.mock import patch, AsyncMock
 
 import pytest
-from moatless.actions.add_coding_tasks import AddCodingTasks, AddCodingTasksArgs, CodingTaskItem
-from moatless.actions.remove_coding_tasks import (
+from repoforge.actions.add_coding_tasks import AddCodingTasks, AddCodingTasksArgs, CodingTaskItem
+from repoforge.actions.remove_coding_tasks import (
     RemoveCodingTasks,
     RemoveCodingTasksArgs,
 )
-from moatless.actions.finish_coding_tasks import FinishCodingTasks, FinishCodingTasksArgs
-from moatless.artifacts.coding_task import (
+from repoforge.actions.finish_coding_tasks import FinishCodingTasks, FinishCodingTasksArgs
+from repoforge.artifacts.coding_task import (
     CodingTaskHandler,
     FileLocation,
     FileRelationType,
@@ -18,10 +18,10 @@ from moatless.artifacts.coding_task import (
     TaskState,
 )
 
-from moatless.context_data import current_project_id, current_trajectory_id
-from moatless.file_context import FileContext
-from moatless.storage.file_storage import FileStorage
-from moatless.workspace import Workspace
+from repoforge.context_data import current_project_id, current_trajectory_id
+from repoforge.file_context import FileContext
+from repoforge.storage.file_storage import FileStorage
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def mock_settings_get_storage(file_storage):
     async def mock_get_storage():
         return file_storage
 
-    with patch("moatless.settings.get_storage", mock_get_storage):
+    with patch("repoforge.settings.get_storage", mock_get_storage):
         yield
 
 
@@ -129,7 +129,7 @@ def mock_settings_get_runner():
     async def mock_get_runner():
         return mock_runner
 
-    with patch("moatless.settings.get_runner", mock_get_runner):
+    with patch("repoforge.settings.get_runner", mock_get_runner):
         yield mock_runner
 
 

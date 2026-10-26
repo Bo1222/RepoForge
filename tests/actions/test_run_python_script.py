@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from moatless.actions.run_python_script import RunPythonScript, RunPythonScriptArgs
-from moatless.environment import EnvironmentExecutionError
-from moatless.file_context import FileContext
-from moatless.workspace import Workspace
+from repoforge.actions.run_python_script import RunPythonScript, RunPythonScriptArgs
+from repoforge.environment import EnvironmentExecutionError
+from repoforge.file_context import FileContext
+from repoforge.workspace import Workspace
 
 
 class TestRunPythonScriptAction:

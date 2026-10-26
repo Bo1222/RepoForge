@@ -2,12 +2,12 @@ from unittest.mock import patch, AsyncMock
 
 import pytest
 from litellm.types.utils import ModelResponse, Usage, Message
-from moatless.actions.find_code_snippet import FindCodeSnippetArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.actions.view_code import ViewCodeArgs
-from moatless.completion.base import CompletionRetryError, LLMResponseFormat
-from moatless.completion.react import ReActCompletionModel
-from moatless.exceptions import CompletionRejectError
+from repoforge.actions.find_code_snippet import FindCodeSnippetArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.actions.view_code import ViewCodeArgs
+from repoforge.completion.base import CompletionRetryError, LLMResponseFormat
+from repoforge.completion.react import ReActCompletionModel
+from repoforge.exceptions import CompletionRejectError
 
 
 @pytest.fixture

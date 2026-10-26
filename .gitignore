@@ -177,7 +177,7 @@ experiments/results/*
 !experiments/results/migration/
 
 # UI build output
-moatless_api/
+repoforge_api/
 
 # IDE
 .idea/
@@ -188,8 +188,8 @@ moatless_api/
 *.env*
 !.env.example
 
-.moatless/projects
-.moatless/evaluation_summaries.json
+.repoforge/projects
+.repoforge/evaluation_summaries.json
 instances
 
 playground
@@ -198,13 +198,13 @@ hej2
 .DS_Store
 
 CHANGELOG.md
-Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
+RepoForge_Agent算法主导_必要Harness_独立RL_项目规划.md
 docs/
 experiments/
 
 # Reviewable T3 documents and evidence
 !CHANGELOG.md
-!Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
+!RepoForge_Agent算法主导_必要Harness_独立RL_项目规划.md
 !docs/
 !docs/langgraph_learning.md
 !docs/state_and_recovery.md
@@ -227,6 +227,7 @@ experiments/
 
 # T3′ interactive CLI implementation and acceptance evidence
 !docs/interactive_cli.md
+!docs/renaming.md
 !experiments/reports/T3_prime_cli.md
 !experiments/results/T3_prime_cli/
 experiments/results/T3_prime_cli/**/source/
@@ -236,10 +237,44 @@ CHANGELOG.md
 Prompt.md
 docs/
 experiments/
-Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
+RepoForge_Agent算法主导_必要Harness_独立RL_项目规划.md
 CONTEXT_MEMORY_EXAMPLES.md
 CONTEXT_MEMORY_EXECUTION.md
 CONTEXT_MEMORY_OPTIMIZATION_PLAN.md
 CONTEXT_MEMORY_REVIEW.md
 CONTEXT_MEMORY_USAGE.md
 context_memory_evidence/
+# local dataset caches (public instances, large; kept on disk, not committed)
+repoforge/evaluation/datasets/dataset_index.json
+repoforge/evaluation/swebench_lite_all_evaluations.json
+repoforge/evaluation/swebench_verified_all_evaluations.json
+
+# final architecture document (docs/ is otherwise ignored)
+!docs/2026-10-21_批量Agent_验证驱动修复优化方案.md
+
+# Final delivery documents (historical local docs stay ignored).
+CHANGELOG.md
+!docs/
+docs/*
+# !docs/architecture.md
+# !docs/agent_execution_context.md
+# !docs/project_resume.md
+# !docs/evaluation.md
+# !docs/interactive_cli.md
+# !docs/renaming.md
+
+# Keep historical local files excluded after the rename.
+moatless_api/
+.moatless/projects
+.moatless/evaluation_summaries.json
+Moatless_Agent算法主导_必要Harness_独立RL_项目规划.md
+moatless/evaluation/datasets/dataset_index.json
+moatless/evaluation/swebench_lite_all_evaluations.json
+moatless/evaluation/swebench_verified_all_evaluations.json
+
+# Preserve data files already versioned before the package directory moved.
+!repoforge/evaluation/datasets/dataset_index.json
+!repoforge/evaluation/swebench_lite_all_evaluations.json
+!repoforge/evaluation/swebench_verified_all_evaluations.json
+
+

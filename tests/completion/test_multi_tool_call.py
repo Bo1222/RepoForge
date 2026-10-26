@@ -3,10 +3,10 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
 from litellm.types.utils import ModelResponse, Usage, Message, Function, ChatCompletionMessageToolCall
-from moatless.actions.schema import ActionArguments
-from moatless.completion.base import CompletionRetryError
-from moatless.completion.multi_tool_call import MultiToolCallCompletionModel
-from moatless.exceptions import CompletionRejectError, CompletionRuntimeError
+from repoforge.actions.schema import ActionArguments
+from repoforge.completion.base import CompletionRetryError
+from repoforge.completion.multi_tool_call import MultiToolCallCompletionModel
+from repoforge.exceptions import CompletionRejectError, CompletionRuntimeError
 from pydantic import Field
 
 

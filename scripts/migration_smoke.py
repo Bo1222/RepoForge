@@ -16,20 +16,20 @@ from typing import Any
 
 from pydantic import PrivateAttr
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.read_file import ReadFile, ReadFileArgs
-from moatless.actions.respond import Respond, RespondArgs
-from moatless.actions.run_tests import RunTests, RunTestsArgs
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.actions.view_diff import ViewDiff, ViewDiffArgs
-from moatless.agent.agent import ActionAgent
-from moatless.completion.base import BaseCompletionModel, CompletionResponse
-from moatless.completion.stats import CompletionAttempt, CompletionInvocation, Usage
-from moatless.flow.loop import AgenticLoop
-from moatless.repository.file import FileRepository
-from moatless.runtime.runtime import RuntimeEnvironment
-from moatless.testing.schema import TestResult, TestStatus
-from moatless.workspace import Workspace
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.read_file import ReadFile, ReadFileArgs
+from repoforge.actions.respond import Respond, RespondArgs
+from repoforge.actions.run_tests import RunTests, RunTestsArgs
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.actions.view_diff import ViewDiff, ViewDiffArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.completion.base import BaseCompletionModel, CompletionResponse
+from repoforge.completion.stats import CompletionAttempt, CompletionInvocation, Usage
+from repoforge.flow.loop import AgenticLoop
+from repoforge.repository.file import FileRepository
+from repoforge.runtime.runtime import RuntimeEnvironment
+from repoforge.testing.schema import TestResult, TestStatus
+from repoforge.workspace import Workspace
 
 PROMPT = "Repair the arithmetic bug using the available tools."
 SOURCE = "def add(a, b):\n    return a - b\n"
@@ -82,7 +82,7 @@ class PytestSmokeRuntime(RuntimeEnvironment):
         self.runs: list[dict] = []
 
     async def run_tests(self, patch=None, test_files=None):
-        with tempfile.TemporaryDirectory(prefix="moatless-pytest-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="repoforge-pytest-") as tmp:
             target = Path(tmp)
             for path in self.baseline.glob("*.py"):
                 (target / path.name).write_text(path.read_text())
@@ -105,6 +105,8 @@ class PytestSmokeRuntime(RuntimeEnvironment):
                 timeout=30,
             )
             self.runs.append({"returncode": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr})
+            self.last_test_execution = [{"target": path, "command": "real pytest", "return_code": proc.returncode}
+                                        for path in test_files or ["test_calc.py"]]
             return [
                 TestResult(
                     name="test_add",
@@ -121,20 +123,51 @@ def normalize(value):
         return {
             k: normalize(v)
             for k, v in value.items()
-            if k not in {"timestamp", "start_time", "end_time", "test_duration", "execution_time"}
+            if k not in {"timestamp", "start_time", "end_time", "test_duration", "execution_time", "started_at", "duration"}
         }
     if isinstance(value, list):
         return [normalize(v) for v in value]
     return value
 
 
-async def replay(flow_class=AgenticLoop, coding=True):
+def historical_test_projection(value):
+    """D07: project out only additive workspace-test provenance for M0 checks.
+
+    Raw replays retain all execution receipts, including newly added return codes.
+    Arguments, output, usage, patches and artifact changes remain compared;
+    v2 execution facts are independently tested against actual pytest processes.
+    """
+    result = copy.deepcopy(value)
+    additive = {"test_source", "test_origins", "product_patch_hash", "tested_patch_hash",
+                "result_statuses", "result_count", "product_source", "runner", "environment", "test_bundle_hash",
+                "input_identity", "check_id", "introduced_failures", "public_baseline", "test_files",
+                "result_counts", "test_results", "test_execution", "return_code", "timed_out", "complete",
+                "patch_stale", "continuation_safe", "targets", "execution_status", "recipe_version", "base_identity",
+                "verification_inputs", "product_inputs_hash", "runner_fingerprint", "input_identity_after", "product_files",
+                "started_at", "duration", "commands", "partial", "uncompleted_targets", "related_targets"}
+    for node in result.get("trajectory", {}).get("nodes", []):
+        observations = [node.get("output", {})]
+        observations.extend(step.get("observation", {}) for step in node.get("action_steps", [])
+                            )
+        for observation in observations:
+            props = observation.get("properties") or {}
+            props.pop("syntax_checked", None)
+            props.pop("syntax_checks", None)
+            if props.get("test_source") == "workspace":
+                for key in additive:
+                    props.pop(key, None)
+                if not props:
+                    observation.pop("properties", None)
+    return result
+
+
+async def replay(flow_class=AgenticLoop, coding=True, managed=False):
     events = []
 
     async def capture(event):
         events.append(event.model_dump(mode="json"))
 
-    with tempfile.TemporaryDirectory(prefix="moatless-coding-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="repoforge-coding-") as tmp:
         baseline = Path(tmp)
         (baseline / "calc.py").write_text(SOURCE)
         (baseline / "test_calc.py").write_text(TEST)
@@ -152,7 +185,13 @@ async def replay(flow_class=AgenticLoop, coding=True):
             responses = [response(RespondArgs(message="Offline Respond-only smoke."))]
             actions = [Respond()]
         model = ScriptedCompletion(responses)
-        agent = ActionAgent(completion_model=model, system_prompt=PROMPT, actions=actions)
+        memory_options = {}
+        if managed:
+            from repoforge.message_history.managed import ManagedMessageHistoryGenerator
+            from repoforge.message_history.policy import ContextPolicy
+            memory_options["memory"] = ManagedMessageHistoryGenerator(policy=ContextPolicy(
+                context_window=1048576, enable_task_state=False, load_repo_instructions=False))
+        agent = ActionAgent(completion_model=model, system_prompt=PROMPT, actions=actions, **memory_options)
         flow = flow_class.create(
             message="Fix add" if coding else "Respond",
             agent=agent,
@@ -190,14 +229,15 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--flow", choices=["loop", "graph"], default="loop")
     parser.add_argument("--respond", action="store_true")
+    parser.add_argument("--managed", action="store_true", help="Same-source Managed facts migration comparison")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     flow_class = AgenticLoop
     if args.flow == "graph":
-        from moatless.flow.langgraph_flow import LangGraphFlow
+        from repoforge.flow.langgraph_flow import LangGraphFlow
 
         flow_class = LangGraphFlow
-    result, runs = await replay(flow_class, coding=not args.respond)
+    result, runs = await replay(flow_class, coding=not args.respond, managed=args.managed)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")

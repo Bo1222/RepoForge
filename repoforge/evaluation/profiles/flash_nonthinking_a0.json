@@ -1,0 +1,22 @@
+{
+  "model": "openai/deepseek-flash",
+  "base_url": "https://api.deepseek.com",
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "temperature": 0,
+  "max_tokens": 4096,
+  "max_iterations": 40,
+  "max_cost": 1.0,
+  "model_timeout": 180,
+  "tool_timeout": 120,
+  "thoughts_in_action": false,
+  "params": {"extra_body": {"thinking": {"type": "disabled"}}},
+  "context_policy": {
+    "version": 1,
+    "context_window": 1048576,
+    "max_input_tokens": 32768,
+    "max_observation_tokens": 4000,
+    "recent_interactions": 2,
+    "enable_task_state": false,
+    "load_repo_instructions": false
+  }
+}

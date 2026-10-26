@@ -4,11 +4,11 @@ from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
-from moatless.actions.schema import Observation
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.file_context import FileContext, ContextFile
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.schema import Observation
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.file_context import FileContext, ContextFile
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 def dedent(text):
@@ -175,3 +175,60 @@ async def test_string_replace_non_existent_file(file_context, repository, worksp
 
     # Verify error observation indicates file not found
     assert replace_observation.properties.get("fail_reason") == "file_not_found"
+
+
+@pytest.mark.asyncio
+async def test_string_replace_auto_loads_existing_file(file_context, repository, workspace):
+    """A file that exists but was never viewed should be loaded for the edit."""
+    action = StringReplace()
+    action.workspace = workspace
+
+    args = StringReplaceArgs(
+        path="existing.py",
+        old_str='message = "Hello World"',
+        new_str='message = "Hello Auto Load"',
+    )
+    observation = await action.execute(args, file_context=file_context)
+
+    assert observation.properties.get("fail_reason") is None
+    assert "has been edited" in observation.message
+    assert 'message = "Hello Auto Load"' in repository.get_file_content("existing.py")
+
+
+@pytest.mark.asyncio
+async def test_string_replace_rejects_noop(file_context, repository, workspace):
+    """An identical old_str/new_str should not count as a successful edit."""
+    action = StringReplace()
+    action.workspace = workspace
+    file_context.add_file("existing.py", show_all_spans=True)
+
+    before = repository.get_file_content("existing.py")
+    args = StringReplaceArgs(
+        path="existing.py",
+        old_str='message = "Hello World"',
+        new_str='message = "Hello World"',
+    )
+    observation = await action.execute(args, file_context=file_context)
+
+    assert observation.properties.get("fail_reason") == "no_changes"
+    assert repository.get_file_content("existing.py") == before
+
+
+@pytest.mark.asyncio
+async def test_string_replace_rejects_new_syntax_error(file_context, repository, workspace):
+    """A Python edit that makes a previously valid file invalid must not commit."""
+    action = StringReplace()
+    action.workspace = workspace
+    file_context.add_file("existing.py", show_all_spans=True)
+
+    before = repository.get_file_content("existing.py")
+    args = StringReplaceArgs(
+        path="existing.py",
+        old_str='message = "Hello World"',
+        new_str="message = (",
+    )
+    observation = await action.execute(args, file_context=file_context)
+
+    assert observation.properties.get("fail_reason") == "syntax_error"
+    assert observation.properties.get("syntax_error", {}).get("line")
+    assert repository.get_file_content("existing.py") == before

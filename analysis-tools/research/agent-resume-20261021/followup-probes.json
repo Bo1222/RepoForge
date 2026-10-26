@@ -1,0 +1,69 @@
+{
+  "probe_purpose": "Direct checks of four previously unverified public original URLs; no login or credentials",
+  "probes": [
+    {
+      "source_id": "C02",
+      "requested_url": "https://www.xiaohongshu.com/explore/699b5e6a00000000150398d4",
+      "checked_at": "2026-10-21T07:04:11.244547+00:00",
+      "status": 200,
+      "final_url": "https://www.xiaohongshu.com/404?source=/404/sec_kyPmrpUi?redirectPath=https%3A%2F%2Fwww.xiaohongshu.com%2Fexplore%2F699b5e6a00000000150398d4&error_code=300031&error_msg=%E5%BD%93%E5%89%8D%E7%AC%94%E8%AE%B0%E6%9A%82%E6%97%B6%E6%97%A0%E6%B3%95%E6%B5%8F%E8%A7%88&uuid=0214ea00-85d5-44d8-bcb4-3f50ab909ebb&verifyMsg=",
+      "html_sha256": "82359df25add17501ddcb02e4dedc0e65e2ef74ef4dca49455e7f59b9e8990cf",
+      "bytes": 97136,
+      "page_title": [
+        "小红书 - 你访问的页面不见了"
+      ],
+      "note_detail_count": 0,
+      "public_notes": [],
+      "error_code": "300031",
+      "error_message": "当前笔记暂时无法浏览"
+    },
+    {
+      "source_id": "C03",
+      "requested_url": "https://www.xiaohongshu.com/explore/699fe5600000000015033347",
+      "checked_at": "2026-10-21T07:04:11.247165+00:00",
+      "status": 200,
+      "final_url": "https://www.xiaohongshu.com/404?source=/404/sec_kbMERizN?redirectPath=https%3A%2F%2Fwww.xiaohongshu.com%2Fexplore%2F699fe5600000000015033347&error_code=300031&error_msg=%E5%BD%93%E5%89%8D%E7%AC%94%E8%AE%B0%E6%9A%82%E6%97%B6%E6%97%A0%E6%B3%95%E6%B5%8F%E8%A7%88&uuid=a104b185-8da4-4644-a7b3-39cfd15a14a9&verifyMsg=",
+      "html_sha256": "45e287abb0826e062c84e31fef2993ebecb121eb005827fe99e275bf5b56a61a",
+      "bytes": 97137,
+      "page_title": [
+        "小红书 - 你访问的页面不见了"
+      ],
+      "note_detail_count": 0,
+      "public_notes": [],
+      "error_code": "300031",
+      "error_message": "当前笔记暂时无法浏览"
+    },
+    {
+      "source_id": "C05",
+      "requested_url": "https://www.xiaohongshu.com/explore/69be8d73000000021a02907c",
+      "checked_at": "2026-10-21T07:04:11.248006+00:00",
+      "status": 200,
+      "final_url": "https://www.xiaohongshu.com/404?source=/404/sec_EcdQEpsi?redirectPath=https%3A%2F%2Fwww.xiaohongshu.com%2Fexplore%2F69be8d73000000021a02907c&error_code=300031&error_msg=%E5%BD%93%E5%89%8D%E7%AC%94%E8%AE%B0%E6%9A%82%E6%97%B6%E6%97%A0%E6%B3%95%E6%B5%8F%E8%A7%88&uuid=08fdef3a-50f4-42c4-a46c-ab7344cdb656&verifyMsg=",
+      "html_sha256": "7f5e61c0b5409aeffc1615b41647d5fe893f3f5b10cdb340e962e7096f59dd6c",
+      "bytes": 97138,
+      "page_title": [
+        "小红书 - 你访问的页面不见了"
+      ],
+      "note_detail_count": 0,
+      "public_notes": [],
+      "error_code": "300031",
+      "error_message": "当前笔记暂时无法浏览"
+    },
+    {
+      "source_id": "C06",
+      "requested_url": "https://www.xiaohongshu.com/explore/697312df000000001a02a85a",
+      "checked_at": "2026-10-21T07:04:11.905083+00:00",
+      "status": 200,
+      "final_url": "https://www.xiaohongshu.com/404?source=/404/sec_zDIddhAw?redirectPath=https%3A%2F%2Fwww.xiaohongshu.com%2Fexplore%2F697312df000000001a02a85a&error_code=300031&error_msg=%E5%BD%93%E5%89%8D%E7%AC%94%E8%AE%B0%E6%9A%82%E6%97%B6%E6%97%A0%E6%B3%95%E6%B5%8F%E8%A7%88&uuid=f7c465a1-6442-40a2-990a-7f8fa2f10d20&verifyMsg=",
+      "html_sha256": "f2f05afc079146a36dd13411c60c8a2c4c24c382d87f5535e8a1d8aeca8fafdf",
+      "bytes": 97136,
+      "page_title": [
+        "小红书 - 你访问的页面不见了"
+      ],
+      "note_detail_count": 0,
+      "public_notes": [],
+      "error_code": "300031",
+      "error_message": "当前笔记暂时无法浏览"
+    }
+  ]
+}
