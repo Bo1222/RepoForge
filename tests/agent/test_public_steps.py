@@ -1,12 +1,12 @@
 import pytest
 import asyncio
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.respond import Respond, RespondArgs
-from moatless.agent.agent import ActionAgent
-from moatless.context_data import current_action_step
-from moatless.exceptions import CompletionRejectError, RuntimeError
-from moatless.node import Node
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.respond import Respond, RespondArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.context_data import current_action_step
+from repoforge.exceptions import CompletionRejectError, RuntimeError
+from repoforge.node import Node
 from scripts.migration_smoke import ScriptedCompletion, response
 
 

@@ -13,9 +13,9 @@ import tempfile
 
 from dotenv import load_dotenv
 
-from moatless.cli.service import SessionService
-from moatless.evaluation.experiment import PRICES, now, read_json, write_json
-from moatless.evaluation.experiment_usage import SDKRecorder
+from repoforge.cli.service import SessionService
+from repoforge.evaluation.experiment import PRICES, now, read_json, write_json
+from repoforge.evaluation.experiment_usage import SDKRecorder
 
 
 def model_metadata():
@@ -47,7 +47,7 @@ async def run(output):
                  ["git", "-C", str(source), "-c", "user.name=T4 probe", "-c", "user.email=t4@example.invalid", "commit", "-qm", "Synthetic baseline"]):
         subprocess.run(args, check=True, capture_output=True)
     baseline = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
-    config = read_json(Path(__file__).resolve().parents[1] / "moatless/evaluation/profiles/flash_nonthinking_a0.json")
+    config = read_json(Path(__file__).resolve().parents[1] / "repoforge/evaluation/profiles/flash_nonthinking_a0.json")
     config.update(max_iterations=12, max_cost=.1, env={"PATH": str(Path(os.sys.executable).parent) + os.pathsep + os.environ["PATH"],
                                                     "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PYTEST_ADDOPTS": ""})
     write_json(output / "config.json", config)
@@ -79,7 +79,7 @@ def verify_export(output):
         raise ValueError("Probe did not terminate normally with unchanged source checkout")
     if result.get("completion_status", {}).get("status") != "verified":
         raise ValueError("No current-version task-local verification")
-    with tempfile.TemporaryDirectory(prefix="moatless-t4-independent-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="repoforge-t4-independent-") as temporary:
         target = Path(temporary) / "repo"
         subprocess.run(["git", "clone", "--quiet", str(output / "source"), str(target)], check=True)
         env = {**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PYTEST_ADDOPTS": ""}

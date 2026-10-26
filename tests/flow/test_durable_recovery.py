@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 import pytest
 from filelock import FileLock
 
-from moatless.actions.respond import Respond
-from moatless.flow.durable import OutcomeJournal, RecoveryConflict, thread_id
-from moatless.flow.graph_state import initial_state
-from moatless.repository.repository import InMemRepository
-from moatless.runtime.runtime import NoEnvironment
-from moatless.workspace import Workspace
-from moatless.node import EvaluationResult
+from repoforge.actions.respond import Respond
+from repoforge.flow.durable import OutcomeJournal, RecoveryConflict, thread_id
+from repoforge.flow.graph_state import initial_state
+from repoforge.repository.repository import InMemRepository
+from repoforge.runtime.runtime import NoEnvironment
+from repoforge.workspace import Workspace
+from repoforge.node import EvaluationResult
 from tests.flow.test_langgraph_flow import make_flow, response, RespondArgs
 
 
@@ -157,7 +157,7 @@ async def test_runtime_state_and_shadow_mode_are_checked(tmp_path):
 
 @pytest.mark.asyncio
 async def test_opaque_runtime_cannot_auto_recover(tmp_path):
-    from moatless.runtime.runtime import RuntimeEnvironment
+    from repoforge.runtime.runtime import RuntimeEnvironment
 
     class OpaqueRuntime(RuntimeEnvironment):
         async def run_tests(self, **kwargs):

@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import pytest
-from moatless.testing.schema import TestFile, TestResult, TestStatus
+from repoforge.testing.schema import TestFile, TestResult, TestStatus
 
 
 def test_test_file_init():
@@ -191,7 +191,7 @@ def test_get_test_failure_details_token_limit():
     ]
 
     # Test with very small token limit
-    with patch("moatless.utils.tokenizer.count_tokens", return_value=1000):
+    with patch("repoforge.utils.tokenizer.count_tokens", return_value=1000):
         details = TestFile.get_test_failure_details(
             [test_file],
             max_tokens=500,  # Less than one message worth of tokens

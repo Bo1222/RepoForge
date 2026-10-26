@@ -13,9 +13,9 @@ from pathlib import Path
 def export(repo, settings, output):
     from unittest.mock import patch
     from llama_index.core.schema import MetadataMode
-    from moatless.index.code_index import CodeIndex
-    from moatless.index.settings import IndexSettings
-    from moatless.repository import FileRepository
+    from repoforge.index.code_index import CodeIndex
+    from repoforge.index.settings import IndexSettings
+    from repoforge.repository import FileRepository
 
     captured = []
     repo = repo.resolve()
@@ -27,7 +27,7 @@ def export(repo, settings, output):
 
     index = CodeIndex(file_repo=FileRepository(repo_path=str(repo)),
                       settings=IndexSettings(**settings))
-    with patch("moatless.index.code_index.IngestionPipeline.run", capture):
+    with patch("repoforge.index.code_index.IngestionPipeline.run", capture):
         index.run_ingestion(repo_path=str(repo), num_workers=1)
     output.write_text(json.dumps({"settings": settings, "nodes": captured}, ensure_ascii=False))
 

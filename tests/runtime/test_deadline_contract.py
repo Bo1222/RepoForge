@@ -8,9 +8,9 @@ import shlex
 
 import pytest
 
-from moatless.exceptions import WorkspaceConsistencyError
-from moatless.runtime.deadline import invoke, _unconfirmed
-from moatless.runtime.local import SweBenchLocalEnvironment
+from repoforge.exceptions import WorkspaceConsistencyError
+from repoforge.runtime.deadline import invoke, _unconfirmed
+from repoforge.runtime.local import SweBenchLocalEnvironment
 from tests.runtime.test_generation_runtime import PUBLIC, PATCH, CREATE
 
 

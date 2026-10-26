@@ -6,13 +6,13 @@ import shutil
 from typing import Optional, Dict, List
 
 from dotenv import load_dotenv
-from moatless.benchmark.swebench import (
+from repoforge.benchmark.swebench import (
     get_repo_dir_name,
 )
-from moatless.benchmark.swebench.utils import create_repository
-from moatless.evaluation.utils import get_moatless_instances
-from moatless.index.settings import IndexSettings
-from moatless.index.code_index import CodeIndex
+from repoforge.benchmark.swebench.utils import create_repository
+from repoforge.evaluation.utils import get_repoforge_instances
+from repoforge.index.settings import IndexSettings
+from repoforge.index.code_index import CodeIndex
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ def main():
     index_settings = IndexSettings(embed_model=args.embed_model, dimensions=1024)
 
     # Load instances
-    instance_by_id = get_moatless_instances()
+    instance_by_id = get_repoforge_instances()
 
     if args.prefix:
         # Filter and sort instances by prefix

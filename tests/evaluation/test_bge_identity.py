@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from moatless.evaluation import bge_identity
+from repoforge.evaluation import bge_identity
 
 
 def test_health_rejects_changed_revision_and_missing_fields(monkeypatch):

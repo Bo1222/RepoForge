@@ -1,4 +1,4 @@
-from moatless.completion.schema import extract_json_from_message
+from repoforge.completion.schema import extract_json_from_message
 
 
 def test_extract_single_json_codeblock():

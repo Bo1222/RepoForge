@@ -2,11 +2,11 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from moatless.actions.find_code_snippet import FindCodeSnippet, FindCodeSnippetArgs
-from moatless.file_context import FileContext
-from moatless.index.code_index import CodeIndex
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.find_code_snippet import FindCodeSnippet, FindCodeSnippetArgs
+from repoforge.file_context import FileContext
+from repoforge.index.code_index import CodeIndex
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 class GrepRepository(InMemRepository):

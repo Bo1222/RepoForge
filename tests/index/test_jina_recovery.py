@@ -6,7 +6,7 @@ import httpx
 import pytest
 from openai import OpenAI, RateLimitError
 
-from moatless.index.jina import JinaEmbedding, JinaOpenAI
+from repoforge.index.jina import JinaEmbedding, JinaOpenAI
 
 
 def response(request, tokens=1000):
@@ -43,11 +43,11 @@ def test_successful_batch_survives_failure_and_new_client_without_rebilling(tmp_
 def test_actual_usage_paces_next_request(monkeypatch):
     clock = [10.0]
     sleeps = []
-    monkeypatch.setattr('moatless.index.jina.time.monotonic', lambda: clock[0])
+    monkeypatch.setattr('repoforge.index.jina.time.monotonic', lambda: clock[0])
     def sleep(delay):
         sleeps.append(delay)
         clock[0] += delay
-    monkeypatch.setattr('moatless.index.jina.time.sleep', sleep)
+    monkeypatch.setattr('repoforge.index.jina.time.sleep', sleep)
     model = JinaEmbedding(api_key='offline', dimensions=4, tokens_per_minute=80000)
     model._client = SimpleNamespace(embeddings=SimpleNamespace(create=lambda **kwargs:
         SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[1.] * 4)],

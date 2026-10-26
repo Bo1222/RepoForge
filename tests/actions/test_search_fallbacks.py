@@ -1,15 +1,15 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from moatless.actions.find_class import FindClass, FindClassArgs
-from moatless.actions.find_function import FindFunction, FindFunctionArgs
-from moatless.actions.query_terms import query_terms
-from moatless.file_context import FileContext
-from moatless.index.code_index import CodeIndex
-from moatless.index.lexical import bm25_search
-from moatless.index.types import SearchCodeResponse
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.find_class import FindClass, FindClassArgs
+from repoforge.actions.find_function import FindFunction, FindFunctionArgs
+from repoforge.actions.query_terms import query_terms
+from repoforge.file_context import FileContext
+from repoforge.index.code_index import CodeIndex
+from repoforge.index.lexical import bm25_search
+from repoforge.index.types import SearchCodeResponse
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 class FallbackRepository(InMemRepository):

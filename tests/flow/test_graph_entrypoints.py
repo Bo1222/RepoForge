@@ -2,19 +2,19 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from moatless.actions.respond import Respond, RespondArgs
-from moatless.agent.agent import ActionAgent
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.evaluation.manager import EvaluationManager
-from moatless.evaluation.schema import Evaluation
-from moatless.flow import AgenticFlow, AgenticLoop, LangGraphFlow, OneOffFlow, SearchTree
-from moatless.flow.manager import FlowManager
-from moatless.flow.run_flow import handle_flow_event, persist_trajectory_data, setup_flow
-from moatless.events import FlowStartedEvent
-from moatless.node import Node
-from moatless.storage.file_storage import FileStorage
-from moatless.expander.expander import Expander
-from moatless.selector.simple import SimpleSelector
+from repoforge.actions.respond import Respond, RespondArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.evaluation.manager import EvaluationManager
+from repoforge.evaluation.schema import Evaluation
+from repoforge.flow import AgenticFlow, AgenticLoop, LangGraphFlow, OneOffFlow, SearchTree
+from repoforge.flow.manager import FlowManager
+from repoforge.flow.run_flow import handle_flow_event, persist_trajectory_data, setup_flow
+from repoforge.events import FlowStartedEvent
+from repoforge.node import Node
+from repoforge.storage.file_storage import FileStorage
+from repoforge.expander.expander import Expander
+from repoforge.selector.simple import SimpleSelector
 from scripts.migration_smoke import ScriptedCompletion, response
 
 
@@ -80,15 +80,15 @@ async def test_manager_to_runner_setup_loads_graph_and_exports_snapshots(tmp_pat
     await manager.create_flow(
         flow_config=AgenticFlow.from_config(config()), message="issue", project_id="p", trajectory_id="t"
     )
-    import moatless.settings as settings
+    import repoforge.settings as settings
 
     monkeypatch.setattr(settings, "get_storage", AsyncMock(return_value=storage))
     import importlib
 
-    run_module = importlib.import_module("moatless.flow.run_flow")
+    run_module = importlib.import_module("repoforge.flow.run_flow")
     monkeypatch.setattr(run_module, "get_storage", AsyncMock(return_value=storage))
     monkeypatch.setattr(settings, "get_event_bus", AsyncMock(return_value=AsyncMock()))
-    monkeypatch.setenv("MOATLESS_DIR", str(tmp_path))
+    monkeypatch.setenv("REPOFORGE_DIR", str(tmp_path))
     loaded = await setup_flow("p", "t")
     assert type(loaded) is LangGraphFlow and loaded.checkpoint_path.endswith(".sqlite")
     model = ScriptedCompletion([response(RespondArgs(message="done"))])
@@ -105,10 +105,10 @@ async def test_manager_to_runner_setup_loads_graph_and_exports_snapshots(tmp_pat
 @pytest.mark.asyncio
 async def test_actual_run_flow_entry_and_environment_error(tmp_path, monkeypatch):
     import importlib
-    from moatless.workspace import Workspace
-    from moatless.repository.repository import InMemRepository
+    from repoforge.workspace import Workspace
+    from repoforge.repository.repository import InMemRepository
 
-    run_module = importlib.import_module("moatless.flow.run_flow")
+    run_module = importlib.import_module("repoforge.flow.run_flow")
     storage = FileStorage(tmp_path)
     flow = LangGraphFlow.create(
         message="issue",
@@ -137,10 +137,10 @@ async def test_actual_run_flow_entry_and_environment_error(tmp_path, monkeypatch
 
 @pytest.mark.asyncio
 async def test_grading_error_is_separate_from_agent_failure(monkeypatch):
-    import moatless.evaluation.run_instance as runner
-    from moatless.runtime.runtime import NoEnvironment
-    from moatless.workspace import Workspace
-    from moatless.repository.repository import InMemRepository
+    import repoforge.evaluation.run_instance as runner
+    from repoforge.runtime.runtime import NoEnvironment
+    from repoforge.workspace import Workspace
+    from repoforge.repository.repository import InMemRepository
 
     flow = LangGraphFlow.create(
         message="issue",
@@ -163,11 +163,11 @@ async def test_grading_error_is_separate_from_agent_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_swebench_runner_entry_loads_graph_with_stub_environment(tmp_path, monkeypatch):
-    import moatless.evaluation.run_instance as runner
-    from moatless.index.code_index import CodeIndex
-    from moatless.repository.repository import InMemRepository
-    from moatless.runtime.runtime import NoEnvironment
-    from moatless.node import ActionStep
+    import repoforge.evaluation.run_instance as runner
+    from repoforge.index.code_index import CodeIndex
+    from repoforge.repository.repository import InMemRepository
+    from repoforge.runtime.runtime import NoEnvironment
+    from repoforge.node import ActionStep
 
     flow = AgenticFlow.from_config(config())
     flow._root = Node.create_root(user_message="issue")
@@ -176,7 +176,7 @@ async def test_swebench_runner_entry_loads_graph_with_stub_environment(tmp_path,
     runtime = NoEnvironment()
     runtime.swebench_evaluate = AsyncMock(return_value={"t": {"resolved": True, "stub_environment": True}})
     storage = FileStorage(tmp_path)
-    import moatless.settings as settings
+    import repoforge.settings as settings
 
     monkeypatch.setattr(settings, "get_storage", AsyncMock(return_value=storage))
     monkeypatch.setattr(runner, "setup_flow", AsyncMock(return_value=flow))
@@ -202,9 +202,9 @@ async def test_swebench_runner_entry_loads_graph_with_stub_environment(tmp_path,
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["retry", "resume", "execute", "reset"])
 async def test_explicit_manager_changes_get_fresh_run_identity(tmp_path, monkeypatch, operation):
-    import moatless.settings as settings
-    from moatless.node import ActionStep, Node
-    from moatless.flow.schema import StartTrajectoryRequest
+    import repoforge.settings as settings
+    from repoforge.node import ActionStep, Node
+    from repoforge.flow.schema import StartTrajectoryRequest
 
     storage = FileStorage(tmp_path)
     monkeypatch.setattr(settings, "get_storage", AsyncMock(return_value=storage))
@@ -253,10 +253,10 @@ async def test_evaluation_schema_and_update_keep_typed_flow(tmp_path):
 
 @pytest.mark.asyncio
 async def test_legacy_event_save_is_awaited_and_storage_retry_is_bounded(monkeypatch):
-    import moatless.settings as settings
+    import repoforge.settings as settings
     import importlib
 
-    run_module = importlib.import_module("moatless.flow.run_flow")
+    run_module = importlib.import_module("repoforge.flow.run_flow")
     storage = AsyncMock()
     storage.write_to_trajectory.side_effect = [OSError("temporary"), OSError("temporary"), None]
     monkeypatch.setattr(settings, "get_storage", AsyncMock(return_value=storage))

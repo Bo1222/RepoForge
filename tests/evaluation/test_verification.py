@@ -1,6 +1,6 @@
 import pytest
 
-from moatless.evaluation.verification import VerificationState, snapshot
+from repoforge.evaluation.verification import VerificationState, snapshot
 
 
 def record(**changes):

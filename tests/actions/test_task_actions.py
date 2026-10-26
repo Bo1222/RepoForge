@@ -5,15 +5,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
-from moatless.actions.create_tasks import CreateTasks, CreateTasksArgs, TaskItem
-from moatless.actions.list_tasks import ListTasks, ListTasksArgs
-from moatless.actions.update_task import UpdateTask, UpdateTaskArgs
-from moatless.artifacts.task import TaskHandler, TaskState, TaskArtifact
-from moatless.context_data import current_project_id, current_trajectory_id
-from moatless.file_context import FileContext
-from moatless.storage.base import BaseStorage
-from moatless.storage.file_storage import FileStorage
-from moatless.workspace import Workspace
+from repoforge.actions.create_tasks import CreateTasks, CreateTasksArgs, TaskItem
+from repoforge.actions.list_tasks import ListTasks, ListTasksArgs
+from repoforge.actions.update_task import UpdateTask, UpdateTaskArgs
+from repoforge.artifacts.task import TaskHandler, TaskState, TaskArtifact
+from repoforge.context_data import current_project_id, current_trajectory_id
+from repoforge.file_context import FileContext
+from repoforge.storage.base import BaseStorage
+from repoforge.storage.file_storage import FileStorage
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def mock_settings_get_storage(file_storage):
     async def mock_get_storage():
         return file_storage
 
-    with patch("moatless.settings.get_storage", mock_get_storage):
+    with patch("repoforge.settings.get_storage", mock_get_storage):
         yield
 
 
@@ -122,7 +122,7 @@ def mock_settings_get_runner():
     async def mock_get_runner():
         return mock_runner
 
-    with patch("moatless.settings.get_runner", mock_get_runner):
+    with patch("repoforge.settings.get_runner", mock_get_runner):
         yield mock_runner
 
 
@@ -151,7 +151,7 @@ async def test_create_tasks(create_action, file_context, context_setup):
 
 
 @pytest.mark.asyncio
-@patch("moatless.actions.list_tasks.ListTasks._execute")
+@patch("repoforge.actions.list_tasks.ListTasks._execute")
 async def test_list_tasks(mock_execute, create_action, list_action, file_context, context_setup):
     """Test listing tasks with the ListTasks action.
 
@@ -195,7 +195,7 @@ State: TaskState.OPEN
 Content: Another open task
 """
 
-    from moatless.actions.action import Observation
+    from repoforge.actions.action import Observation
 
     # Set up the mock to return different values based on arguments
     async def side_effect(args, file_context=None):
@@ -256,7 +256,7 @@ async def test_task_persistence(temp_dir, create_action, update_action, file_con
 
 
 @pytest.mark.asyncio
-@patch("moatless.actions.list_tasks.ListTasks._execute")
+@patch("repoforge.actions.list_tasks.ListTasks._execute")
 async def test_task_workflow(mock_list_execute, create_action, update_action, list_action, file_context, context_setup):
     """Test a complete workflow of creating, updating, and listing tasks."""
     # Set up mock return values for listing tasks

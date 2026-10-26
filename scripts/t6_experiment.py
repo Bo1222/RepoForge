@@ -8,11 +8,11 @@ import tempfile
 from dotenv import load_dotenv
 from filelock import FileLock
 
-from moatless.evaluation.experiment import (
+from repoforge.evaluation.experiment import (
     aggregate, append_json, freeze_source, load_manifest, now, read_json, sha,
     validate_execution_source, write_json,
 )
-from moatless.evaluation import t6
+from repoforge.evaluation import t6
 
 
 SUITES = ["tests/actions/test_t6_tool_contracts.py", "tests/policy", "tests/memory",
@@ -94,7 +94,7 @@ def main():
         return
     validate_execution_source(manifest, root)
     validate_offline(root, read_json(output / 'offline-check.json'), manifest)
-    from moatless.evaluation.experiment_native import (
+    from repoforge.evaluation.experiment_native import (
         preflight, probe_contracts, probe_isolation, probe_recovery, run_job, grade_job,
         validate_agent_tests, release_job_workspace, shared_index, verify_index_receipt,
     )
@@ -103,7 +103,7 @@ def main():
             result = preflight(root)
             if result['blockers']:
                 raise ValueError(str(result['blockers']))
-            from moatless.evaluation.bge_identity import validate_identity
+            from repoforge.evaluation.bge_identity import validate_identity
             validate_identity(root, manifest)
             prepared = read_json(output / 'provision-native.json')
             for job in jobs:

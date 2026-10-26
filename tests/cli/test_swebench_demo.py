@@ -7,8 +7,8 @@ import sys
 
 import pytest
 
-from moatless.cli.service import SessionService
-from moatless.exceptions import CompletionRuntimeError
+from repoforge.cli.service import SessionService
+from repoforge.exceptions import CompletionRuntimeError
 from scripts.swebench_demo import append_json, classify, run_agent
 from swebench.harness.log_parsers.python import parse_log_pytest
 
@@ -79,10 +79,10 @@ async def test_sdk_failure_preserves_export_and_audit(repo, tmp_path, monkeypatc
 
 @pytest.mark.asyncio
 async def test_test_pipeline_keeps_failure_exit_status(repo):
-    from moatless.actions.local_coding import LocalRunTests, LocalTestArgs
-    from moatless.cli.environment import SessionEnvironment
-    from moatless.repository.file import FileRepository
-    from moatless.workspace import Workspace
+    from repoforge.actions.local_coding import LocalRunTests, LocalTestArgs
+    from repoforge.cli.environment import SessionEnvironment
+    from repoforge.repository.file import FileRepository
+    from repoforge.workspace import Workspace
 
     workspace = Workspace(
         repository=FileRepository(repo_path=str(repo), shadow_mode=False), environment=SessionEnvironment(str(repo))

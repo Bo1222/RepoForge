@@ -1,0 +1,41 @@
+{
+  "original_candidate": "/tmp/moatless-o2-a0-paired-20261023T022840Z",
+  "original_manifest_hash": "818ef229e5fff6c78bef2a1998a97f714be918612fef40840cf5b817bdb29d6e",
+  "source_digest": "4c43bf3aec3c3a57d34e4b5d32c81e9d5f7610339765a0d67e696378acd9b3d2",
+  "copied_immutable_artifacts": [
+    {
+      "file": "report-dev.json",
+      "sha256": "3d3841071685bdc4a3c695f58b5f660bdfd90e8bd9c91e8dddf6fb0cef93e10e",
+      "original_file": "/tmp/moatless-o2-a0-paired-20261023T022840Z/report-dev.json",
+      "bytes": 1025825
+    },
+    {
+      "file": "report-holdout.json",
+      "sha256": "a6a9b5be09b14b3242918fb21ae9fa6f1a7da358f034b468fddaec6a36de9722",
+      "original_file": "/tmp/moatless-o2-a0-paired-20261023T022840Z/report-holdout.json",
+      "bytes": 1616209
+    },
+    {
+      "file": "source-locks/dev-lock.json",
+      "sha256": "f590bbfb487102afd8dba76f381abbecd8e705c4958dd061e54e86f331425da1",
+      "original_file": "/tmp/moatless-o2-a0-paired-20261023T022840Z/dev-lock.json",
+      "bytes": 293991
+    },
+    {
+      "file": "source-locks/holdout-lock.json",
+      "sha256": "d34234ee07f9874723f38a1d60b8606f3b8a53f28835e10ff9e21d17fdb48b77",
+      "original_file": "/tmp/moatless-o2-a0-paired-20261023T022840Z/holdout-lock.json",
+      "bytes": 489821
+    },
+    {
+      "file": "combined.json",
+      "sha256": "9863f67ef5aaf3e3fe2391ffb04340665f4db9bb1de79dae351e976aa6dbca8c",
+      "original_file": "/mnt/data2/home/geqb/LLM/moatless-tools/analysis-tools/research/o2-resume-20261026/combined80/combined.json",
+      "bytes": 65329
+    }
+  ],
+  "original_source_file_mismatches": [],
+  "source_locks_scope": "Original locks refer to evidence paths in the complete original candidate, not to this compact publication bundle.",
+  "official_harness": "not_run",
+  "agent_generated_predictions": true
+}

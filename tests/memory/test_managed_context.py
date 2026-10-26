@@ -3,15 +3,15 @@ from copy import deepcopy
 import pytest
 from pydantic import ValidationError
 
-from moatless.actions.read_observation import ReadObservation, ReadObservationArgs
-from moatless.actions.respond import RespondArgs
-from moatless.actions.schema import Observation
-from moatless.message_history.base import BaseMemory
-from moatless.message_history.managed import ManagedMessageHistoryGenerator
-from moatless.message_history.policy import ContextBudgetExceeded, ContextPolicy, TokenEstimator, request_envelope
-from moatless.node import ActionStep, Node
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.read_observation import ReadObservation, ReadObservationArgs
+from repoforge.actions.respond import RespondArgs
+from repoforge.actions.schema import Observation
+from repoforge.message_history.base import BaseMemory
+from repoforge.message_history.managed import ManagedMessageHistoryGenerator
+from repoforge.message_history.policy import ContextBudgetExceeded, ContextPolicy, TokenEstimator, request_envelope
+from repoforge.node import ActionStep, Node
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 class Model:
@@ -157,9 +157,9 @@ async def test_two_recent_groups_survive_with_compressed_bodies():
 async def test_agent_final_wire_request_is_audited_and_schema_checked(monkeypatch):
     import json
     import litellm
-    from moatless.actions.respond import Respond
-    from moatless.agent.agent import ActionAgent
-    from moatless.completion.tool_call import ToolCallCompletionModel
+    from repoforge.actions.respond import Respond
+    from repoforge.agent.agent import ActionAgent
+    from repoforge.completion.tool_call import ToolCallCompletionModel
 
     requests = []
 
@@ -191,9 +191,9 @@ async def test_agent_final_wire_request_is_audited_and_schema_checked(monkeypatc
 @pytest.mark.asyncio
 async def test_admission_checks_budget_before_any_provider_call(monkeypatch):
     import litellm
-    from moatless.actions.respond import Respond
-    from moatless.agent.agent import ActionAgent
-    from moatless.completion.tool_call import ToolCallCompletionModel
+    from repoforge.actions.respond import Respond
+    from repoforge.agent.agent import ActionAgent
+    from repoforge.completion.tool_call import ToolCallCompletionModel
 
     calls = []
     async def unexpected(**kwargs):
@@ -213,9 +213,9 @@ async def test_admission_checks_budget_before_any_provider_call(monkeypatch):
 @pytest.mark.asyncio
 async def test_validation_retry_cannot_bypass_final_request_budget(monkeypatch):
     import litellm
-    from moatless.actions.respond import Respond
-    from moatless.agent.agent import ActionAgent
-    from moatless.completion.tool_call import ToolCallCompletionModel
+    from repoforge.actions.respond import Respond
+    from repoforge.agent.agent import ActionAgent
+    from repoforge.completion.tool_call import ToolCallCompletionModel
 
     calls = []
     async def invalid(**kwargs):

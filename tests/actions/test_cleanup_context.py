@@ -2,10 +2,10 @@ import pytest
 import pytest_asyncio
 from unittest.mock import Mock
 
-from moatless.actions.cleanup_context import CleanupContext, CleanupContextArgs
-from moatless.file_context import FileContext
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.cleanup_context import CleanupContext, CleanupContextArgs
+from repoforge.file_context import FileContext
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 @pytest_asyncio.fixture
@@ -144,7 +144,7 @@ async def test_cleanup_context_wrong_args_type(workspace, file_context):
     action._workspace = workspace
     
     # Use a different ActionArguments type
-    from moatless.actions.schema import ActionArguments
+    from repoforge.actions.schema import ActionArguments
     wrong_args = ActionArguments(thoughts="test")
     
     with pytest.raises(ValueError, match="Expected CleanupContextArgs"):

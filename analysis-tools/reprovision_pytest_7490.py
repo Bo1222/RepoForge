@@ -25,8 +25,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from moatless.evaluation.experiment import now, read_json, sha, write_json
-from moatless.evaluation.native_provision import NativeProvisioner
+from repoforge.evaluation.experiment import now, read_json, sha, write_json
+from repoforge.evaluation.native_provision import NativeProvisioner
 
 INSTANCE = "pytest-dev__pytest-7490"
 

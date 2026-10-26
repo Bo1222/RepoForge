@@ -6,9 +6,9 @@ import shutil
 import traceback
 import pandas as pd
 
-from moatless.benchmark.swebench import sorted_instances
-from moatless.benchmark.swebench.utils import create_repository_async
-from moatless.evaluation.utils import get_file_spans_from_patch
+from repoforge.benchmark.swebench import sorted_instances
+from repoforge.benchmark.swebench.utils import create_repository_async
+from repoforge.evaluation.utils import get_file_spans_from_patch
 
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)

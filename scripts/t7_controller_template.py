@@ -17,8 +17,8 @@ sys.path.insert(0, str(ROOT))
 
 from filelock import FileLock
 
-from moatless.evaluation import t7
-from moatless.evaluation.experiment import (
+from repoforge.evaluation import t7
+from repoforge.evaluation.experiment import (
     append_json, load_manifest, now, read_json, sha, validate_execution_source,
     validate_gate, verify_answer, write_json,
 )
@@ -166,7 +166,7 @@ def command(stage, arguments, job=None, module="scripts.t4_t5_experiment"):
 
 def public_fingerprint_preflight():
     from types import SimpleNamespace
-    from moatless.flow.durable import workspace_fingerprint
+    from repoforge.flow.durable import workspace_fingerprint
     smoke_ids = {job["instance_id"] for job in jobs if job["phase"] == "smoke"}
     rows = []
     for identity, prepared in read_json(R / "provision-native.json").items():

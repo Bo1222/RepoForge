@@ -8,14 +8,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from moatless.evaluation import t7
-from moatless.evaluation.experiment import (
+from repoforge.evaluation import t7
+from repoforge.evaluation.experiment import (
     PROFILES, SMOKE_IDS, SMOKE_VARIANTS, T7_DEV_VARIANTS, T7_HOLDOUT_VARIANTS,
     T7_PROFILES, T7_PROTOCOL, content_hash, freeze_answer, make_jobs, sha, write_json,
 )
-from moatless.evaluation.experiment_inputs import export_public_dataset
-from moatless.evaluation.generation import validate_generation_health
-from moatless.message_history.policy import content_hash as digest
+from repoforge.evaluation.experiment_inputs import export_public_dataset
+from repoforge.evaluation.generation import validate_generation_health
+from repoforge.message_history.policy import content_hash as digest
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -103,7 +103,7 @@ def _loadable_experiment(tmp_path):
 
 
 def test_manifest_and_job_tamper_rejected(tmp_path):
-    from moatless.evaluation.experiment import load_manifest
+    from repoforge.evaluation.experiment import load_manifest
     output, value = _loadable_experiment(tmp_path)
     assert load_manifest(output)["manifest_hash"] == value["manifest_hash"]
     jobs = json.loads((output / "jobs.json").read_text())
@@ -192,7 +192,7 @@ def test_lock_rejects_holdout_effects_before_locking(tmp_path):
 
 
 def test_aggregate_reports_variant_scoped_metrics_and_unlock(tmp_path):
-    from moatless.evaluation.experiment import aggregate
+    from repoforge.evaluation.experiment import aggregate
     output, value = _loadable_experiment(tmp_path)
     for job in make_jobs(value):
         if job["phase"] != "dev":
@@ -235,9 +235,9 @@ def _accepted_job(output, value, job, *, local_grading, local_resolved,
                        ("agent-tests.json", []), ("test-requests.json", [])):
         (directory / name).write_text(body if isinstance(body, str) else json.dumps(body))
     answer = freeze_answer(directory, job)
-    from moatless.evaluation.configuration_bindings import tool_bindings
-    from moatless.message_history.policy import ContextPolicy
-    from moatless.policy import ActionPolicyConfig
+    from repoforge.evaluation.configuration_bindings import tool_bindings
+    from repoforge.message_history.policy import ContextPolicy
+    from repoforge.policy import ActionPolicyConfig
     profile = value["profiles"][job["variant"]]
     managed = job["entrypoint"] == "cli" or profile["managed"]
     flow = "LangGraphFlow" if job["entrypoint"] == "cli" or profile["flow"] == "graph" else "AgenticLoop"
@@ -257,7 +257,7 @@ def _accepted_job(output, value, job, *, local_grading, local_resolved,
     write_json(directory / "grading.json", {
         "answer_hash": answer["answer_hash"], "grading_backend": "native",
         "evaluation_protocol": value["evaluation_protocol"],
-        "grader_source_sha256": sha(ROOT / "moatless/evaluation/native_grading.py"),
+        "grader_source_sha256": sha(ROOT / "repoforge/evaluation/native_grading.py"),
         "local_grading": local_grading, "local_resolved": local_resolved,
         "original_baseline": {"original_failure_reproduced": reproduced},
         "official_harness": "not_run", "official_resolved": None,
@@ -277,7 +277,7 @@ def _acceptance_fixture(tmp_path, name):
     value["manifest_hash"] = "frozen"
     value["evaluation_protocol"] = "native-swebench-compatible-v1"
     value["source"] = {"files": {
-        "moatless/evaluation/native_grading.py": sha(ROOT / "moatless/evaluation/native_grading.py")}}
+        "repoforge/evaluation/native_grading.py": sha(ROOT / "repoforge/evaluation/native_grading.py")}}
     value["cli_config"] = {"max_iterations": 40, "max_cost": 1.0,
                            "context_policy": {"version": 1, "context_window": 8000,
                                               "max_input_tokens": 4096,
@@ -285,7 +285,7 @@ def _acceptance_fixture(tmp_path, name):
                                               "recent_interactions": 2, "enable_task_state": False},
                            "api_key_env": "DEEPSEEK_API_KEY"}
     value["agent_configs"] = {variant: {"actions": [
-        {"action_class": "moatless.actions.finish.Finish"}]}
+        {"action_class": "repoforge.actions.finish.Finish"}]}
         for variant in value["profiles"]}
     job = next(item for item in make_jobs(value)
                if item["phase"] == "dev" and item["variant"] == "a0")

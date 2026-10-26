@@ -2,12 +2,12 @@ import subprocess
 
 import pytest
 
-from moatless.evaluation.generation import copy_setup_artifacts
-from moatless.runtime.native_tools import tool_process
+from repoforge.evaluation.generation import copy_setup_artifacts
+from repoforge.runtime.native_tools import tool_process
 
 
 def test_native_tool_environment_is_offline_and_drops_credentials(monkeypatch):
-    monkeypatch.setattr("moatless.runtime.native_tools.shutil.which", lambda *args, **kwargs: "/usr/bin/bwrap")
+    monkeypatch.setattr("repoforge.runtime.native_tools.shutil.which", lambda *args, **kwargs: "/usr/bin/bwrap")
     original = {"GENERATION_TOOL_ISOLATION": "native-offline-v1", "PATH": "/usr/bin:/bin",
                 "DEEPSEEK_API_KEY": "offline-deepseek", "JINA_API_KEY": "offline-jina",
                 "https_proxy": "http://127.0.0.1:17890", "PUBLIC_SETTING": "kept"}
@@ -26,7 +26,7 @@ def test_non_native_tools_keep_existing_environment():
 
 
 def test_native_tools_refuse_missing_bubblewrap(monkeypatch):
-    monkeypatch.setattr("moatless.runtime.native_tools.shutil.which", lambda *args, **kwargs: None)
+    monkeypatch.setattr("repoforge.runtime.native_tools.shutil.which", lambda *args, **kwargs: None)
     with pytest.raises(RuntimeError, match="no network fallback"):
         tool_process(["python"], {"GENERATION_TOOL_ISOLATION": "native-offline-v1"})
 
@@ -66,9 +66,9 @@ def test_worktree_setup_artifact_symlink_is_rejected(tmp_path):
 
 
 def test_private_runtime_copy_cannot_modify_prepared_environment(tmp_path, monkeypatch):
-    import moatless.evaluation.experiment_native as native
-    from moatless.evaluation.experiment import content_hash, write_json
-    from moatless.evaluation.experiment_inputs import index_settings_for
+    import repoforge.evaluation.experiment_native as native
+    from repoforge.evaluation.experiment import content_hash, write_json
+    from repoforge.evaluation.experiment_inputs import index_settings_for
     prefix, repo = tmp_path / "prepared-prefix", tmp_path / "prepared-repo"
     prefix.mkdir()
     (prefix / "dependency").write_text("original dependency\n")
@@ -116,7 +116,7 @@ def test_private_runtime_copy_cannot_modify_prepared_environment(tmp_path, monke
 
 
 def test_native_repository_cannot_read_parent_proc_or_escape_symlink(tmp_path, monkeypatch):
-    from moatless.repository.file import FileRepository
+    from repoforge.repository.file import FileRepository
     monkeypatch.setenv("GENERATION_EXECUTION_BACKEND", "native")
     repository = FileRepository(repo_path=str(tmp_path))
     (tmp_path / "outside").symlink_to("/proc")

@@ -23,8 +23,8 @@ from dotenv import load_dotenv
 import requests
 import pyarrow.parquet as parquet
 
-from moatless.cli.service import SessionService, SYSTEM_PROMPT, api_key, error_message, safe_config
-from moatless.cli import worktree
+from repoforge.cli.service import SessionService, SYSTEM_PROMPT, api_key, error_message, safe_config
+from repoforge.cli import worktree
 from swebench.harness.constants.python import MAP_REPO_VERSION_TO_SPECS_PY
 from swebench.harness.log_parsers.python import parse_log_pytest
 from swebench.harness.test_spec.python import get_test_directives
@@ -198,7 +198,7 @@ async def run_agent(source, python, instance, output, runtime, args):
     # Explicit PYTHONPATH prevents the editable base checkout from masking worktree changes.
     session.info["config"]["env"]["PYTHONPATH"] = str(Path(session.info["worktree"]) / "src")
     session.workspace.environment.env = session.info["config"]["env"]
-    from moatless.flow.durable import workspace_fingerprint
+    from repoforge.flow.durable import workspace_fingerprint
 
     session.info["initial_fingerprint"] = workspace_fingerprint(session.workspace, session.flow.checkpoint_path)
     service.save(session)
@@ -400,7 +400,7 @@ def main():
     output = args.output.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=False)
     (output / "runner-snapshot.py").write_text(Path(__file__).read_text())
-    runtime = Path(tempfile.mkdtemp(prefix="moatless-swebench-", dir="/tmp"))
+    runtime = Path(tempfile.mkdtemp(prefix="repoforge-swebench-", dir="/tmp"))
     write_json(
         output / "invocation.json", {"args": vars(args), "runtime": runtime, "started": now(), "cwd": Path.cwd()}
     )

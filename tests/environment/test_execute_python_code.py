@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from moatless.environment.base import BaseEnvironment
-from moatless.environment.local import LocalBashEnvironment
+from repoforge.environment.base import BaseEnvironment
+from repoforge.environment.local import LocalBashEnvironment
 
 
 class TestEnvironmentExecutePythonCode:
@@ -25,7 +25,7 @@ class TestEnvironmentExecutePythonCode:
         # Verify write_file was called with temp file in current directory
         assert env.write_file.called
         temp_file_path = env.write_file.call_args[0][0]
-        assert "moatless_temp_" in temp_file_path
+        assert "repoforge_temp_" in temp_file_path
         assert temp_file_path.endswith(".py")
         assert "/" not in temp_file_path  # Should be in current directory, not a full path
         assert env.write_file.call_args[0][1] == code
@@ -126,5 +126,5 @@ class TestEnvironmentExecutePythonCode:
         
         # Verify they are different
         assert temp_file1 != temp_file2
-        assert "moatless_temp_" in temp_file1
-        assert "moatless_temp_" in temp_file2
+        assert "repoforge_temp_" in temp_file1
+        assert "repoforge_temp_" in temp_file2

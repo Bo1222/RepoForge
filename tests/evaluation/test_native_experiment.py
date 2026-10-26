@@ -6,15 +6,15 @@ import subprocess
 
 import pytest
 
-from moatless.evaluation.experiment import aggregate, freeze_answer, prepare, validate_gate, write_json
-from moatless.evaluation.native_grading import NativeGrader
+from repoforge.evaluation.experiment import aggregate, freeze_answer, prepare, validate_gate, write_json
+from repoforge.evaluation.native_grading import NativeGrader
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_local_service_identity_rejects_live_revision_and_dimension_drift(tmp_path, monkeypatch):
     import io
     import json
-    from moatless.evaluation.experiment_inputs import validate_embedding_service
+    from repoforge.evaluation.experiment_inputs import validate_embedding_service
 
     manifest, _ = prepare(ROOT, tmp_path / 'local', execution_backend='native')
     execution = manifest['embedding_execution']
@@ -57,13 +57,13 @@ def frozen_answer(output, job, *, generation_status="completed", error_type=None
 def test_invalid_frozen_answer_stops_before_any_provider_check(
     tmp_path, monkeypatch, generation_status, error_type, cost_complete, message
 ):
-    from moatless.evaluation.experiment_native import run_job
+    from repoforge.evaluation.experiment_native import run_job
 
     output = tmp_path / "native"
     manifest, jobs = prepare(ROOT, output, execution_backend="native")
     job = jobs[0]
     frozen_answer(output, job, generation_status=generation_status, error_type=error_type, cost_complete=cost_complete)
-    monkeypatch.setattr("moatless.evaluation.experiment_native.validate_embedding_service",
+    monkeypatch.setattr("repoforge.evaluation.experiment_native.validate_embedding_service",
                         lambda *_: pytest.fail("No service request may run for an invalid frozen answer"))
     with pytest.raises(ValueError, match=message):
         run_job(output, manifest, job)
@@ -119,8 +119,8 @@ def test_compatible_script_keeps_real_failure_despite_successful_cleanup(tmp_pat
 
 
 def test_configuration_gate_accepts_public_finish_schema_and_rejects_embedding_drift(tmp_path):
-    from moatless.evaluation.native_gate import configuration_evidence
-    from moatless.message_history.policy import ContextPolicy
+    from repoforge.evaluation.native_gate import configuration_evidence
+    from repoforge.message_history.policy import ContextPolicy
 
     output = tmp_path / "native"
     manifest, jobs = prepare(ROOT, output, execution_backend="native")
@@ -137,7 +137,7 @@ def test_configuration_gate_accepts_public_finish_schema_and_rejects_embedding_d
                   "tool_names": [], "schema_names": [],
                   "tool_isolation": "native-offline-v1", "index_settings": manifest["embedding_settings"],
                   "policy": ContextPolicy(**config["context_policy"]).model_dump(mode="json")}
-        from moatless.evaluation.configuration_bindings import tool_bindings
+        from repoforge.evaluation.configuration_bindings import tool_bindings
         tools = tool_bindings(manifest, job)
         loaded["tool_names"], loaded["schema_names"] = list(tools), list(tools.values())
         loaded.update({key: config[key] for key in
@@ -146,7 +146,7 @@ def test_configuration_gate_accepts_public_finish_schema_and_rejects_embedding_d
     assert configuration_evidence(output, manifest)["passed"]
     batch = next(job for job in selected if job["entrypoint"] != "cli")
     path = output / "runs" / batch["job_id"] / "loaded-config.json"
-    from moatless.evaluation.experiment import read_json
+    from repoforge.evaluation.experiment import read_json
     loaded = read_json(path)
     loaded["index_settings"]["embed_model"] = "text-embedding-3-small"
     write_json(path, loaded)
@@ -157,8 +157,8 @@ def test_configuration_gate_accepts_public_finish_schema_and_rejects_embedding_d
 
 def test_gate_binds_raw_baseline_logs_not_only_candidate_reports(tmp_path):
     # This fixture tests evidence integrity only, never claims real acceptance.
-    from moatless.evaluation.experiment import sha
-    from moatless.evaluation.native_gate import COMPONENTS, validate_native_gate
+    from repoforge.evaluation.experiment import sha
+    from repoforge.evaluation.native_gate import COMPONENTS, validate_native_gate
 
     output = tmp_path / "native"
     manifest, jobs = prepare(ROOT, output, execution_backend="native")
@@ -186,7 +186,7 @@ def test_gate_binds_raw_baseline_logs_not_only_candidate_reports(tmp_path):
         write_json(directory / "original-baseline.json", baseline)
         write_json(directory / "grading.json", {"answer_hash": answer["answer_hash"],
             "grading_backend": "native", "evaluation_protocol": manifest["evaluation_protocol"],
-            "grader_source_sha256": manifest["source"]["files"]["moatless/evaluation/native_grading.py"],
+            "grader_source_sha256": manifest["source"]["files"]["repoforge/evaluation/native_grading.py"],
             "local_grading": "completed", "local_resolved": False, "original_baseline": baseline,
             "official_harness": "not_run", "official_resolved": None})
         write_json(directory / "own-tests.json", {"answer_hash": answer["answer_hash"],
@@ -213,7 +213,7 @@ def test_gate_binds_raw_baseline_logs_not_only_candidate_reports(tmp_path):
 def test_public_workspace_copy_keeps_symlinks_and_clean_status(tmp_path):
     # Dereferenced symlinks become tracked typechanges, so git status no longer
     # matches the base commit and the CLI worktree entrypoint refuses to run.
-    from moatless.evaluation.experiment_native import copy_public_workspace
+    from repoforge.evaluation.experiment_native import copy_public_workspace
 
     source = tmp_path / "source"
     (source / "nested").mkdir(parents=True)
@@ -254,8 +254,8 @@ def accepted_job(output, job, *, grade_hash=None, own_hash=None):
 
 def test_release_deletes_checkpoints_only_after_acceptance(tmp_path):
     import json
-    from moatless.evaluation.experiment import verify_answer
-    from moatless.evaluation.experiment_native import release_job_workspace
+    from repoforge.evaluation.experiment import verify_answer
+    from repoforge.evaluation.experiment_native import release_job_workspace
 
     output = tmp_path / "native"
     manifest, jobs = prepare(ROOT, output, execution_backend="native")
@@ -284,7 +284,7 @@ def test_release_deletes_checkpoints_only_after_acceptance(tmp_path):
 
 
 def test_release_refuses_without_matching_acceptance_and_keeps_checkpoints(tmp_path):
-    from moatless.evaluation.experiment_native import release_job_workspace
+    from repoforge.evaluation.experiment_native import release_job_workspace
 
     output = tmp_path / "native"
     manifest, jobs = prepare(ROOT, output, execution_backend="native")
@@ -297,7 +297,7 @@ def test_release_refuses_without_matching_acceptance_and_keeps_checkpoints(tmp_p
 
 
 def test_testbed_setup_repairs_generated_pytest_version_without_answer_edit(tmp_path):
-    from moatless.evaluation.experiment_native import apply_testbed_setup
+    from repoforge.evaluation.experiment_native import apply_testbed_setup
     (tmp_path / "src/_pytest").mkdir(parents=True)
     (tmp_path / "pyproject.toml").write_text('[tool.pytest.ini_options]\nminversion = "2.0"\n')
     version = tmp_path / "src/_pytest/_version.py"

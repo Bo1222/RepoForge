@@ -13,23 +13,23 @@ import tempfile
 from pathlib import Path
 import sys
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.local_coding import LocalTestArgs
-from moatless.actions.read_file import ReadFile, ReadFileArgs
-from moatless.actions.run_tests import RunTests, RunTestsArgs
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.actions.task_state import UpdateTaskStateArgs
-from moatless.agent.agent import ActionAgent
-from moatless.cli.service import SessionService
-from moatless.cli.worktree import git
-from moatless.execution_memory import failure_records, test_records
-from moatless.flow.langgraph_flow import LangGraphFlow
-from moatless.message_history.managed import ManagedMessageHistoryGenerator
-from moatless.message_history.policy import ContextPolicy
-from moatless.node import Node
-from moatless.repository.file import FileRepository
-from moatless.task_state import EvidenceRef, Hypothesis
-from moatless.workspace import Workspace
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.local_coding import LocalTestArgs
+from repoforge.actions.read_file import ReadFile, ReadFileArgs
+from repoforge.actions.run_tests import RunTests, RunTestsArgs
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.actions.task_state import UpdateTaskStateArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.cli.service import SessionService
+from repoforge.cli.worktree import git
+from repoforge.execution_memory import failure_records, test_records
+from repoforge.flow.langgraph_flow import LangGraphFlow
+from repoforge.message_history.managed import ManagedMessageHistoryGenerator
+from repoforge.message_history.policy import ContextPolicy
+from repoforge.node import Node
+from repoforge.repository.file import FileRepository
+from repoforge.task_state import EvidenceRef, Hypothesis
+from repoforge.workspace import Workspace
 from scripts.migration_smoke import PytestSmokeRuntime, SOURCE, TEST, ScriptedCompletion, response
 
 
@@ -128,7 +128,7 @@ async def replay_cli(target: Path, directory: Path):
 
 
 async def replay():
-    with tempfile.TemporaryDirectory(prefix="moatless-context-replay-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="repoforge-context-replay-") as temporary:
         target = Path(temporary)
         return {"batch": await replay_batch(target / "batch"),
                 "cli": await replay_cli(target / "repo", target / "sessions")}

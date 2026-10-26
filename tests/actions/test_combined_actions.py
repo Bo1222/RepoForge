@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import pytest_asyncio
-from moatless.actions.create_file import CreateFile, CreateFileArgs
-from moatless.actions.schema import Observation
-from moatless.file_context import FileContext
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.create_file import CreateFile, CreateFileArgs
+from repoforge.actions.schema import Observation
+from repoforge.file_context import FileContext
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 def dedent(text):

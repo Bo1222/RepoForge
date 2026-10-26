@@ -5,7 +5,7 @@ import shlex
 
 import pytest
 
-from moatless.evaluation.native_execution import NativeExecutor, NativeMount
+from repoforge.evaluation.native_execution import NativeExecutor, NativeMount
 
 
 def executor(tmp_path, **kwargs):
@@ -83,7 +83,7 @@ def test_root_symlink_mount_is_rejected(tmp_path):
 
 def test_missing_bubblewrap_refuses_host_fallback(tmp_path, monkeypatch):
     runner = executor(tmp_path)
-    monkeypatch.setattr("moatless.evaluation.native_execution.shutil.which", lambda _: None)
+    monkeypatch.setattr("repoforge.evaluation.native_execution.shutil.which", lambda _: None)
     with pytest.raises(RuntimeError, match="refusing unisolated"):
         runner.command(["/bin/true"])
 

@@ -3,14 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from moatless.evaluation.experiment import content_hash, sha, write_json
-from moatless.index.repository_store import (
+from repoforge.evaluation.experiment import content_hash, sha, write_json
+from repoforge.index.repository_store import (
     CORE_FILES, RepositoryIndexStore, builder_fingerprint, index_profile, retire_index_data,
 )
 
 
 def producer(tmp_path):
-    from moatless.index.repository_store import PIPELINE_FILES
+    from repoforge.index.repository_store import PIPELINE_FILES
     root = Path(__file__).resolve().parents[2]
     source = tmp_path / "producer"
     source.mkdir()
@@ -47,7 +47,7 @@ def test_same_snapshot_reuses_across_experiments_and_issue_ids(tmp_path):
 
 
 def test_native_driver_resolves_shared_index_in_another_experiment(tmp_path):
-    from moatless.evaluation.experiment_native import shared_index, verify_index_receipt
+    from repoforge.evaluation.experiment_native import shared_index, verify_index_receipt
     source, public, manifest, profile = producer(tmp_path)
     store = RepositoryIndexStore(tmp_path / "shared")
     index = store.publish(source, public, profile, provenance={"run": "old"})

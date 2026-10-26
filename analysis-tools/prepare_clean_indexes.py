@@ -19,11 +19,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from dotenv import load_dotenv
 
-from moatless.evaluation import t7
-from moatless.evaluation.experiment import (
+from repoforge.evaluation import t7
+from repoforge.evaluation.experiment import (
     append_json, load_manifest, now, read_json, write_json,
 )
-from moatless.evaluation.experiment_native import (
+from repoforge.evaluation.experiment_native import (
     run_job, shared_index, verify_index_receipt,
 )
 

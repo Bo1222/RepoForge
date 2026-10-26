@@ -2,22 +2,22 @@ import os
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from moatless.actions.find_function import FindFunction, FindFunctionArgs
-from moatless.benchmark.swebench import create_repository, create_index_async
-from moatless.completion import BaseCompletionModel
-from moatless.evaluation.utils import get_moatless_instance
-from moatless.file_context import FileContext, ContextSpan
-from moatless.index.code_index import CodeIndex
-from moatless.index.types import SearchCodeResponse, SearchCodeHit, SpanHit
-from moatless.repository.repository import Repository
-from moatless.workspace import Workspace
+from repoforge.actions.find_function import FindFunction, FindFunctionArgs
+from repoforge.benchmark.swebench import create_repository, create_index_async
+from repoforge.completion import BaseCompletionModel
+from repoforge.evaluation.utils import get_repoforge_instance
+from repoforge.file_context import FileContext, ContextSpan
+from repoforge.index.code_index import CodeIndex
+from repoforge.index.types import SearchCodeResponse, SearchCodeHit, SpanHit
+from repoforge.repository.repository import Repository
+from repoforge.workspace import Workspace
 
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(os.environ.get("VOYAGE_API_KEY") is None, reason="VOYAGE_API_KEY environment variable not set")
 async def test_find_function_init_method():
     instance_id = "django__django-13658"
-    instance = get_moatless_instance(instance_id)
+    instance = get_repoforge_instance(instance_id)
     repository = create_repository(instance)
     code_index = await create_index_async(instance, repository)
     file_context = FileContext(repo=repository)
@@ -55,7 +55,7 @@ async def test_find_function_init_method():
 @pytest.mark.skipif(os.environ.get("VOYAGE_API_KEY") is None, reason="VOYAGE_API_KEY environment variable not set")
 async def test_find_function():
     instance_id = "django__django-14855"
-    instance = get_moatless_instance(instance_id)
+    instance = get_repoforge_instance(instance_id)
     repository = create_repository(instance)
     code_index = await create_index_async(instance, repository)
     file_context = FileContext(repo=repository)

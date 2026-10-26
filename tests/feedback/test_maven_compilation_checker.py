@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
-from moatless.feedback.maven_compilation_checker import MavenCompilationChecker
-from moatless.environment.base import BaseEnvironment
-from moatless.node import Node
-from moatless.workspace import Workspace
+from repoforge.feedback.maven_compilation_checker import MavenCompilationChecker
+from repoforge.environment.base import BaseEnvironment
+from repoforge.node import Node
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture

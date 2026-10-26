@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from moatless.index.repository_store import RepositoryIndexStore
+from repoforge.index.repository_store import RepositoryIndexStore
 
 
 def main():

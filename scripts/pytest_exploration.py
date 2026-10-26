@@ -7,8 +7,8 @@ import shutil
 from datasets import Dataset
 from dotenv import load_dotenv
 
-from moatless.evaluation.experiment import prepare, public_instance, read_json, write_json
-from moatless.evaluation.exploration import install_shared_index, snapshot_policy
+from repoforge.evaluation.experiment import prepare, public_instance, read_json, write_json
+from repoforge.evaluation.exploration import install_shared_index, snapshot_policy
 
 
 def main():

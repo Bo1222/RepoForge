@@ -1,7 +1,7 @@
 # T7 official Harness validation tools
 
 These tools are deliberately **outside** the frozen Agent source
-(`moatless/`, `scripts/`). The official Harness exporters and reporters are
+(`repoforge/`, `scripts/`). The official Harness exporters and reporters are
 read-only with respect to an experiment candidate. The preparation tools below
 write only their explicitly named candidate audit files.
 
@@ -85,7 +85,7 @@ analysis-tools/artifacts/<candidate>/predictions/holdout-a0.jsonl
 Each predictions file contains only the official fields:
 
 ```json
-{"instance_id": "...", "model_name_or_path": "moatless-t7-dev-a3", "model_patch": "..."}
+{"instance_id": "...", "model_name_or_path": "repoforge-t7-dev-a3", "model_patch": "..."}
 ```
 
 One file per phase/arm is used so the same `instance_id` can appear in
@@ -146,5 +146,5 @@ official-only, both, official-not-run, and unmatched official IDs.
 - Official Harness running is an independent validation item. Until it
   actually completes, keep `official_harness=not_run` and
   `official_resolved=null`.
-- Do not add these files to `moatless/` or `scripts/`; doing so would change
+- Do not add these files to `repoforge/` or `scripts/`; doing so would change
   the frozen source identity.

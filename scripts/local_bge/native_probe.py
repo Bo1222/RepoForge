@@ -6,9 +6,9 @@ from pathlib import Path
 import shutil
 import sys
 
-from moatless.evaluation.experiment import freeze_source, write_json, sha
-from moatless.evaluation.experiment_native import source_directory
-from moatless.evaluation.native_execution import NativeExecutor, NativeMount
+from repoforge.evaluation.experiment import freeze_source, write_json, sha
+from repoforge.evaluation.experiment_native import source_directory
+from repoforge.evaluation.native_execution import NativeExecutor, NativeMount
 
 
 def main():

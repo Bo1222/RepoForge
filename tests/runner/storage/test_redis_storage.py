@@ -6,8 +6,8 @@ from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from moatless.runner.runner import JobInfo, JobStatus
-from moatless.runner.storage.redis import RedisJobStorage
+from repoforge.runner.runner import JobInfo, JobStatus
+from repoforge.runner.storage.redis import RedisJobStorage
 
 
 class MockRedis:

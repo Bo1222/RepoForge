@@ -47,7 +47,7 @@
 - sklearn 的 base_public 在 node 9/12 均 passed（return_code=0），但工作区测试文件被模型修改过，
   `test_origins` 标为 `modified`；`verification.snapshot` 因此返回 `TESTED_PASS`，
   policy 认为公共验证未通过，最后以 `verification_unavailable_or_failed` 停止。
-- 修复：`moatless/evaluation/verification.py` 对 `test_source=base_public` 的 passed 记录
+- 修复：`repoforge/evaluation/verification.py` 对 `test_source=base_public` 的 passed 记录
   优先返回 `PUBLIC_VERIFIED`；base_public 的运行时 patch 本来就用 `ignore_tests=True`。
 - 影响：sklearn 这类“公共测试已过、只是工作区测试被改”的实例不再被误判；预期减少多余 verify/成本。
 - 测试：`tests/evaluation/test_verification.py::test_base_public_pass_survives_workspace_test_edits`。

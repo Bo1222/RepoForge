@@ -1,11 +1,11 @@
-from moatless.codeblocks import CodeBlockType
-from moatless.codeblocks.codeblocks import (
+from repoforge.codeblocks import CodeBlockType
+from repoforge.codeblocks.codeblocks import (
     Relationship,
     RelationshipType,
     ReferenceScope,
     SpanType,
 )
-from moatless.codeblocks.parser.python import PythonParser
+from repoforge.codeblocks.parser.python import PythonParser
 
 
 def _verify_parsing(content, assertion, apply_gpt_tweaks=True, debug=True):

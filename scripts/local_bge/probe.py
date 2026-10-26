@@ -11,10 +11,10 @@ import httpx
 from llama_index.core.schema import TextNode
 from llama_index.core.vector_stores import VectorStoreQuery
 
-from moatless.evaluation.experiment_usage import SDKRecorder
-from moatless.index.embed_model import get_embed_model
-from moatless.index.settings import IndexSettings
-from moatless.index.simple_faiss import SimpleFaissVectorStore
+from repoforge.evaluation.experiment_usage import SDKRecorder
+from repoforge.index.embed_model import get_embed_model
+from repoforge.index.settings import IndexSettings
+from repoforge.index.simple_faiss import SimpleFaissVectorStore
 
 CODES = [
     'def verify_password(password, stored_hash):\n    """Verify a login password against its hash."""\n    return hash_password(password) == stored_hash\n',

@@ -14,11 +14,11 @@ import random
 import sys
 from collections import Counter
 
-from moatless.evaluation.experiment import (
+from repoforge.evaluation.experiment import (
     T7_DEV_VARIANTS, T7_HOLDOUT_VARIANTS, content_hash, load_manifest, read_json,
     sha, verify_answer, write_json,
 )
-from moatless.evaluation.t7 import (
+from repoforge.evaluation.t7 import (
     PROTOCOL, SELECTION_RULE, FALSIFICATION_RULE, SMALL_SAMPLE_STATEMENT,
     select_winner, validate_lock,
 )
@@ -32,7 +32,7 @@ READ_NAMES = {"ViewCode", "ReadFile", "ReadObservation", "GrepTool", "FindFuncti
 
 def root_of(path):
     for candidate in [Path(path).resolve(), *Path(path).resolve().parents]:
-        if (candidate / "moatless/evaluation/experiment.py").exists():
+        if (candidate / "repoforge/evaluation/experiment.py").exists():
             return candidate
     raise RuntimeError("Cannot locate the repository root")
 
@@ -47,7 +47,7 @@ def _patch_files(directory):
     path = directory / "patch.diff"
     if not path.exists() or not path.read_text().strip():
         return [], []
-    from moatless.utils.file import is_test
+    from repoforge.utils.file import is_test
     product, tests = [], []
     for file in PatchSet(path.read_text()):
         (tests if is_test(file.path) else product).append(file.path)

@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-profile = json.loads((ROOT / "moatless/evaluation/profiles/wave2_split.json").read_text())
-frozen = json.loads((ROOT / "moatless/evaluation/profiles/frozen_split.json").read_text())
+profile = json.loads((ROOT / "repoforge/evaluation/profiles/wave2_split.json").read_text())
+frozen = json.loads((ROOT / "repoforge/evaluation/profiles/frozen_split.json").read_text())
 used = set(frozen["split"]["dev"]) | set(frozen["split"]["holdout"])
 dev, holdout = profile["split"]["dev"], profile["split"]["holdout"]
 assert len(dev) == 30 and len(holdout) == 50

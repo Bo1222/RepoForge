@@ -2,18 +2,18 @@
 
 import pytest
 
-from moatless.cli.service import SessionService
-from moatless.actions.finish import FinishArgs
-from moatless.actions.local_coding import LocalTestArgs
-from moatless.actions.task_state import UpdateTaskStateArgs
-from moatless.message_history.managed import ManagedMessageHistoryGenerator
+from repoforge.cli.service import SessionService
+from repoforge.actions.finish import FinishArgs
+from repoforge.actions.local_coding import LocalTestArgs
+from repoforge.actions.task_state import UpdateTaskStateArgs
+from repoforge.message_history.managed import ManagedMessageHistoryGenerator
 
 
 @pytest.mark.asyncio
 async def test_flash_config_forwards_native_toggle_and_temperature(tmp_path, repo):
     import json
     from pathlib import Path
-    config = json.loads((Path(__file__).resolve().parents[2] / "moatless/evaluation/profiles/flash_nonthinking_a0.json").read_text())
+    config = json.loads((Path(__file__).resolve().parents[2] / "repoforge/evaluation/profiles/flash_nonthinking_a0.json").read_text())
     config["temperature"] = .25
     session = await SessionService(tmp_path / "flash").create(str(repo), "Inspect", config)
     model = session.flow.agent.completion_model

@@ -1,12 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from moatless.actions.respond import RespondArgs
-from moatless.actions.schema import Observation
-from moatless.actions.task_state import UpdateTaskState, UpdateTaskStateArgs
-from moatless.flow.graph_state import initial_state, restore_nodes
-from moatless.node import ActionStep, Node
-from moatless.task_state import EvidenceRef, Hypothesis, TaskState
+from repoforge.actions.respond import RespondArgs
+from repoforge.actions.schema import Observation
+from repoforge.actions.task_state import UpdateTaskState, UpdateTaskStateArgs
+from repoforge.flow.graph_state import initial_state, restore_nodes
+from repoforge.node import ActionStep, Node
+from repoforge.task_state import EvidenceRef, Hypothesis, TaskState
 
 
 def setup():
@@ -71,12 +71,12 @@ async def test_branch_notes_are_independent_and_updates_do_not_erase_unmentioned
 
 @pytest.mark.asyncio
 async def test_task_update_is_a_real_agent_action_and_prompt_load_is_idempotent():
-    from moatless.agent.agent import ActionAgent
-    from moatless.actions.respond import Respond
-    from moatless.message_history.managed import ManagedMessageHistoryGenerator
-    from moatless.message_history.policy import ContextPolicy
-    from moatless.workspace import Workspace
-    from moatless.repository.repository import InMemRepository
+    from repoforge.agent.agent import ActionAgent
+    from repoforge.actions.respond import Respond
+    from repoforge.message_history.managed import ManagedMessageHistoryGenerator
+    from repoforge.message_history.policy import ContextPolicy
+    from repoforge.workspace import Workspace
+    from repoforge.repository.repository import InMemRepository
     from scripts.migration_smoke import ScriptedCompletion, response
 
     model = ScriptedCompletion([response(UpdateTaskStateArgs(next_step="Investigate"))])

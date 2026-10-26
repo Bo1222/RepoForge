@@ -4,19 +4,19 @@ from unittest.mock import AsyncMock, MagicMock, patch, ANY
 
 import pytest
 from litellm.files.main import RateLimitError
-from moatless.completion.base import (
+from repoforge.completion.base import (
     BaseCompletionModel,
     CompletionResponse,
     CompletionRetryError,
     LLMResponseFormat,
 )
-from moatless.completion.react import ReActCompletionModel
-from moatless.completion.schema import (
+from repoforge.completion.react import ReActCompletionModel
+from repoforge.completion.schema import (
     AllMessageValues,
     ResponseSchema,
 )
-from moatless.completion.stats import CompletionAttempt, CompletionInvocation, Usage
-from moatless.exceptions import CompletionRuntimeError
+from repoforge.completion.stats import CompletionAttempt, CompletionInvocation, Usage
+from repoforge.exceptions import CompletionRuntimeError
 from openai import APIConnectionError
 from pydantic import BaseModel, Field
 
@@ -122,7 +122,7 @@ class TestCompletionResponse:
         invocation = CompletionInvocation(model="test-model")
         invocation.attempts = [attempt]
 
-        with patch("moatless.completion.base.logger") as mock_logger:
+        with patch("repoforge.completion.base.logger") as mock_logger:
             completion_response = CompletionResponse(
                 structured_outputs=[response1, response2], completion_invocation=invocation
             )
@@ -149,7 +149,7 @@ class TestCompletionResponse:
     def test_model_validate(self):
         model = BaseCompletionModel.model_validate(
             {
-                "completion_model_class": "moatless.completion.react.ReActCompletionModel",
+                "completion_model_class": "repoforge.completion.react.ReActCompletionModel",
                 "model_id": "test-model-id",
                 "model": "test-model",
                 "temperature": 0.0,
@@ -179,7 +179,7 @@ class TestBaseCompletionModel:
 
     def test_get_package(self):
         """Test _get_package class method."""
-        assert BaseCompletionModel._get_package() == "moatless.completion"
+        assert BaseCompletionModel._get_package() == "repoforge.completion"
 
     def test_get_base_class(self):
         """Test _get_base_class class method."""

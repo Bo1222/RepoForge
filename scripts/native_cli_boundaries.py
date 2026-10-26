@@ -9,19 +9,19 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from moatless.actions.bash import BashArgs
-from moatless.actions.create_file import CreateFileArgs
-from moatless.actions.finish import FinishArgs
-from moatless.actions.local_coding import LocalTestArgs
-from moatless.actions.read_file import ReadFileArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.cli.service import SessionService
-from moatless.cli.worktree import git, patch_hash
-from moatless.completion.base import CompletionResponse
-from moatless.completion.stats import CompletionAttempt, CompletionInvocation, Usage
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.evaluation.experiment import read_json, write_json
-from moatless.flow.durable import RecoveryConflict, workspace_fingerprint
+from repoforge.actions.bash import BashArgs
+from repoforge.actions.create_file import CreateFileArgs
+from repoforge.actions.finish import FinishArgs
+from repoforge.actions.local_coding import LocalTestArgs
+from repoforge.actions.read_file import ReadFileArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.cli.service import SessionService
+from repoforge.cli.worktree import git, patch_hash
+from repoforge.completion.base import CompletionResponse
+from repoforge.completion.stats import CompletionAttempt, CompletionInvocation, Usage
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.evaluation.experiment import read_json, write_json
+from repoforge.flow.durable import RecoveryConflict, workspace_fingerprint
 
 
 async def run(bundle, output):

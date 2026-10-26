@@ -1,0 +1,54 @@
+{
+  "algorithm": "sha256",
+  "scope": "all files in this publication bundle except checksums.json itself",
+  "files": {
+    "README.md": {
+      "sha256": "f5ef9ce704365456284e7105f802eb0676369ed58f9590c144ea07bbab4a0d88",
+      "bytes": 2318
+    },
+    "adjudications.json": {
+      "sha256": "7ec323a41eb34d6f9fba3befadb518fd1332851e685c58429b5ef502c7ce5156",
+      "bytes": 169031
+    },
+    "combined.json": {
+      "sha256": "9863f67ef5aaf3e3fe2391ffb04340665f4db9bb1de79dae351e976aa6dbca8c",
+      "bytes": 65329
+    },
+    "predictions-a0.jsonl": {
+      "sha256": "41b90b4daa659a704a7bf5fe4def5aedb6f2c53d8d2aa2ca58482d2ffd5a4023",
+      "bytes": 85691
+    },
+    "predictions-a5.jsonl": {
+      "sha256": "ed969de76d6f39103a7f9c16a1c68026645a7124dc72d05d50849fc426ed1aad",
+      "bytes": 87485
+    },
+    "protocol.json": {
+      "sha256": "c1fdbf387af35622001d6f4445c7ab87670fc80b840c98b4cf7aa2a9b136963c",
+      "bytes": 28605
+    },
+    "provenance.json": {
+      "sha256": "96c81311ff007f67e6d9d42fb6674bd3b7e71fd029538431c33482ff2426a4f4",
+      "bytes": 1821
+    },
+    "report-dev.json": {
+      "sha256": "3d3841071685bdc4a3c695f58b5f660bdfd90e8bd9c91e8dddf6fb0cef93e10e",
+      "bytes": 1025825
+    },
+    "report-holdout.json": {
+      "sha256": "a6a9b5be09b14b3242918fb21ae9fa6f1a7da358f034b468fddaec6a36de9722",
+      "bytes": 1616209
+    },
+    "source-locks/dev-lock.json": {
+      "sha256": "f590bbfb487102afd8dba76f381abbecd8e705c4958dd061e54e86f331425da1",
+      "bytes": 293991
+    },
+    "source-locks/holdout-lock.json": {
+      "sha256": "d34234ee07f9874723f38a1d60b8606f3b8a53f28835e10ff9e21d17fdb48b77",
+      "bytes": 489821
+    },
+    "source-manifest.json": {
+      "sha256": "fb40cc2e4d527fd845b2111e347563d6ea13cd61651858e4400ac7b02d58be33",
+      "bytes": 33190
+    }
+  }
+}

@@ -1,19 +1,19 @@
 import pytest
-from moatless.actions.view_code import (
+from repoforge.actions.view_code import (
     ViewCode,
     ViewCodeArgs,
     CodeSpan,
 )
-from moatless.benchmark.swebench import create_repository
-from moatless.evaluation.utils import get_moatless_instance
-from moatless.file_context import FileContext
-from moatless.workspace import Workspace
+from repoforge.benchmark.swebench import create_repository
+from repoforge.evaluation.utils import get_repoforge_instance
+from repoforge.file_context import FileContext
+from repoforge.workspace import Workspace
 
 
 @pytest.mark.asyncio
 async def test_request_non_existing_method():
     instance_id = "django__django-11039"
-    instance = get_moatless_instance(instance_id)
+    instance = get_repoforge_instance(instance_id)
     repository = create_repository(instance)
     file_context = FileContext(repo=repository)
 
@@ -41,7 +41,7 @@ async def test_request_non_existing_method():
 @pytest.mark.asyncio
 async def test_request_many_spans():
     instance_id = "django__django-11039"
-    instance = get_moatless_instance(instance_id)
+    instance = get_repoforge_instance(instance_id)
     repository = create_repository(instance)
     file_context = FileContext(repo=repository)
 

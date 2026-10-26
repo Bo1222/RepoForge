@@ -6,14 +6,14 @@ from pathlib import Path
 import pytest
 from litellm.types.utils import ModelResponse
 
-from moatless.actions.finish import FinishArgs
-from moatless.cli import worktree
-from moatless.cli.app import CodingApp, DetailScreen, TaskInput
-from moatless.cli.main import parser, main
-from moatless.cli.service import SessionService
-from moatless.completion.base import CompletionRetryError
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.flow.durable import RecoveryConflict
+from repoforge.actions.finish import FinishArgs
+from repoforge.cli import worktree
+from repoforge.cli.app import CodingApp, DetailScreen, TaskInput
+from repoforge.cli.main import parser, main
+from repoforge.cli.service import SessionService
+from repoforge.completion.base import CompletionRetryError
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.flow.durable import RecoveryConflict
 
 
 def text_response(text):
@@ -191,7 +191,7 @@ async def test_chat_unknown_model_outcome_is_not_replayed(tmp_path, sdk):
 
 @pytest.mark.asyncio
 async def test_missing_key_and_redacted_api_error(tmp_path, monkeypatch, sdk):
-    from moatless.exceptions import CompletionRuntimeError
+    from repoforge.exceptions import CompletionRuntimeError
 
     replies, calls = sdk
     monkeypatch.delenv("DEEPSEEK_API_KEY")

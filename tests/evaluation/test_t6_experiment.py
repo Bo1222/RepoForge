@@ -3,8 +3,8 @@ from copy import deepcopy
 
 import pytest
 
-from moatless.evaluation.experiment import SMOKE_IDS, PROFILES, make_jobs
-from moatless.evaluation.t6 import PROTOCOL, non_query_ast, query_compatibility
+from repoforge.evaluation.experiment import SMOKE_IDS, PROFILES, make_jobs
+from repoforge.evaluation.t6 import PROTOCOL, non_query_ast, query_compatibility
 
 
 def manifest():
@@ -48,7 +48,7 @@ def test_index_reuse_proof_excludes_only_query_method():
 
 
 def test_disabled_policy_serialization_preserves_legacy_arguments():
-    from moatless.actions.run_tests import RunTestsArgs
+    from repoforge.actions.run_tests import RunTestsArgs
     args = RunTestsArgs(test_files=['test_a.py'])
     assert 'test_source' not in args.model_dump() and 'test_source' not in args.model_dump_json()
     original = RunTestsArgs(test_files=['test_a.py'], test_source='base_public')

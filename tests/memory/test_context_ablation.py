@@ -1,12 +1,12 @@
 import pytest
 
-from moatless.actions.respond import Respond
-from moatless.agent.agent import ActionAgent
-from moatless.message_history.managed import ManagedMessageHistoryGenerator
-from moatless.message_history.policy import ContextPolicy
-from moatless.node import Node
-from moatless.task_state import TaskState
-from moatless.workspace import Workspace
+from repoforge.actions.respond import Respond
+from repoforge.agent.agent import ActionAgent
+from repoforge.message_history.managed import ManagedMessageHistoryGenerator
+from repoforge.message_history.policy import ContextPolicy
+from repoforge.node import Node
+from repoforge.task_state import TaskState
+from repoforge.workspace import Workspace
 from scripts.migration_smoke import ScriptedCompletion
 
 

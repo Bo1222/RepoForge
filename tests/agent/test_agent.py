@@ -2,15 +2,15 @@ import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.agent.agent import ActionAgent
-from moatless.completion import BaseCompletionModel, CompletionResponse
-from moatless.file_context import FileContext
-from moatless.message_history.message_history import MessageHistoryGenerator
-from moatless.node import Node, ActionStep
-from moatless.repository.repository import InMemRepository
-from moatless.schema import MessageHistoryType
-from moatless.workspace import Workspace
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.completion import BaseCompletionModel, CompletionResponse
+from repoforge.file_context import FileContext
+from repoforge.message_history.message_history import MessageHistoryGenerator
+from repoforge.node import Node, ActionStep
+from repoforge.repository.repository import InMemRepository
+from repoforge.schema import MessageHistoryType
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture
@@ -146,9 +146,9 @@ async def test_agent_multiple_string_replace(agent, file_context, repository):
 @pytest.mark.asyncio
 async def test_agent_run_with_react_model(repository, workspace, mock_litellm_response):
     """Test agent run method with ReActCompletionModel and ReactMessageHistoryGenerator"""
-    from moatless.completion.react import ReActCompletionModel
-    from moatless.message_history.react import ReactMessageHistoryGenerator
-    from moatless.actions.string_replace import StringReplace
+    from repoforge.completion.react import ReActCompletionModel
+    from repoforge.message_history.react import ReactMessageHistoryGenerator
+    from repoforge.actions.string_replace import StringReplace
 
     # Create the agent with ReAct model and memory
     string_replace_action = StringReplace(auto_correct_indentation=True)

@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from moatless.evaluation.experiment import (
+from repoforge.evaluation.experiment import (
     aggregate, freeze_answer, load_manifest, prepare, public_instance, validate_gate, verify_answer, write_json,
 )
-from moatless.evaluation.experiment_docker import bundle_for
-from moatless.evaluation.experiment_usage import SDKRecorder
+from repoforge.evaluation.experiment_docker import bundle_for
+from repoforge.evaluation.experiment_usage import SDKRecorder
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,8 +45,8 @@ def test_new_manifest_separates_15_smoke_90_dev_5_cli_and_never_overwrites(tmp_p
     assert "Tests run automatically after each code change" not in manifest["agent_configs"]["a0"]["system_prompt"]
     assert "Tests run automatically after each code change" in manifest["agent_configs"]["graph_legacy"]["system_prompt"]
     assert load_manifest(output)["manifest_hash"] == manifest["manifest_hash"]
-    assert any(name.startswith("moatless/utils/_static/tiktoken_cache/") for name in manifest["source"]["files"])
-    from moatless.agent.agent import ActionAgent
+    assert any(name.startswith("repoforge/utils/_static/tiktoken_cache/") for name in manifest["source"]["files"])
+    from repoforge.agent.agent import ActionAgent
     loaded = ActionAgent.from_dict(manifest["agent_configs"]["a0"])
     assert type(loaded.completion_model).__name__ == "ToolCallCompletionModel"
     assert all(type(action.completion_model).__name__ == "JsonCompletionModel" for action in loaded.actions
@@ -149,7 +149,7 @@ async def test_ledger_rejects_accidental_thinking_before_provider_call(tmp_path,
 @pytest.mark.parametrize("managed", [False, True])
 async def test_same_source_loop_graph_fixed_replay(managed):
     from scripts.migration_smoke import replay
-    from moatless.flow import AgenticLoop, LangGraphFlow
+    from repoforge.flow import AgenticLoop, LangGraphFlow
     loop, _ = await replay(AgenticLoop, managed=managed)
     graph, _ = await replay(LangGraphFlow, managed=managed)
     # Documented migration metadata improvement: Graph associates Agent events
@@ -168,7 +168,7 @@ async def test_same_source_loop_graph_fixed_replay(managed):
 
 def test_docker_driver_io_freezes_and_reuses_answer_and_own_tests_exclude_grading(tmp_path, monkeypatch):
     from unittest.mock import MagicMock
-    import moatless.evaluation.experiment_docker as driver
+    import repoforge.evaluation.experiment_docker as driver
     output = tmp_path / "e"
     manifest, jobs = prepare(ROOT, output)
     job = next(job for job in jobs if job["phase"] == "cli_smoke")
@@ -202,7 +202,7 @@ def test_docker_driver_io_freezes_and_reuses_answer_and_own_tests_exclude_gradin
 def test_baseline_diagnostic_is_post_freeze_isolated_and_never_applies_product_patch(tmp_path, monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import MagicMock
-    import moatless.evaluation.experiment_docker as driver
+    import repoforge.evaluation.experiment_docker as driver
     output = tmp_path / "e"
     manifest, jobs = prepare(ROOT, output)
     job = jobs[0]
@@ -240,7 +240,7 @@ def test_baseline_diagnostic_is_post_freeze_isolated_and_never_applies_product_p
 
 
 def test_dataset_fingerprint_change_refuses_public_export(tmp_path, monkeypatch):
-    import moatless.evaluation.experiment_docker as driver
+    import repoforge.evaluation.experiment_docker as driver
     manifest, _ = prepare(ROOT, tmp_path / "e")
     output = tmp_path / "e"
     write_json(output / "dataset-receipt.json", {"fingerprint": "original"})
@@ -253,7 +253,7 @@ def test_dataset_fingerprint_change_refuses_public_export(tmp_path, monkeypatch)
 
 
 def test_algorithm_selection_requires_complete_labels_and_freezes_analysis(tmp_path):
-    from moatless.evaluation.experiment import freeze_hypothesis
+    from repoforge.evaluation.experiment import freeze_hypothesis
     output = tmp_path / "e"
     _, jobs = prepare(ROOT, output)
     dev = [job for job in jobs if job["phase"] == "dev"]
@@ -271,7 +271,7 @@ def test_algorithm_selection_requires_complete_labels_and_freezes_analysis(tmp_p
             "labels": [{"category": category, "primary": True, "evidence": ["trajectory node 1:0"]}]})
     assert aggregate(output)["selected_direction"] == "A"  # explicit tie rule
     hypothesis = freeze_hypothesis(output)
-    from moatless.evaluation.experiment import content_hash
+    from repoforge.evaluation.experiment import content_hash
     assert hypothesis["analysis_snapshot_hash"] == content_hash(json.loads((output / "hypothesis-analysis.json").read_text()))
     with pytest.raises(ValueError, match="already frozen"):
         freeze_hypothesis(output)

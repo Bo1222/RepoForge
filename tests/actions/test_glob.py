@@ -3,11 +3,11 @@ import tempfile
 import pytest
 from unittest.mock import patch, PropertyMock, AsyncMock, MagicMock
 
-from moatless.actions.glob import GlobTool, GlobArgs
-from moatless.file_context import FileContext
-from moatless.actions.schema import Observation
-from moatless.repository.file import FileRepository
-from moatless.workspace import Workspace
+from repoforge.actions.glob import GlobTool, GlobArgs
+from repoforge.file_context import FileContext
+from repoforge.actions.schema import Observation
+from repoforge.repository.file import FileRepository
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture

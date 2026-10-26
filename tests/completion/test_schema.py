@@ -2,9 +2,9 @@ from typing import Optional, ClassVar, List
 
 import pytest
 import json
-from moatless.actions.create_file import CreateFileArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.completion.schema import ResponseSchema, FewShotExample
+from repoforge.actions.create_file import CreateFileArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.completion.schema import ResponseSchema, FewShotExample
 from pydantic import ValidationError, BaseModel, Field, ConfigDict
 
 

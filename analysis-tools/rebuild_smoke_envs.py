@@ -22,8 +22,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from moatless.evaluation.experiment import load_manifest, now, read_json, write_json
-from moatless.evaluation.native_provision import NativeProvisioner
+from repoforge.evaluation.experiment import load_manifest, now, read_json, write_json
+from repoforge.evaluation.native_provision import NativeProvisioner
 
 CONDA = "/mnt/data2/home/geqb/anaconda3/bin/conda"
 OUTPUT = "smoke-env-rebuild.json"

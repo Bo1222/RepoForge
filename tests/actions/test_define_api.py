@@ -1,8 +1,8 @@
 import pytest
-from moatless.actions.define_api import DefineAPI, DefineAPIArgs, APIEndpoint
-from moatless.file_context import FileContext
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.define_api import DefineAPI, DefineAPIArgs, APIEndpoint
+from repoforge.file_context import FileContext
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 @pytest.fixture

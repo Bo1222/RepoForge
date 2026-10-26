@@ -7,7 +7,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 import logging
 
-from moatless.runner.runner import (
+from repoforge.runner.runner import (
     BaseRunner,
     JobInfo,
     JobStatus,
@@ -18,7 +18,7 @@ from moatless.runner.runner import (
     JobDetailSection,
     JobFunction,
 )
-from moatless.runner.scheduler import SchedulerRunner
+from repoforge.runner.scheduler import SchedulerRunner
 
 
 class MockRunner(BaseRunner):

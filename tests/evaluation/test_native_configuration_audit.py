@@ -1,8 +1,8 @@
 """Configuration audit fixtures: schema aliases, forbidden drift, immutable raw logs."""
 from pathlib import Path
 
-from moatless.evaluation.experiment import prepare, read_json, sha, write_json
-from moatless.message_history.policy import ContextPolicy
+from repoforge.evaluation.experiment import prepare, read_json, sha, write_json
+from repoforge.message_history.policy import ContextPolicy
 from scripts.native_configuration_audit import audit_configuration
 
 ROOT = Path(__file__).resolve().parents[2]

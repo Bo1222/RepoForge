@@ -6,12 +6,12 @@ import subprocess
 
 import pytest
 
-from moatless.actions.verified_finish import VerifiedFinishArgs
-from moatless.actions.run_tests import RunTestsArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.actions.view_code import CodeSpan, ViewCodeArgs
-from moatless.evaluation.experiment import prepare, read_json, verify_answer
-from moatless.evaluation.experiment_docker import bundle_for
+from repoforge.actions.verified_finish import VerifiedFinishArgs
+from repoforge.actions.run_tests import RunTestsArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.actions.view_code import CodeSpan, ViewCodeArgs
+from repoforge.evaluation.experiment import prepare, read_json, verify_answer
+from repoforge.evaluation.experiment_docker import bundle_for
 from scripts.migration_smoke import SOURCE, TEST
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.mark.parametrize("variant", ["loop_legacy", "graph_legacy", "a0"])
 async def test_actual_batch_worker_reads_reproduces_edits_tests_and_freezes(tmp_path, monkeypatch, variant):
     from litellm.types.utils import ModelResponse
-    import moatless.evaluation.generation as worker
+    import repoforge.evaluation.generation as worker
 
     repo = tmp_path / "testbed"
     repo.mkdir()
@@ -39,17 +39,17 @@ async def test_actual_batch_worker_reads_reproduces_edits_tests_and_freezes(tmp_
     bundle = bundle_for(manifest, job, public)
     # Override filesystem/container boundary only; actual Agent/Flow/runtime/tools/SDK ledger run.
     monkeypatch.setattr(worker, "Path", lambda value: repo if str(value) == "/testbed" else Path(value))
-    from moatless.repository.git import GitRepository
+    from repoforge.repository.git import GitRepository
     def repository(**kwargs):
         if kwargs.get("repo_path") == "/testbed":
             kwargs["repo_path"] = str(repo)
         return GitRepository(**kwargs)
-    monkeypatch.setattr("moatless.repository.git.GitRepository", repository)
+    monkeypatch.setattr("repoforge.repository.git.GitRepository", repository)
     monkeypatch.setattr(worker, "environment_identity", lambda image: {"image_id": image, "container_id": "test-container", "dependencies": "test-env"})
     monkeypatch.setattr("scripts.t4_cli_probe.model_metadata", lambda: {"id": "deepseek-flash", "name": "DeepSeek-V4.1-Flash"})
-    from moatless.index.code_index import CodeIndex
+    from repoforge.index.code_index import CodeIndex
     from unittest.mock import MagicMock
-    monkeypatch.setattr("moatless.index.code_index.CodeIndex.from_persist_dir", lambda *a, **k: MagicMock(spec=CodeIndex))
+    monkeypatch.setattr("repoforge.index.code_index.CodeIndex.from_persist_dir", lambda *a, **k: MagicMock(spec=CodeIndex))
     monkeypatch.setenv("GENERATION_IMAGE_ID", "test-image")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "worker-offline-key")
     monkeypatch.setenv("SKIP_INSTALL", "true")
@@ -86,7 +86,7 @@ async def test_actual_batch_worker_reads_reproduces_edits_tests_and_freezes(tmp_
     assert len(requests) == 2
     nodes = read_json(output / "trajectory.json")["nodes"]
     tests = [step["observation"] for node in nodes for step in node.get("action_steps", [])
-             if step["action"]["action_args_class"] == "moatless.actions.run_tests.RunTestsArgs"]
+             if step["action"]["action_args_class"] == "repoforge.actions.run_tests.RunTestsArgs"]
     assert len(tests) == 2
     assert tests[0]["properties"]["return_code"] == 1
     assert tests[1]["properties"]["return_code"] == 0
@@ -95,10 +95,10 @@ async def test_actual_batch_worker_reads_reproduces_edits_tests_and_freezes(tmp_
 
 
 def test_index_timing_preserves_original_algorithm_identity_and_failure(tmp_path, monkeypatch):
-    from moatless.evaluation import generation
-    from moatless.evaluation.experiment import read_json
-    from moatless.index.code_index import CodeIndex
-    from moatless.index.repository_store import builder_fingerprint
+    from repoforge.evaluation import generation
+    from repoforge.evaluation.experiment import read_json
+    from repoforge.index.code_index import CodeIndex
+    from repoforge.index.repository_store import builder_fingerprint
     import inspect
 
     before = builder_fingerprint(inspect.getsource(generation))
@@ -121,7 +121,7 @@ def test_index_timing_preserves_original_algorithm_identity_and_failure(tmp_path
 
 
 def test_submit_product_only_is_opt_in_for_a5():
-    from moatless.evaluation.generation import submit_product_only
+    from repoforge.evaluation.generation import submit_product_only
     assert submit_product_only({"action_policy": {"variant": "a5"}}) is True
     assert submit_product_only({"submit_product_only": True}) is True
     assert submit_product_only({"action_policy": {"variant": "a3"}}) is False
@@ -129,8 +129,8 @@ def test_submit_product_only_is_opt_in_for_a5():
 
 
 def test_select_submitted_patch_keeps_current_version_even_after_historical_public_pass():
-    from moatless.evaluation.generation import select_submitted_patch
-    from moatless.message_history.policy import content_hash
+    from repoforge.evaluation.generation import select_submitted_patch
+    from repoforge.message_history.policy import content_hash
     old, new = "old-diff", "new-diff"
     record = {"superseded": False, "tested_patch_hash": content_hash(old),
               "product_patch_hash": content_hash(old), "targets": ["tests/test_code.py"],

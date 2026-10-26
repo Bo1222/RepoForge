@@ -113,13 +113,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lite_path",
         type=str,
-        default="moatless/evaluation/swebench_lite_all_evaluations.json",
+        default="repoforge/evaluation/swebench_lite_all_evaluations.json",
         help="Path to the SWE-bench Lite dataset file",
     )
     parser.add_argument(
         "--verified_path",
         type=str,
-        default="moatless/evaluation/swebench_verified_all_evaluations.json",
+        default="repoforge/evaluation/swebench_verified_all_evaluations.json",
         help="Path to the SWE-bench Verified dataset file",
     )
     parser.add_argument("--output_path", type=str, default="dataset_index.json", help="Path to save the index file")

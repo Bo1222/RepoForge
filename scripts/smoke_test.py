@@ -3,21 +3,21 @@ import logging
 import os
 from dotenv import load_dotenv
 import litellm
-from moatless.actions import Respond
-from moatless.agent import ActionAgent
-from moatless.completion.log_handler import LogHandler
-from moatless.completion.manager import ModelConfigManager
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.message_history.message_history import MessageHistoryGenerator
-from moatless.storage.file_storage import FileStorage
-from moatless.context_data import current_project_id, current_trajectory_id
-from moatless.node import Node
+from repoforge.actions import Respond
+from repoforge.agent import ActionAgent
+from repoforge.completion.log_handler import LogHandler
+from repoforge.completion.manager import ModelConfigManager
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.message_history.message_history import MessageHistoryGenerator
+from repoforge.storage.file_storage import FileStorage
+from repoforge.context_data import current_project_id, current_trajectory_id
+from repoforge.node import Node
 
 load_dotenv()
 
 
 async def smoke_test(model_id: str):
-    storage = FileStorage(base_dir=os.getenv("MOATLESS_DIR"))
+    storage = FileStorage(base_dir=os.getenv("REPOFORGE_DIR"))
     model_config_manager = ModelConfigManager(storage=storage)
     await model_config_manager.initialize()
     current_project_id.set("smoke_test")

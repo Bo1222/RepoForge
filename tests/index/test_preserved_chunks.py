@@ -1,8 +1,8 @@
 from llama_index.core.schema import Document
 
-from moatless.index.code_node import CodeNode
-from moatless.index.epic_split import EpicSplitter
-from moatless.index.settings import IndexSettings
+from repoforge.index.code_node import CodeNode
+from repoforge.index.epic_split import EpicSplitter
+from repoforge.index.settings import IndexSettings
 
 
 def test_local_content_preservation_keeps_legacy_provider_defaults():

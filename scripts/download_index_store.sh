@@ -3,7 +3,7 @@
 # Check if dataset_file is provided
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <dataset_file>"
-    echo "Example: $0 moatless/evaluation/datasets/verified_mini_dataset.json"
+    echo "Example: $0 repoforge/evaluation/datasets/verified_mini_dataset.json"
     exit 1
 fi
 

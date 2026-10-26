@@ -3,9 +3,9 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [project]
-name = "moatless"
+name = "repoforge"
 version = "0.1.1"
-description = ""
+description = "RepoForge coding agent with recoverable execution, managed context and independent evaluation"
 readme = "README.md"
 
 authors = [
@@ -58,7 +58,7 @@ dependencies = [
 ]
 
 [project.scripts]
-moatless = "moatless.cli.main:main"
+repoforge = "repoforge.cli.main:main"
 
 [dependency-groups]
 dev = [

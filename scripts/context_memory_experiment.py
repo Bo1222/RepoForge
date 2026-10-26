@@ -80,11 +80,11 @@ def profiles(context_window):
 def source_hashes(root):
     # Freeze relevant Python source contents, including new untracked modules.
     return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for folder in ("moatless", "scripts") for path in sorted((root / folder).rglob("*.py"))}
+            for folder in ("repoforge", "scripts") for path in sorted((root / folder).rglob("*.py"))}
 
 
 def prepare(root, model, context_window, max_iterations=80, max_cost=2.0):
-    path = root / "moatless/evaluation/datasets/verified_dataset.json"
+    path = root / "repoforge/evaluation/datasets/verified_dataset.json"
     metadata = json.loads(path.read_text())
     split = split_instances(metadata["instance_ids"])
     configuration = {"model": model, "max_tokens": 4096, "temperature": 0,
@@ -171,7 +171,7 @@ def freeze_sources(root, output):
                              capture_output=True, check=True).stdout
     baseline_path = output / "baseline-source.tar"
     baseline_path.write_bytes(archive)
-    with tempfile.TemporaryDirectory(prefix="moatless-e1-freeze-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="repoforge-e1-freeze-") as temporary:
         target = Path(temporary)
         with tarfile.open(fileobj=io.BytesIO(archive)) as baseline:
             baseline.extractall(target)
@@ -179,7 +179,7 @@ def freeze_sources(root, output):
         # artifacts are never added from the working tree.
         for path, expected in manifest["candidate_source_hashes"].items():
             relative = Path(path)
-            if relative.is_absolute() or ".." in relative.parts or relative.parts[0] not in {"moatless", "scripts"}:
+            if relative.is_absolute() or ".." in relative.parts or relative.parts[0] not in {"repoforge", "scripts"}:
                 raise ValueError("Invalid candidate code source path")
             body = (root / relative).read_bytes()
             if hashlib.sha256(body).hexdigest() != expected:

@@ -8,18 +8,18 @@ from litellm.types.utils import ModelResponse
 from pydantic import PrivateAttr
 import pytest
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.find_code_snippet import FindCodeSnippet, FindCodeSnippetArgs
-from moatless.actions.read_file import ReadFile, ReadFileArgs
-from moatless.actions.read_observation import ReadObservation, ReadObservationArgs
-from moatless.actions.schema import Observation
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.completion.base import CompletionRetryError
-from moatless.completion.tool_call import ToolCallCompletionModel
-from moatless.evaluation.generation import select_submitted_patch
-from moatless.evaluation.verification import snapshot, VerificationState
-from moatless.node import ActionStep
-from moatless.policy.failures import interpret
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.find_code_snippet import FindCodeSnippet, FindCodeSnippetArgs
+from repoforge.actions.read_file import ReadFile, ReadFileArgs
+from repoforge.actions.read_observation import ReadObservation, ReadObservationArgs
+from repoforge.actions.schema import Observation
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.completion.base import CompletionRetryError
+from repoforge.completion.tool_call import ToolCallCompletionModel
+from repoforge.evaluation.generation import select_submitted_patch
+from repoforge.evaluation.verification import snapshot, VerificationState
+from repoforge.node import ActionStep
+from repoforge.policy.failures import interpret
 from tests.memory.test_repository_context import setup, execute
 
 
@@ -91,7 +91,7 @@ async def test_transient_and_protocol_retries_share_three_attempt_budget():
     assert len(model._requests) == len(result.completion_invocation.attempts) == 3
     model._requests = []
     model._responses = [asyncio.TimeoutError(), asyncio.TimeoutError(), valid]
-    from moatless.exceptions import CompletionRuntimeError
+    from repoforge.exceptions import CompletionRuntimeError
     with pytest.raises(CompletionRuntimeError):
         await model._create_completion_with_retries([{"role": "user", "content": "fix"}])
     assert len(model._requests) == 2

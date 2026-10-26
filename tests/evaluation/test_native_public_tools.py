@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from moatless.evaluation.experiment import write_json
-from moatless.evaluation.native_public_tools import (
+from repoforge.evaluation.experiment import write_json
+from repoforge.evaluation.native_public_tools import (
     extend_environment, freeze_profile, matplotlib_pre_install, runtime_tools, tree_identity,
 )
 

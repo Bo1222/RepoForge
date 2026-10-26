@@ -9,8 +9,8 @@ import sys
 import importlib.util
 import urllib.request
 
-from moatless.evaluation.experiment import read_json, write_json
-from moatless.runtime.native_tools import tool_process
+from repoforge.evaluation.experiment import read_json, write_json
+from repoforge.runtime.native_tools import tool_process
 
 
 def main():

@@ -4,15 +4,15 @@ import sys
 
 import pytest
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.local_coding import LocalBash, LocalRunTests, LocalTestArgs
-from moatless.actions.bash import BashArgs
-from moatless.actions.run_tests import RunTests, RunTestsArgs
-from moatless.actions.task_state import UpdateTaskStateArgs
-from moatless.execution_memory import classify_completion, failure_records, test_records as recorded_tests
-from moatless.runtime.runtime import RuntimeEnvironment
-from moatless.task_state import EvidenceRef, PlanStep
-from moatless.testing.schema import TestResult as Result, TestStatus as Status
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.local_coding import LocalBash, LocalRunTests, LocalTestArgs
+from repoforge.actions.bash import BashArgs
+from repoforge.actions.run_tests import RunTests, RunTestsArgs
+from repoforge.actions.task_state import UpdateTaskStateArgs
+from repoforge.execution_memory import classify_completion, failure_records, test_records as recorded_tests
+from repoforge.runtime.runtime import RuntimeEnvironment
+from repoforge.task_state import EvidenceRef, PlanStep
+from repoforge.testing.schema import TestResult as Result, TestStatus as Status
 from tests.memory.test_repository_context import execute, setup
 
 
@@ -123,7 +123,7 @@ async def test_blocked_claim_requires_cited_failed_tool_and_retains_claim_proven
 
 @pytest.mark.asyncio
 async def test_environment_change_invalidates_results_and_node_roundtrip_keeps_raw_records(tmp_path):
-    from moatless.node import Node
+    from repoforge.node import Node
 
     agent, root, workspace = await setup(tmp_path, actions=[LocalRunTests()])
     node = await execute(agent, root, LocalTestArgs(command="true"))

@@ -5,8 +5,8 @@ import unittest
 from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
 
-from moatless.runner.runner import JobInfo, JobStatus
-from moatless.runner.storage.memory import InMemoryJobStorage
+from repoforge.runner.runner import JobInfo, JobStatus
+from repoforge.runner.storage.memory import InMemoryJobStorage
 
 
 class TestInMemoryJobStorage(IsolatedAsyncioTestCase):

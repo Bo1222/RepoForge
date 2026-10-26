@@ -2,10 +2,10 @@ import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch, PropertyMock
 
 import pytest
-from moatless.actions.run_tests import RunTests, RunTestsArgs
-from moatless.file_context import FileContext
-from moatless.testing.schema import TestFile, TestResult, TestStatus
-from moatless.workspace import Workspace
+from repoforge.actions.run_tests import RunTests, RunTestsArgs
+from repoforge.file_context import FileContext
+from repoforge.testing.schema import TestFile, TestResult, TestStatus
+from repoforge.workspace import Workspace
 
 
 class TestRunTestsAction:
@@ -104,7 +104,7 @@ class TestRunTestsAction:
         file_context.file_exists.return_value = True
         workspace.runtime.run_tests.return_value = test_results
         # A real input manifest is required even for this output-format test.
-        from moatless.repository.repository import InMemRepository
+        from repoforge.repository.repository import InMemRepository
         repository = InMemRepository({"tests/file1_test.py": "def test_one(): pass\n"}, shadow_mode=True)
         workspace.repository = repository
         file_context = FileContext(repo=repository)

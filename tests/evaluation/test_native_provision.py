@@ -2,7 +2,7 @@
 
 import pytest
 
-from moatless.evaluation.native_provision import NativeProvisioner, native_env_commands
+from repoforge.evaluation.native_provision import NativeProvisioner, native_env_commands
 
 
 PUBLIC = {"instance_id": "pytest-dev__pytest-7490", "repo": "pytest-dev/pytest", "version": "6.0",
@@ -25,8 +25,8 @@ async def test_missing_runtime_never_becomes_ready(tmp_path):
 
 @pytest.mark.asyncio
 async def test_astropy_compatibility_change_gets_a_new_recipe_before_install(tmp_path, monkeypatch):
-    import moatless.evaluation.native_provision as native
-    from moatless.evaluation.experiment import read_json
+    import repoforge.evaluation.native_provision as native
+    from repoforge.evaluation.experiment import read_json
 
     public = {**PUBLIC, "instance_id": "astropy__astropy-8872", "repo": "astropy/astropy", "version": "3.1"}
     provisioner = NativeProvisioner(tmp_path / "preparation", conda="/bin/true")
@@ -53,8 +53,8 @@ async def test_astropy_compatibility_change_gets_a_new_recipe_before_install(tmp
 @pytest.mark.asyncio
 @pytest.mark.parametrize("version,legacy", [("0.22", True), ("1.3", False)])
 async def test_sklearn_legacy_bootstrap_does_not_downgrade_modern_public_recipe(tmp_path, monkeypatch, version, legacy):
-    import moatless.evaluation.native_provision as native
-    from moatless.evaluation.experiment import read_json
+    import repoforge.evaluation.native_provision as native
+    from repoforge.evaluation.experiment import read_json
 
     public = {**PUBLIC, "repo": "scikit-learn/scikit-learn", "version": version}
     provisioner = NativeProvisioner(tmp_path / "preparation", conda="/bin/true")
@@ -71,6 +71,36 @@ async def test_sklearn_legacy_bootstrap_does_not_downgrade_modern_public_recipe(
     assert (native.SCIKIT_PYTEST_BOOTSTRAP in commands) is legacy
     assert any("Cython==0.29.36" in command for command in commands) is legacy
     assert (native.SCIKIT_MODERN_BOOTSTRAP in commands) is (version == "1.3")
+
+
+@pytest.mark.asyncio
+async def test_sklearn_plotting_compatibility_is_frozen_without_mutating_harness(tmp_path, monkeypatch):
+    from copy import deepcopy
+    import repoforge.evaluation.native_provision as native
+    from repoforge.evaluation.experiment import read_json
+    from swebench.harness.constants import MAP_REPO_VERSION_TO_SPECS
+
+    public = {**PUBLIC, "repo": "scikit-learn/scikit-learn", "version": "0.22"}
+    original = deepcopy(MAP_REPO_VERSION_TO_SPECS[public["repo"]][public["version"]])
+    provisioner = NativeProvisioner(tmp_path / "preparation", conda="/bin/true")
+
+    async def stop_before_effects(*args, **kwargs):
+        raise RuntimeError("recipe inspection only")
+
+    monkeypatch.setattr(provisioner, "_run", stop_before_effects)
+    with pytest.raises(RuntimeError, match="recipe inspection"):
+        await provisioner.prepare(public)
+    first = next((tmp_path / "preparation/instances").glob("*/recipe.json"))
+    recipe = read_json(first)
+    assert "matplotlib=3.2.2" in recipe["specs"]["packages"].split()
+    assert any("matplotlib=3.2.2" in command for command in recipe["commands"])
+    assert MAP_REPO_VERSION_TO_SPECS[public["repo"]][public["version"]] == original
+    # A changed compatibility pin cannot silently reuse the old environment.
+    monkeypatch.setattr(native, "SCIKIT_MATPLOTLIB_SPEC", "matplotlib=3.1.3")
+    with pytest.raises(RuntimeError, match="recipe inspection"):
+        await provisioner.prepare(public)
+    assert len(list((tmp_path / "preparation/instances").glob("*/recipe.json"))) == 2
+    assert not list((tmp_path / "preparation/instances").glob("*/ready.json"))
 
 
 @pytest.mark.parametrize("specs", [
@@ -104,7 +134,7 @@ def test_pip_metadata_changes_are_visible_even_when_conda_records_do_not_change(
     assert NativeProvisioner.metadata(tmp_path) == conda
     assert NativeProvisioner.package_metadata(tmp_path) != before
 def test_python36_bootstrap_precedes_requirements_without_changing_runtime_version(tmp_path, monkeypatch):
-    from moatless.evaluation.native_provision import native_env_commands, PYTHON36_BOOTSTRAP
+    from repoforge.evaluation.native_provision import native_env_commands, PYTHON36_BOOTSTRAP
     instance = {"instance_id": "django__django-10914", "repo": "django/django",
                 "version": "3.0", "base_commit": "0" * 40, "problem_statement": "public"}
     specs = {"python": "3.6", "packages": "requirements.txt", "install": "python -m pip install -e ."}

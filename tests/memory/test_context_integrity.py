@@ -2,19 +2,19 @@
 
 import pytest
 
-from moatless.actions.finish import FinishArgs
-from moatless.actions.schema import Observation
-from moatless.actions.view_code import CodeSpan, ViewCodeArgs
-from moatless.file_context import FileContext
-from moatless.message_history.compact import CompactMessageHistoryGenerator
-from moatless.message_history.message_history import MessageHistoryGenerator
-from moatless.message_history.react_compact import ReactCompactMessageHistoryGenerator
-from moatless.message_history.react import ReactMessageHistoryGenerator
-from moatless.message_history.summary import SummaryMessageHistoryGenerator
-from moatless.utils.tokenizer import count_tokens
-from moatless.node import ActionStep, Node
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.finish import FinishArgs
+from repoforge.actions.schema import Observation
+from repoforge.actions.view_code import CodeSpan, ViewCodeArgs
+from repoforge.file_context import FileContext
+from repoforge.message_history.compact import CompactMessageHistoryGenerator
+from repoforge.message_history.message_history import MessageHistoryGenerator
+from repoforge.message_history.react_compact import ReactCompactMessageHistoryGenerator
+from repoforge.message_history.react import ReactMessageHistoryGenerator
+from repoforge.message_history.summary import SummaryMessageHistoryGenerator
+from repoforge.utils.tokenizer import count_tokens
+from repoforge.node import ActionStep, Node
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 def trajectory():

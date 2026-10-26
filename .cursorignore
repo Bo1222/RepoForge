@@ -6,6 +6,6 @@ directories/
 logs/
 repos/
 test_results/
-.moatless/projects
-.moatless/evaluation_summaries.json
+.repoforge/projects
+.repoforge/evaluation_summaries.json
 .ruff_cache/

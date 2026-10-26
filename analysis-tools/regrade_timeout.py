@@ -23,11 +23,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from moatless.evaluation import t7
-from moatless.evaluation.experiment import load_manifest, read_json, write_json
-from moatless.evaluation.experiment_native import release_job_workspace
-from moatless.evaluation.native_execution import NativeExecutor
-from moatless.evaluation.native_grading import NativeGrader
+from repoforge.evaluation import t7
+from repoforge.evaluation.experiment import load_manifest, read_json, write_json
+from repoforge.evaluation.experiment_native import release_job_workspace
+from repoforge.evaluation.native_execution import NativeExecutor
+from repoforge.evaluation.native_grading import NativeGrader
 
 
 def sha(path):

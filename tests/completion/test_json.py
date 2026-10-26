@@ -3,9 +3,9 @@ from unittest.mock import patch, AsyncMock
 
 import pytest
 from litellm.types.utils import ModelResponse, Usage, Message
-from moatless.completion.base import CompletionRetryError, LLMResponseFormat
-from moatless.completion.json import JsonCompletionModel
-from moatless.exceptions import CompletionRejectError, CompletionRuntimeError
+from repoforge.completion.base import CompletionRetryError, LLMResponseFormat
+from repoforge.completion.json import JsonCompletionModel
+from repoforge.exceptions import CompletionRejectError, CompletionRuntimeError
 from pydantic import Field
 
 

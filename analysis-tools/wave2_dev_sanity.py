@@ -20,11 +20,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from dotenv import load_dotenv
 
-from moatless.evaluation import t7
-from moatless.evaluation.experiment import (
+from repoforge.evaluation import t7
+from repoforge.evaluation.experiment import (
     aggregate, content_hash, freeze_source, load_manifest, now, read_json, write_json,
 )
-from moatless.evaluation.experiment_native import (
+from repoforge.evaluation.experiment_native import (
     grade_job, release_job_workspace, run_job, validate_agent_tests,
 )
 
@@ -68,7 +68,7 @@ def main():
     manifest["baseline_commit"] = __import__("subprocess").check_output(
         ["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     manifest["diff"] = __import__("subprocess").check_output(
-        ["git", "diff", "HEAD", "--", "moatless", "scripts"], cwd=root, text=True)
+        ["git", "diff", "HEAD", "--", "repoforge", "scripts"], cwd=root, text=True)
     manifest["manifest_hash"] = content_hash(manifest)
     write_json(output / "manifest.json", manifest)
 

@@ -2,10 +2,10 @@ from copy import deepcopy
 
 import pytest
 
-from moatless.evaluation.experiment import content_hash, sha, write_json
-from moatless.evaluation.experiment_inputs import embedding_service_identity
-from moatless.evaluation.experiment_native import verify_index_receipt
-from moatless.index.settings import IndexSettings
+from repoforge.evaluation.experiment import content_hash, sha, write_json
+from repoforge.evaluation.experiment_inputs import embedding_service_identity
+from repoforge.evaluation.experiment_native import verify_index_receipt
+from repoforge.index.settings import IndexSettings
 
 
 def fixture_index(tmp_path):

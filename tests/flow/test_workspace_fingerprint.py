@@ -2,7 +2,7 @@
 import subprocess
 from types import SimpleNamespace
 
-from moatless.flow.durable import workspace_fingerprint
+from repoforge.flow.durable import workspace_fingerprint
 
 
 def git(repo, *args):

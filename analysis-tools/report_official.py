@@ -141,7 +141,7 @@ def build(candidate, artifacts, official, phase_filter):
         phase = row["phase"]
         if phase_filter != "all" and phase != phase_filter:
             continue
-        model = f"moatless-t7-{phase}-{row['variant']}"
+        model = f"repoforge-t7-{phase}-{row['variant']}"
         official_row = pick(results, model, row["instance_id"])
         official_resolved = official_row.get("resolved") if official_row else None
         official_status = official_row.get("status") if official_row else "not_run"

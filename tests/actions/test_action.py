@@ -1,12 +1,12 @@
 from typing import Union, Type
 
 import pytest
-from moatless.actions.action import Action, ActionArguments
-from moatless.actions.find_function import FindFunction
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.semantic_search import SemanticSearch, SemanticSearchArgs
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.actions.view_code import ViewCode, ViewCodeArgs
+from repoforge.actions.action import Action, ActionArguments
+from repoforge.actions.find_function import FindFunction
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.semantic_search import SemanticSearch, SemanticSearchArgs
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.actions.view_code import ViewCode, ViewCodeArgs
 from pydantic import Field
 
 

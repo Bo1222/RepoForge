@@ -1,9 +1,9 @@
 from unittest.mock import Mock
 
 import pytest
-from moatless.actions.insert_line import InsertLine, InsertLinesArgs
-from moatless.file_context import FileContext
-from moatless.repository.repository import InMemRepository
+from repoforge.actions.insert_line import InsertLine, InsertLinesArgs
+from repoforge.file_context import FileContext
+from repoforge.repository.repository import InMemRepository
 
 
 @pytest.fixture

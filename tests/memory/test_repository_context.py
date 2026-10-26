@@ -4,21 +4,21 @@ import os
 
 import pytest
 
-from moatless.actions.bash import BashArgs
-from moatless.actions.finish import Finish
-from moatless.actions.local_coding import LocalBash, LocalReadFile, LocalSearch
-from moatless.actions.read_file import ReadFile, ReadFileArgs
-from moatless.actions.grep_tool import GrepToolArgs
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.agent.agent import ActionAgent
-from moatless.cli.environment import SessionEnvironment
-from moatless.file_context import FileContext
-from moatless.message_history.managed import ManagedMessageHistoryGenerator
-from moatless.message_history.policy import ContextBudgetExceeded, ContextPolicy
-from moatless.node import ActionStep, Node
-from moatless.repository.file import FileRepository
-from moatless.repository_context import refresh_context, workspace_version
-from moatless.workspace import Workspace
+from repoforge.actions.bash import BashArgs
+from repoforge.actions.finish import Finish
+from repoforge.actions.local_coding import LocalBash, LocalReadFile, LocalSearch
+from repoforge.actions.read_file import ReadFile, ReadFileArgs
+from repoforge.actions.grep_tool import GrepToolArgs
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.cli.environment import SessionEnvironment
+from repoforge.file_context import FileContext
+from repoforge.message_history.managed import ManagedMessageHistoryGenerator
+from repoforge.message_history.policy import ContextBudgetExceeded, ContextPolicy
+from repoforge.node import ActionStep, Node
+from repoforge.repository.file import FileRepository
+from repoforge.repository_context import refresh_context, workspace_version
+from repoforge.workspace import Workspace
 from scripts.migration_smoke import ScriptedCompletion
 
 

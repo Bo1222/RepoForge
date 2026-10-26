@@ -48,7 +48,7 @@ def main():
     parser.add_argument("--seed", type=int, default=20261021)
     args = parser.parse_args()
     candidate = args.candidate.resolve()
-    frozen = json.loads((candidate.parents[2] / "moatless/evaluation/profiles/frozen_split.json").read_text())
+    frozen = json.loads((candidate.parents[2] / "repoforge/evaluation/profiles/frozen_split.json").read_text())
     used = set(frozen["split"]["dev"]) | set(frozen["split"]["holdout"])
     from datasets import load_dataset
     os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
@@ -65,7 +65,7 @@ def main():
     result = {
         "dataset": "princeton-nlp/SWE-bench_Verified",
         "source_frozen_split_sha256": hashlib.sha256(
-            (candidate.parents[2] / "moatless/evaluation/profiles/frozen_split.json").read_bytes()).hexdigest(),
+            (candidate.parents[2] / "repoforge/evaluation/profiles/frozen_split.json").read_bytes()).hexdigest(),
         "seed": args.seed,
         "method": "repository-stratified largest remainder, without replacement; disjoint dev30/holdout50",
         "used_t7_count": len(used),

@@ -150,7 +150,7 @@ def write_predictions(artifacts, phase, variant, rows):
             patch = Path(row["patch_path"]).read_text()
             stream.write(json.dumps({
                 "instance_id": row["instance_id"],
-                "model_name_or_path": f"moatless-t7-{phase}-{variant}",
+                "model_name_or_path": f"repoforge-t7-{phase}-{variant}",
                 "model_patch": patch,
             }, ensure_ascii=False) + "\n")
     return {"path": str(path), "sha256": sha_file(path),

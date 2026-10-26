@@ -205,7 +205,7 @@ cmd_run() {
 import json, sys
 from pathlib import Path
 from types import SimpleNamespace
-from moatless.flow.durable import workspace_fingerprint
+from repoforge.flow.durable import workspace_fingerprint
 experiment = Path(sys.argv[1])
 for identity, prepared in json.loads((experiment / "provision-native.json").read_text()).items():
     workspace = SimpleNamespace(repository=SimpleNamespace(repo_path=prepared["environment"]["repo"], shadow_mode=True),

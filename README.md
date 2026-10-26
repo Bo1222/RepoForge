@@ -1,152 +1,67 @@
-# Moatless Tools
+# RepoForge
+
 English | [中文](README.zh.md)
 
-Moatless Tools is a hobby project where I experiment with some ideas I have about how LLMs can be used to edit code in large existing codebases. I believe that rather than relying on an agent to reason its way to a solution, it is crucial to build good tools to insert the right context into the prompt and handle the response.
+RepoForge is a repository-level coding agent that takes an issue through code search, context assembly, editing, testing and patch delivery. It combines recoverable LangGraph execution, version-aware Managed Context, local code retrieval and independent evaluation.
 
-_For the implementation used in the paper [SWE-Search: Enhancing Software Agents with Monte Carlo Tree Search and Iterative Refinement](https://arxiv.org/abs/2410.20285), please see [moatless-tree-search](https://github.com/aorwall/moatless-tree-search)._
+The interactive Textual/Rich CLI supports chat, isolated Git worktrees, follow-up tasks, cancellation, recovery and patch export. Batch evaluation supports two complete configurations: A0 with ActionPolicy disabled, and O2 fixed (`a5`) with deterministic action control enabled. Both share the same model, context, tools, retrieval and environment; the interactive CLI currently supports policy-off sessions.
 
-## SWE-Bench
-I use the [SWE-bench benchmark](https://www.swebench.com/) as a way to verify my ideas. 
+## Install and run
 
-* Claude 4 Sonnet - 70.8% solve rate, $0.63 per instance.
-
-# Try it out
-
-## Local execution roadmap
-
-The official Moatless web UI, FastAPI backend and custom Docker execution route have been retired. The current checkout supports Python library/demo entrypoints, local AsyncioRunner, KubernetesRunner and existing storage backends.
-
-The local Textual/Rich CLI uses a shared SessionService, LangGraphFlow, with ordinary chat or an isolated Git worktree for coding. It supports reading, search, editing, commands, tests, follow-up tasks, cancellation, recovery, and patch export. See the [CLI guide](docs/interactive_cli.md).
+Python 3.10–3.13 is supported. Install from this repository:
 
 ```bash
-uv run moatless chat --config moatless/evaluation/profiles/flash_nonthinking_a0.json
-# Coding tasks:
-uv run moatless chat --repo /path/to/clean-repo --config moatless/evaluation/profiles/flash_nonthinking_a0.json
-uv run moatless run --repo /path/to/clean-repo --task-file task.md --config moatless/evaluation/profiles/flash_nonthinking_a0.json
-uv run moatless resume SESSION_ID
+git clone https://github.com/Bo1222/IssueAgent.git RepoForge
+cd RepoForge
+uv sync --frozen
+cp .env.example .env
+# Set the provider credentials needed for your model in .env.
+uv run repoforge chat
+uv run repoforge chat --repo /path/to/clean-repo
+uv run repoforge run --repo /path/to/clean-repo --task-file task.md --export /tmp/task-export
+uv run repoforge resume SESSION_ID
+# Equivalent module entry point:
+uv run python -m repoforge.cli --help
 ```
 
-Enter sends; Shift+Enter inserts a newline; `/help` lists commands. Omit --repo for ordinary chat; /model displays the configured model locally; /repo PATH starts a new coding context. Coding requires a clean source repository. Changes stay in the worktree until `/apply` previews the patch and asks for confirmation.
+The default CLI model is `openai/deepseek-flash`, using `DEEPSEEK_API_KEY` with native thinking disabled. Coding sessions require a clean source repository; changes are made in a separate worktree. Tools execute with the current user's permissions. Worktrees isolate code changes but do not provide a process security sandbox.
 
-New CLI sessions default to `openai/deepseek-flash` through DeepSeek's OpenAI-compatible API, with `DEEPSEEK_API_KEY` and native thinking explicitly disabled. The example profile opts into Managed facts with TaskState and repository instructions disabled. Saved sessions retain their original configuration. `Thoughts in Action` in the historical benchmark table controls action formatting, not provider-native reasoning; the table includes both Chat and Reasoner models.
+Project configuration uses `.repoforge/` and `REPOFORGE_*` environment variables. Interactive sessions default to `~/.repoforge/cli`. See the [CLI guide](docs/interactive_cli.md) and [rename notes](docs/renaming.md) for existing installations.
 
-T4/T5 staged experiment commands and current acceptance limits are documented in [the execution plan](docs/T4_T5_execution_plan.md) and [report](docs/T4_T5_execution_report.md). The official SWE-bench Harness remains separate from generation.
+## Architecture
 
-The CLI does not depend on Docker. Worktrees isolate code changes; tools run with the current user's permissions and do not provide a process or filesystem security sandbox. Initial acceptance targets Python/pytest repositories and requires a clean source repository.
+- **Agent execution:** LangGraph phases for preparation, action generation, policy decisions, execution, observation recording and iteration commits; SQLite checkpoints and an outcome journal support recovery with configuration and workspace checks.
+- **Tools:** structured arguments route to reading, search, editing, commands and tests; source versions and test receipts keep observations tied to the code they describe.
+- **Managed Context:** budgeted context reconstruction, stale evidence detection, duplicate removal, current code views and paired tool calls/results. The configured input cap is 32,768 estimated tokens.
+- **Retrieval:** local BGE-M3/FAISS, symbol and lexical search, lexical fallback and RRF fusion.
+- **Evaluation:** freeze generated product patches before independent native grading; retain reports, provenance and documented adjudications.
 
-## Install from source
+See the [architecture](docs/architecture.md), [Loop and context implementation](docs/agent_execution_context.md), and [project presentation](docs/project_resume.md).
 
-Clone the repository and install using uv
+## Recorded evaluation
+
+The internal evaluation combines 30 development and 50 holdout tasks from SWE-bench Verified, with one run per configuration on each task:
+
+| Configuration | Native local resolved | Graded runs |
+| --- | ---: | ---: |
+| A0, policy off | 44/80 (55%) | 80/80 |
+| O2 fixed, `a5` | 46/80 (57.5%) | 80/80 |
+
+The paired point estimate is +2.5 percentage points, with a 95% bootstrap interval of [-5, +10] percentage points and exact McNemar p=0.7539. This does not establish a stable policy improvement. The 80 tasks include development data and a documented grading-rule correction; the official SWE-bench Harness was **not_run**.
+
+O2's recorded context builds all fit the configured estimated input budget. Across each task's cumulative, deduplicated search and ViewCode observations, the first 5/10 files cover at least one reference-modified file on 88.75%/96.25% of tasks. These are trajectory-level file coverage metrics, not single-query vector Recall@K or causal component gains.
+
+The [publication bundle](reports/o2-a0/README.md) preserves generated patches, original reports, source fingerprints and adjudications. [Evaluation details](docs/evaluation.md) retain the original splits, sensitivity analysis and limitations. [Experiment commands](O2_A0_EXPERIMENT.md) create new frozen candidates; historical results retain their original source identity.
+
+## Development
+
+Run offline checks without invoking a model:
 
 ```bash
-# Clone the repository
-git clone https://github.com/aorwall/moatless-tools.git
-cd moatless-tools
-
-# Install using uv
-uv sync
+uv run --frozen python -m pytest tests/test_renaming_compat.py tests/policy -q
+uv run --frozen python -m pytest tests/flow/test_langgraph_flow.py tests/flow/test_durable_recovery.py -q
 ```
 
+Provider integrations and index-dependent tests require their respective external services or local assets. See [CHANGELOG.md](CHANGELOG.md) for the current delivery.
 
-Copy `.env.example` to `.env`, set provider keys as needed, and set `MOATLESS_DIR` for local configuration and trajectories. The default runner is `asyncio`; selecting the retired `docker` runner raises an explicit error.
-
-# Code Examples
-
-## Basic agent flow
-
-```python
-from moatless.actions import Respond
-from moatless.agent import ActionAgent
-from moatless.completion.tool_call import ToolCallCompletionModel
-
-completion_model = ToolCallCompletionModel(
-    model="gpt-4.1-mini",
-    temperature=0.0,
-    model_api_key=""
-)
-
-agent = ActionAgent(
-    completion_model=completion_model,
-    system_prompt="You are a helpful assistant that can answer questions.",
-    actions=[
-        Respond()
-    ]
-)
-
-observation = await agent.run_simple("Hello")
-
-print(observation.message)
-```
-
-## Code inspector agent
-
-[See notebook](notebooks/code_inspector_agent.ipynb)
-
-# SWE-bench: patch generation and independent grading
-
-Generate agent patches and trajectories through the retained Python Flow/Manager entrypoints; the CLI exports patches and trajectories with `/export` or `--export`, and standard predictions when a valid `instance_id` is supplied. A local pytest pass is development feedback, not official `resolved` evidence. Valid prediction records contain `instance_id`, `model_name_or_path` and `model_patch`.
-
-Run the official Harness separately on an existing predictions file:
-
-```bash
-uv run python -m swebench.harness.run_evaluation \
-  --dataset_name princeton-nlp/SWE-bench_Lite \
-  --predictions_path predictions.jsonl \
-  --max_workers 1 \
-  --run_id local-grading
-```
-
-The standard local official Harness requires Docker; it is independent of the retired web UI and custom Moatless images. See the [official quickstart](https://www.swebench.com/SWE-bench/guides/quickstart/). Keep official labels and hidden tests out of the agent's context. Record patch generation and grading separately; when grading has not run, mark it **not graded**. Third-party Docker dependencies required by `swebench` remain in the lock file.
-
-The configuration tables below describe existing Flow/Manager configuration, not an interactive CLI. Historical model results are upstream results, not validation of this checkout.
-
-## Flows 
-Existing flow IDs available to FlowManager/EvaluationManager:
-
-| Flow ID | Format | Best Suited For | Default Model |
-|---------|--------|-----------------|---------------|
-| swebench_tools | Function calling | Models with native function calling support | gpt-4o-mini-2024-07-18 |
-| swebench_tools_and_reasoning | Function calling | Reasoning models with native function calling support | claude-sonnet-4-20250514 |
-| swebench_react | ReACT | Open source models without native function calling support | openrouter/mistralai/devstral-small |
-| swebench_react_reasoning | ReACT | Reasoning models without function calling support | openrouter/deepseek/deepseek-r1-0528 |
-
-## Model Configuration
-
-EvaluationManager supports model configuration through these parameters:
-
-### Model Options
-
-- `model_id`: Specify a complete model configuration ID. This replaces the entire completion model configuration including temperature, max tokens, and all other settings.
-- `litellm_model_name`: Override only the [LiteLLM model name](https://docs.litellm.ai/docs/providers) while keeping all other completion model settings (temperature, max tokens, etc.) from the flow or model configuration.
-
-### Verified Models
-
-Default model configurations are provided for verified models. Note that other models may work but have not been extensively tested. 
-Verified models are models that have been tested and found to work with the [Verified Mini subset](https://huggingface.co/datasets/MariusHobbhahn/swe-bench-verified-mini) of the SWE-Bench dataset.
-
-When specifying just the `model_id` argument, the following configurations are used:
-
-| Model | Response Format | Message History | Thoughts in Action | Verified Mini |
-|-------|----------------|-----------------|-------------------|---------------|
-| claude-3-5-sonnet-20241022 | tool_call | messages | no | [46%](https://experiments.moatless.ai/evaluations/20250119_claude_3_5_sonnet_20241022_0_0_n_20_fmt_tool_call_verified_mini) | 
-| claude-3-5-haiku-20241022 | tool_call | messages | no | [28%](https://experiments.moatless.ai/evaluations/20250118_claude_3_5_haiku_20241022_0_0_n_20_fmt_tool_call_verified_mini) |
-| gpt-4o-2024-11-20 | tool_call | messages | yes | [32%](https://experiments.moatless.ai/evaluations/20250119_azure_gpt_4o_0_0_n_20_fmt_tool_call_thoughts-in-action_1_verified_mini) |
-| gpt-4o-mini-2024-07-18 | tool_call | messages | yes | [16%](https://experiments.moatless.ai/evaluations/20250118_gpt_4o_mini_2024_07_18_0_0_n_20_fmt_tool_call_thoughts-in-action_6_verified_mini) |
-| o1-mini-2024-09-12 | react | react | no (disabled thoughts) | [28%](https://experiments.moatless.ai/evaluations/20250114_o1_mini_2024_09_12_0_0_n_20_fmt_react_hist_react_verified_mini) |
-| deepseek/deepseek-chat | react | react | no | [36%](https://experiments.moatless.ai/evaluations/20250118_deepseek_deepseek_chat_0_0_n_20_fmt_react_verified_mini) |
-| deepseek/deepseek-reasoner | react | react | no (disabled thoughts) | [50%](https://experiments.moatless.ai/evaluations/20250120_deepseek_deepseek_reasoner_None_n_20_fmt_react_verified_mini) |
-| gemini/gemini-2.0-flash-exp | react | react | no | [38%](https://experiments.moatless.ai/evaluations/20250119_gemini_gemini_2.0_flash_exp_0_0_n_20_fmt_react_verified_mini) |
-| openrouter/meta-llama/llama-3.1-70b-instruct | react | react | no | - |
-| openrouter/meta-llama/llama-3.1-405b-instruct | react | react | no | [28%](https://experiments.moatless.ai/evaluations/20250119_openai_meta_llama_Meta_Llama_3.1_405B_Instruct_FP8_0_0_n_20_fmt_react_verified_mini) | - |
-| openrouter/qwen/qwen-2.5-coder-32b-instruct | react | react | no | [32%](https://experiments.moatless.ai/evaluations/20250119_openai_Qwen_Qwen2.5_Coder_32B_Instruct_0_0_n_20_fmt_react_verified_mini) | - |
-
-## Dataset splits
-
-Existing dataset names for EvaluationManager:
-
-| Split Name | Description | Instance Count |
-|------------|-------------|----------------|
-| lite | All instances from the lite dataset | 300 | 
-| verified | All instances from the verified dataset | 500 | 
-| verified_mini | [MariusHobbhahn/swe-bench-verified-mini](https://huggingface.co/datasets/MariusHobbhahn/swe-bench-verified-mini), a subset of SWE-Bench Verified  | 50 |
-| lite_and_verified_solvable | Instances that exist in both lite and verified datasets and have at least one solved submission to SWE-Bench | 84 |
+License and author attribution are preserved in [LICENSE](LICENSE), source notices and [CITATION.cff](CITATION.cff). Code sources include [Moatless Tools](https://github.com/aorwall/moatless-tools).

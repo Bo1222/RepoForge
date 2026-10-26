@@ -1,7 +1,7 @@
 import pytest
 
-from moatless.actions.test_targets import is_verifiable_test_module
-from moatless.repository.repository import InMemRepository
+from repoforge.actions.test_targets import is_verifiable_test_module
+from repoforge.repository.repository import InMemRepository
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def test_rejects_support_or_product_modules(repository, path):
 
 
 def test_discover_ranks_related_test_module(repository):
-    from moatless.actions.test_targets import discover_test_targets
+    from repoforge.actions.test_targets import discover_test_targets
     repository.save_file("tests/test_numbers.py", "from package.numbers import add\n\ndef test_add():\n    assert add(1, 2) == 3\n")
     repository.save_file("tests/test_strings.py", "def test_string():\n    assert True\n")
     ranked = discover_test_targets(repository, ["package/numbers.py"],
@@ -50,7 +50,7 @@ def test_discover_ranks_related_test_module(repository):
 
 
 def test_require_relation_drops_unrelated_test_modules(repository):
-    from moatless.actions.test_targets import discover_test_targets
+    from repoforge.actions.test_targets import discover_test_targets
     repository.save_file("tests/test_numbers.py", "from package.numbers import add\n\ndef test_add():\n    assert add(1, 2) == 3\n")
     ranked = discover_test_targets(
         repository, ["package/numbers.py"],
@@ -62,7 +62,7 @@ def test_require_relation_drops_unrelated_test_modules(repository):
 
 
 def test_is_related_test_uses_name_or_import(repository):
-    from moatless.actions.test_targets import is_related_test
+    from repoforge.actions.test_targets import is_related_test
     repository.save_file("package/numbers.py", "def add(a, b):\n    return a + b\n")
     repository.save_file("tests/test_numbers.py", "from package.numbers import add\n\ndef test_add():\n    assert add(1, 2) == 3\n")
     assert is_related_test(repository, "tests/test_numbers.py", ["package/numbers.py"])

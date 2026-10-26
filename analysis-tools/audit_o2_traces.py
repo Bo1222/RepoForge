@@ -12,7 +12,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from moatless.utils.file import is_test
+from repoforge.utils.file import is_test
 
 
 def read(path, default=None):

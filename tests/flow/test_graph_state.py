@@ -6,13 +6,13 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.agent.agent import ActionAgent
-from moatless.flow.graph_state import initial_state, restore_nodes, snapshot_nodes
-from moatless.node import Node
-from moatless.repository.repository import InMemRepository
-from moatless.runtime.runtime import NoEnvironment
-from moatless.workspace import Workspace
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.flow.graph_state import initial_state, restore_nodes, snapshot_nodes
+from repoforge.node import Node
+from repoforge.repository.repository import InMemRepository
+from repoforge.runtime.runtime import NoEnvironment
+from repoforge.workspace import Workspace
 from scripts.migration_smoke import ScriptedCompletion, response
 
 

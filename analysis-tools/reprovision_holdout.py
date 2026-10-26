@@ -23,8 +23,8 @@ import time
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from moatless.evaluation.experiment import content_hash, now, public_instance, read_json, sha, write_json, append_json
-from moatless.evaluation.native_provision import (
+from repoforge.evaluation.experiment import content_hash, now, public_instance, read_json, sha, write_json, append_json
+from repoforge.evaluation.native_provision import (
     ASTROPY_COMPATIBILITY_BOOTSTRAP, PYTHON36_BOOTSTRAP, SCIKIT_CYTHON_BOOTSTRAP,
     SCIKIT_MODERN_BOOTSTRAP, SCIKIT_PYTEST_BOOTSTRAP, NativeProvisioner,
 )

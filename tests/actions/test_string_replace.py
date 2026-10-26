@@ -4,11 +4,11 @@ from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
-from moatless.actions.schema import Observation
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.file_context import FileContext, ContextFile
-from moatless.repository.repository import InMemRepository
-from moatless.workspace import Workspace
+from repoforge.actions.schema import Observation
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.file_context import FileContext, ContextFile
+from repoforge.repository.repository import InMemRepository
+from repoforge.workspace import Workspace
 
 
 def dedent(text):

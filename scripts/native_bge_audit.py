@@ -12,10 +12,10 @@ from unittest.mock import patch
 
 from llama_index.core.schema import MetadataMode
 
-from moatless.evaluation.experiment import content_hash, sha, write_json
-from moatless.index.code_index import CodeIndex
-from moatless.index.settings import IndexSettings
-from moatless.repository import FileRepository
+from repoforge.evaluation.experiment import content_hash, sha, write_json
+from repoforge.index.code_index import CodeIndex
+from repoforge.index.settings import IndexSettings
+from repoforge.repository import FileRepository
 
 
 def audit(repo, settings, runtime, output):
@@ -31,7 +31,7 @@ def audit(repo, settings, runtime, output):
 
     # Observe the production splitter/metadata path immediately before embedding.
     # Raising here prevents both inference and publication of a partial index.
-    with patch("moatless.index.code_index.IngestionPipeline.run", capture):
+    with patch("repoforge.index.code_index.IngestionPipeline.run", capture):
         try:
             index = CodeIndex(file_repo=FileRepository(repo_path=str(repo)), settings=settings)
             index.run_ingestion(repo_path=str(repo), num_workers=1)

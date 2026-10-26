@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.respond import Respond, RespondArgs
-from moatless.actions.think import Think, ThinkArgs
-from moatless.agent.agent import ActionAgent
-from moatless.completion.schema import ResponseSchema
-from moatless.exceptions import CompletionRejectError, RejectError
-from moatless.flow.loop import AgenticLoop
-from moatless.node import ActionStep
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.respond import Respond, RespondArgs
+from repoforge.actions.think import Think, ThinkArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.completion.schema import ResponseSchema
+from repoforge.exceptions import CompletionRejectError, RejectError
+from repoforge.flow.loop import AgenticLoop
+from repoforge.node import ActionStep
 from scripts.migration_smoke import ScriptedCompletion, replay, response, historical_test_projection
 
 BASELINE = Path(__file__).resolve().parents[2] / "experiments/baselines/M0"

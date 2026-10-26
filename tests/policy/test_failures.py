@@ -1,6 +1,6 @@
 import pytest
 
-from moatless.policy.failures import FailureKind, interpret
+from repoforge.policy.failures import FailureKind, interpret
 
 
 def props(**changes):

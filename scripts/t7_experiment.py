@@ -9,11 +9,11 @@ import tempfile
 from dotenv import load_dotenv
 from filelock import FileLock
 
-from moatless.evaluation.experiment import (
+from repoforge.evaluation.experiment import (
     aggregate, freeze_source, load_manifest, now, read_json, sha,
     validate_execution_source, write_json,
 )
-from moatless.evaluation import t7
+from repoforge.evaluation import t7
 
 SUITES = ["tests/actions/test_t6_tool_contracts.py", "tests/policy", "tests/memory",
           "tests/flow", "tests/agent/test_public_steps.py", "tests/cli/test_managed_sessions.py",

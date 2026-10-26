@@ -42,8 +42,8 @@ def test_freeze_refuses_executed_job_before_mutating_artifacts(tmp_path):
 
 
 def test_freeze_refuses_changed_candidate_before_creating_snapshot(tmp_path):
-    (tmp_path / "moatless").mkdir()
-    (tmp_path / "moatless" / "changed.py").write_text("changed = True\n")
+    (tmp_path / "repoforge").mkdir()
+    (tmp_path / "repoforge" / "changed.py").write_text("changed = True\n")
     (tmp_path / "manifest.json").write_text(json.dumps({"candidate_source_hashes": {}}))
     (tmp_path / "dev-jobs.jsonl").write_text(json.dumps({"generation_status": "not_run"}) + "\n")
     with pytest.raises(ValueError, match="changed after preparation"):

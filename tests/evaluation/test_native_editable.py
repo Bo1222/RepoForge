@@ -3,8 +3,8 @@ import subprocess
 
 import pytest
 
-from moatless.evaluation.native_provision import NativeProvisioner
-from moatless.evaluation.native_grading import NativeGrader
+from repoforge.evaluation.native_provision import NativeProvisioner
+from repoforge.evaluation.native_grading import NativeGrader
 
 
 def test_private_editable_routes_match_namespace_source_and_preserve_other_packages(tmp_path):

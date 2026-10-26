@@ -2,8 +2,8 @@ import subprocess
 
 import pytest
 
-from moatless.evaluation.experiment import write_json
-from moatless.evaluation.native_provision import NativeProvisioner, SCIKIT_CYTHON_BOOTSTRAP
+from repoforge.evaluation.experiment import write_json
+from repoforge.evaluation.native_provision import NativeProvisioner, SCIKIT_CYTHON_BOOTSTRAP
 
 
 def cached_fixture(tmp_path):

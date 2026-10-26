@@ -5,9 +5,9 @@ import shutil
 
 from filelock import FileLock
 
-from moatless.evaluation.experiment import load_manifest, sha, validate_execution_source, write_json
-from moatless.evaluation import native_gate
-from moatless.evaluation.configuration_bindings import tool_bindings  # noqa: F401
+from repoforge.evaluation.experiment import load_manifest, sha, validate_execution_source, write_json
+from repoforge.evaluation import native_gate
+from repoforge.evaluation.configuration_bindings import tool_bindings  # noqa: F401
 
 
 def audit_configuration(output, manifest):

@@ -10,18 +10,18 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from moatless.actions.run_tests import RunTestsArgs
-from moatless.actions.string_replace import StringReplaceArgs
-from moatless.actions.verified_finish import VerifiedFinishArgs
-from moatless.actions.view_code import CodeSpan, ViewCodeArgs
-from moatless.evaluation.experiment import read_json, verify_answer, write_json
+from repoforge.actions.run_tests import RunTestsArgs
+from repoforge.actions.string_replace import StringReplaceArgs
+from repoforge.actions.verified_finish import VerifiedFinishArgs
+from repoforge.actions.view_code import CodeSpan, ViewCodeArgs
+from repoforge.evaluation.experiment import read_json, verify_answer, write_json
 
 
 async def run(args):
     from litellm.types.utils import ModelResponse
     import litellm
-    import moatless.evaluation.generation as worker
-    from moatless.index.code_index import CodeIndex
+    import repoforge.evaluation.generation as worker
+    from repoforge.index.code_index import CodeIndex
     import scripts.t4_cli_probe
 
     scripts.t4_cli_probe.model_metadata = lambda: {"id": "deepseek-flash", "name": "DeepSeek-V4.1-Flash", "source": "fixture"}
@@ -52,7 +52,7 @@ async def run(args):
     answer = verify_answer(args.output, bundle["job"])
     trajectory = read_json(args.output / "trajectory.json")
     observations = [step["observation"] for node in trajectory["nodes"] for step in node.get("action_steps", [])
-                    if step["action"]["action_args_class"] == "moatless.actions.run_tests.RunTestsArgs"]
+                    if step["action"]["action_args_class"] == "repoforge.actions.run_tests.RunTestsArgs"]
     codes = [obs["properties"]["return_code"] for obs in observations]
     generation = read_json(args.output / "generation.json")
     passed = len(calls) == 5 and codes == [1, 0] and generation["generation_status"] == "completed"

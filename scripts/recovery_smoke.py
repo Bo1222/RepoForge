@@ -10,14 +10,14 @@ import json
 import os
 from pathlib import Path
 
-from moatless.actions.read_file import ReadFile, ReadFileArgs
-from moatless.actions.respond import Respond, RespondArgs
-from moatless.actions.string_replace import StringReplace, StringReplaceArgs
-from moatless.agent.agent import ActionAgent
-from moatless.flow.durable import OutcomeJournal, RecoveryConflict
-from moatless.flow.langgraph_flow import LangGraphFlow
-from moatless.repository.file import FileRepository
-from moatless.workspace import Workspace
+from repoforge.actions.read_file import ReadFile, ReadFileArgs
+from repoforge.actions.respond import Respond, RespondArgs
+from repoforge.actions.string_replace import StringReplace, StringReplaceArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.flow.durable import OutcomeJournal, RecoveryConflict
+from repoforge.flow.langgraph_flow import LangGraphFlow
+from repoforge.repository.file import FileRepository
+from repoforge.workspace import Workspace
 from scripts.migration_smoke import SOURCE, ScriptedCompletion, response
 
 
@@ -40,10 +40,10 @@ async def main():
     scripted_actions = [ReadFileArgs(file_path="calc.py"),
                         StringReplaceArgs(path="calc.py", old_str="return a - b", new_str="return a + b")]
     if args.swe_bundle:
-        from moatless.evaluation.generation import environment_identity, load_bundle
-        from moatless.evaluation.experiment import read_json, write_json
-        from moatless.runtime.local import SweBenchLocalEnvironment
-        from moatless.actions.run_tests import RunTests, RunTestsArgs
+        from repoforge.evaluation.generation import environment_identity, load_bundle
+        from repoforge.evaluation.experiment import read_json, write_json
+        from repoforge.runtime.local import SweBenchLocalEnvironment
+        from repoforge.actions.run_tests import RunTests, RunTestsArgs
         from scripts.migration_smoke import TEST
         bundle = load_bundle(args.swe_bundle)
         if bundle["instance"]["repo"] != "pytest-dev/pytest":
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         # Test-only timer for sandboxes suppressing cross-thread socketpair
         # wakeups. Real graph/SQLite operations and crash faults are unchanged.
         timer = None
-        if os.environ.get("MOATLESS_TEST_SELECTOR_TICK") == "1":
+        if os.environ.get("REPOFORGE_TEST_SELECTOR_TICK") == "1":
             loop = asyncio.get_running_loop()
             def tick():
                 nonlocal timer

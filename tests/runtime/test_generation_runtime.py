@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from moatless.runtime.local import SweBenchLocalEnvironment
-from moatless.exceptions import RuntimeError
-from moatless.flow.durable import workspace_fingerprint
-from moatless.repository.file import FileRepository
-from moatless.workspace import Workspace
+from repoforge.runtime.local import SweBenchLocalEnvironment
+from repoforge.exceptions import RuntimeError
+from repoforge.flow.durable import workspace_fingerprint
+from repoforge.repository.file import FileRepository
+from repoforge.workspace import Workspace
 
 
 PUBLIC = {"instance_id": "pytest-dev__pytest-7490", "repo": "pytest-dev/pytest",
@@ -95,10 +95,10 @@ async def test_real_command_preserves_quotes_and_timeout_cleanup(tmp_path, monke
 
 @pytest.mark.asyncio
 async def test_nonzero_exit_cannot_be_verified_by_passing_parser(tmp_path, monkeypatch):
-    from moatless.testing.schema import TestResult, TestStatus
+    from repoforge.testing.schema import TestResult, TestStatus
     runtime = SweBenchLocalEnvironment(tmp_path, PUBLIC, None, generation_only=True)
     runtime._execute_command = AsyncMock(return_value=("test passed", 1))
-    monkeypatch.setattr("moatless.runtime.local.parse_log", lambda *a: [
+    monkeypatch.setattr("repoforge.runtime.local.parse_log", lambda *a: [
         TestResult(name="test", file_path="test.py", status=TestStatus.PASSED)])
     results = await runtime.run_tests(test_files=["test.py"])
     assert any(r.status == TestStatus.ERROR for r in results)

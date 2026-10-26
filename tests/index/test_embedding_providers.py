@@ -4,10 +4,10 @@ import httpx
 from openai import AsyncOpenAI, AuthenticationError, OpenAI
 import pytest
 
-from moatless.evaluation.experiment_inputs import embedding_credentials, index_settings_for
-from moatless.index.embed_model import get_embed_model
-from moatless.index.jina import JinaEmbedding
-from moatless.index.settings import IndexSettings
+from repoforge.evaluation.experiment_inputs import embedding_credentials, index_settings_for
+from repoforge.index.embed_model import get_embed_model
+from repoforge.index.jina import JinaEmbedding
+from repoforge.index.settings import IndexSettings
 
 
 def test_local_defaults_and_legacy_index_roundtrip(tmp_path):
@@ -114,7 +114,7 @@ def test_http_failure_does_not_switch_providers():
 
 @pytest.mark.parametrize("dimension", [1024, 1536])
 def test_faiss_dimension_survives_persistence(tmp_path, dimension):
-    from moatless.index.simple_faiss import SimpleFaissVectorStore
+    from repoforge.index.simple_faiss import SimpleFaissVectorStore
     store = SimpleFaissVectorStore.from_defaults(d=dimension)
     assert store.d == store.client.d == dimension
     store.persist(str(tmp_path))
@@ -123,7 +123,7 @@ def test_faiss_dimension_survives_persistence(tmp_path, dimension):
 
 
 def test_jina_token_estimate_works_offline():
-    from moatless.utils.tokenizer import _hf_tokenizers, count_tokens
+    from repoforge.utils.tokenizer import _hf_tokenizers, count_tokens
     assert count_tokens("def add(a, b): return a + b", "jina-embeddings-v3") > 0
     assert "jina-embeddings-v3" not in _hf_tokenizers
 
@@ -150,7 +150,7 @@ def test_jina_zero_dimensions_are_rejected(monkeypatch):
 
 
 def test_jina_total_tokens_recorded_without_inventing_a_price(tmp_path):
-    from moatless.evaluation.experiment_usage import SDKRecorder
+    from repoforge.evaluation.experiment_usage import SDKRecorder
     recorder = SDKRecorder(tmp_path, {"embedding": {}})
     identity, start = recorder.begin("embedding", {"model": "jina-embeddings-v3", "input": "synthetic"})
     recorder.end(identity, start, "embedding", "jina-embeddings-v3", response={

@@ -5,10 +5,10 @@ import httpx
 from openai import APIConnectionError, AsyncOpenAI, OpenAI
 import pytest
 
-from moatless.index.embed_model import embedding_key_env, get_embed_model
-from moatless.index.local import LocalEmbedding
-from moatless.index.settings import IndexSettings
-from moatless.evaluation.experiment_inputs import embedding_credentials, index_settings_for
+from repoforge.index.embed_model import embedding_key_env, get_embed_model
+from repoforge.index.local import LocalEmbedding
+from repoforge.index.settings import IndexSettings
+from repoforge.evaluation.experiment_inputs import embedding_credentials, index_settings_for
 
 
 def test_local_settings_credentials_and_roundtrip(monkeypatch, tmp_path):
@@ -133,7 +133,7 @@ def test_service_failure_never_falls_back(monkeypatch):
 
 
 def test_bge_estimate_never_loads_hf(monkeypatch):
-    from moatless.utils.tokenizer import count_tokens, _hf_tokenizers
+    from repoforge.utils.tokenizer import count_tokens, _hf_tokenizers
     import sys
     from types import SimpleNamespace
 
@@ -146,7 +146,7 @@ def test_bge_estimate_never_loads_hf(monkeypatch):
 
 @pytest.mark.parametrize("failed", [False, True])
 def test_local_ledger_api_cost_zero_hardware_unpriced(tmp_path, failed):
-    from moatless.evaluation.experiment_usage import SDKRecorder
+    from repoforge.evaluation.experiment_usage import SDKRecorder
 
     recorder = SDKRecorder(tmp_path, {"embedding": {}})
     identity, start = recorder.begin("embedding", {"model": "BAAI/bge-m3"})
@@ -164,7 +164,7 @@ def test_local_ledger_api_cost_zero_hardware_unpriced(tmp_path, failed):
 
 
 def test_native_executor_local_credentials_keep_only_deepseek(monkeypatch, tmp_path):
-    from moatless.evaluation import experiment_native as native
+    from repoforge.evaluation import experiment_native as native
 
     paths = {}
     for name in ("agent", "framework", "base", "prefix", "repo", "inputs", "output"):

@@ -4,18 +4,19 @@ from pathlib import Path
 import pytest
 from langgraph.errors import GraphRecursionError
 
-from moatless.actions.finish import Finish, FinishArgs
-from moatless.actions.respond import Respond, RespondArgs
-from moatless.actions.schema import Observation
-from moatless.actions.think import Think, ThinkArgs
-from moatless.agent.agent import ActionAgent
-from moatless.completion.schema import ResponseSchema
-from moatless.context_data import current_action_step, current_node_id
-from moatless.exceptions import CompletionError, CompletionRejectError, RejectError
-from moatless.flow.langgraph_flow import LangGraphFlow
-from moatless.flow.loop import AgenticLoop
-from moatless.flow.schema import FlowStatus
-from moatless.node import ActionStep
+from repoforge.actions.finish import Finish, FinishArgs
+from repoforge.actions.respond import Respond, RespondArgs
+from repoforge.actions.schema import Observation
+from repoforge.actions.think import Think, ThinkArgs
+from repoforge.agent.agent import ActionAgent
+from repoforge.completion.schema import ResponseSchema
+from repoforge.compat import canonical_classpath
+from repoforge.context_data import current_action_step, current_node_id
+from repoforge.exceptions import CompletionError, CompletionRejectError, RejectError
+from repoforge.flow.langgraph_flow import LangGraphFlow
+from repoforge.flow.loop import AgenticLoop
+from repoforge.flow.schema import FlowStatus
+from repoforge.node import ActionStep
 from scripts.migration_smoke import ScriptedCompletion, replay, response, historical_test_projection
 
 BASELINE = Path(__file__).resolve().parents[2] / "experiments/baselines/M0"
@@ -42,6 +43,12 @@ def align_event_ids(result):
 async def test_m0_m1_frozen_business_replay(coding):
     result, _ = await replay(LangGraphFlow, coding=coding)
     expected = json.loads((BASELINE / ("coding.json" if coding else "respond.json")).read_text())
+    # Preserve the frozen baseline; only its serialized package identity changed.
+    for node in expected["trajectory"]["nodes"]:
+        for step in node.get("action_steps", []):
+            action = step["action"]
+            if "action_args_class" in action:
+                action["action_args_class"] = canonical_classpath(action["action_args_class"])
     assert align_event_ids(result) == expected
     assert all(
         e["project_id"] == "migration" and e["trajectory_id"] == ("coding" if coding else "respond")
@@ -277,9 +284,9 @@ async def test_tool_completion_failure_keeps_invocation_without_double_charge(mo
 
 @pytest.mark.asyncio
 async def test_graph_rebinds_replacement_workspace():
-    from moatless.repository.repository import InMemRepository
-    from moatless.runtime.runtime import NoEnvironment
-    from moatless.workspace import Workspace
+    from repoforge.repository.repository import InMemRepository
+    from repoforge.runtime.runtime import NoEnvironment
+    from repoforge.workspace import Workspace
 
     flow, _ = make_flow([response(ThinkArgs(thought="first")), response(RespondArgs(message="done"))])
     first_repo, second_repo = InMemRepository(), InMemRepository()

@@ -6,10 +6,10 @@ from unittest.mock import Mock
 
 import pytest
 from git import Repo
-from moatless.codeblocks import CodeBlock, CodeBlockType
-from moatless.codeblocks.module import Module
-from moatless.file_context import FileContext, ContextFile
-from moatless.repository.repository import InMemRepository
+from repoforge.codeblocks import CodeBlock, CodeBlockType
+from repoforge.codeblocks.module import Module
+from repoforge.file_context import FileContext, ContextFile
+from repoforge.repository.repository import InMemRepository
 
 
 def test_to_prompt_string_outcommented_code_block_with_line_numbers():
